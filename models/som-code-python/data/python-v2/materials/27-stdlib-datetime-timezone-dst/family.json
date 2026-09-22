@@ -1,0 +1,72 @@
+{
+  "family_id": "27-stdlib-datetime-timezone-dst",
+  "domain": "python",
+  "area": "stdlib",
+  "capability": "datetime-timezone-dst-math",
+  "requirement": "Implement TimezoneCalculator supporting aware UTC normalization, elapsed hours between datetimes, ambiguous DST fold resolution, and wall-clock preserving calendar math.",
+  "skeleton": "TimezoneCalculator class with datetime and zoneinfo timezone operations.",
+  "rationale": {
+    "teaches": "Aware-datetime arithmetic: astimezone for conversion, a naive-input guard, fold to resolve ambiguous DST times, and calendar-day math that preserves wall-clock time across a transition.",
+    "why": "replace versus astimezone and UTC-based versus calendar-based day math both give the right answer most of the year and the wrong one across a DST boundary. The fixture uses transition dates, where the difference is one hour."
+  },
+  "oracle": "fixtures/test_27_stdlib_datetime_timezone_dst.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "replace(tzinfo=utc) relabels the time instead of converting it, so a 10:00 New York time becomes 10:00 UTC.",
+      "caught_by": [
+        "test_normalize_to_utc_aware"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Naive datetimes are accepted, so elapsed hours between a naive and an aware value raises TypeError from the subtraction.",
+      "caught_by": [
+        "test_calculate_elapsed_hours_requires_timezone_aware"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "fold is always 0, so an ambiguous time during the DST fallback always resolves to the first occurrence.",
+      "caught_by": [
+        "test_calculate_elapsed_hours_requires_timezone_aware",
+        "test_resolve_ambiguous_dst_fold"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Adding days in UTC and converting back shifts the wall-clock hour across a DST transition.",
+      "caught_by": [
+        "test_add_calendar_days_preserves_wall_clock"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Elapsed hours is computed from the hour fields alone, so any span crossing midnight or spanning days is wrong.",
+      "caught_by": [
+        "test_calculate_elapsed_hours_multi_day",
+        "test_calculate_elapsed_hours_requires_timezone_aware"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "family_id": "59-click-envvar-boolean-parsing",
+  "domain": "python",
+  "area": "click",
+  "capability": "click-envvar-boolean-parsing",
+  "requirement": "Click CLI pipeline command with environment variable boolean flag parsing, properly handling truthy/falsy strings ('false', '0', 'no', 'true', '1') and range-bounded integers without truthiness traps.",
+  "skeleton": "Click group and sync command with --dry-run/--no-dry-run, --force/--no-force, and bounded --retries options.",
+  "rationale": {
+    "teaches": "Click boolean flags with the slash form so environment values like false and 0 parse correctly, a default of False, an envvar binding, and an IntRange for retries.",
+    "why": "A string-typed flag converted with bool() treats the string false as True. The fixture sets the environment variable to false and expects dry-run to be off."
+  },
+  "oracle": "fixtures/test_59_click_envvar_boolean_parsing.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The flag is a string converted with bool(), so SYNC_DRY_RUN=false turns dry-run on.",
+      "caught_by": [
+        "test_cli_flags_default_values",
+        "test_envvar_boolean_false_strings_parsed_as_false",
+        "test_envvar_invalid_boolean_raises_bad_parameter_exit_code_2"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "dry-run defaults to True, so a plain invocation performs no real sync.",
+      "caught_by": [
+        "test_cli_flags_default_values"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The envvar binding is dropped, so SYNC_DRY_RUN has no effect at all.",
+      "caught_by": [
+        "test_envvar_boolean_true_strings_parsed_as_true",
+        "test_envvar_invalid_boolean_raises_bad_parameter_exit_code_2"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "retries is a plain int, so a value of 100 or -1 is accepted.",
+      "caught_by": [
+        "test_envvar_retries_out_of_range_rejected"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The flag is a string matched against true and 1 only, so yes and TRUE are treated as false and the no-dry-run form does not exist.",
+      "caught_by": [
+        "test_envvar_invalid_boolean_raises_bad_parameter_exit_code_2"
+      ]
+    }
+  ]
+}

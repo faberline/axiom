@@ -1,0 +1,70 @@
+{
+  "family_id": "38-requests-retry-adapter",
+  "domain": "python",
+  "area": "requests",
+  "capability": "retry-adapter",
+  "requirement": "Implement build_retry_strategy and create_retry_session configuring urllib3.util.Retry with exponential backoff on HTTPAdapter. It must configure total retries >= 0, backoff_factor >= 0.0, status_forcelist (429, 500, 502, 503, 504), restrict allowed_methods to safe/idempotent methods excluding POST by default, set raise_on_status=False, and mount the adapter to http:// and https://.",
+  "skeleton": "build_retry_strategy helper returning urllib3.util.Retry and create_retry_session factory mounting retry-enabled HTTPAdapter.",
+  "rationale": {
+    "teaches": "urllib3 Retry with exponential backoff: non-negative total and backoff, the 429 and 5xx forcelist, idempotent-only allowed methods, raise_on_status off, and mounted on both schemes.",
+    "why": "A retry policy that includes POST or skips a scheme still makes successful requests. The fixture inspects the mounted Retry object, which is how the policy is observable without a flaky server."
+  },
+  "oracle": "fixtures/test_38_requests_retry_adapter.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "POST is in the allowed methods, so a non-idempotent request can be replayed after a timeout.",
+      "caught_by": [
+        "test_default_allowed_methods_excludes_post"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A negative backoff_factor is accepted and passed to Retry.",
+      "caught_by": [
+        "test_negative_backoff_factor_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "total of 0 is rejected, so a caller cannot disable retries.",
+      "caught_by": [
+        "test_zero_total_retries_allowed"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Only http is mounted, so https requests get no retry policy.",
+      "caught_by": [
+        "test_retry_adapter_mounted_both_schemes"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "max_retries receives the integer total instead of the Retry object, so backoff, forcelist, and method restrictions are all lost.",
+      "caught_by": [
+        "test_adapter_uses_configured_retry_strategy"
+      ]
+    }
+  ]
+}

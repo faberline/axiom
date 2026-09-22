@@ -1,0 +1,75 @@
+{
+  "family_id": "67-bs4-parser-selection",
+  "domain": "python",
+  "area": "bs4",
+  "capability": "markup-parser-selection-cdata",
+  "requirement": "Implement StructuredMarkupParser wrapping BeautifulSoup with explicit parser feature configuration ('lxml-xml' for XML and 'lxml' for HTML), preventing parser guessing warnings, preserving case-sensitive XML tag hierarchies, properly parsing self-closing non-HTML tags, and extracting CDATA section content without entity distortion.",
+  "skeleton": "StructuredMarkupParser class with __init__, parse, and extract_tag_values using bs4.BeautifulSoup and bs4.CData.",
+  "rationale": {
+    "teaches": "BeautifulSoup with an explicit parser feature per mode, case-preserving XML tag lookup, CDATA text extracted verbatim, and a validated mode.",
+    "why": "Letting BeautifulSoup guess the parser warns and lowercases XML tags, so case-sensitive lookups silently return nothing. The fixture uses mixed-case tags and CDATA containing angle brackets."
+  },
+  "oracle": "fixtures/test_67_bs4_parser_selection.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "XML mode uses the HTML parser, so tag names are lowercased and self-closing tags are mangled.",
+      "caught_by": [
+        "test_explicit_parser_feature",
+        "test_xml_case_sensitivity",
+        "test_xml_cdata_extraction"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "No parser feature is passed, so BeautifulSoup guesses, warns, and may lowercase tags.",
+      "caught_by": [
+        "test_explicit_parser_feature",
+        "test_xml_case_sensitivity",
+        "test_xml_cdata_extraction"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Tag lookups are lowercased, so mixed-case XML tags are never found.",
+      "caught_by": [
+        "test_xml_case_sensitivity",
+        "test_xml_cdata_extraction"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Angle brackets are stripped from CDATA text, so markup inside CDATA is corrupted.",
+      "caught_by": [
+        "test_xml_cdata_extraction"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "An unknown mode is accepted and falls through to the HTML parser.",
+      "caught_by": [
+        "test_validation_errors"
+      ]
+    }
+  ]
+}

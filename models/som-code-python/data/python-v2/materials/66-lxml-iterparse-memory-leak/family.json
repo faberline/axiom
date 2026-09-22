@@ -1,0 +1,72 @@
+{
+  "family_id": "66-lxml-iterparse-memory-leak",
+  "domain": "python",
+  "area": "lxml",
+  "capability": "streaming-xml-record-extraction",
+  "requirement": "Implement StreamXmlRecordExtractor using lxml.etree.iterparse with events=('end',) and target tag filtering to parse arbitrarily large XML streams with constant memory overhead. Ensure both element.clear() and parent detachment (del parent[0]) are executed for each yielded record to prevent dead element accumulation, and validate target_tag inputs.",
+  "skeleton": "StreamXmlRecordExtractor class with __init__ and iter_records using lxml.etree.iterparse.",
+  "rationale": {
+    "teaches": "Streaming XML with iterparse on end events filtered by tag, clearing each element and detaching it from its parent so memory stays constant, with a validated target tag.",
+    "why": "iterparse without clear keeps every parsed element in the tree, so memory grows linearly but the yielded records are correct. The fixture measures memory over a large stream."
+  },
+  "oracle": "fixtures/test_66_lxml_iterparse_memory_leak.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "elem.clear() is omitted, so each record's subtree stays in memory after being yielded.",
+      "caught_by": [
+        "test_element_clearing"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The parent check is inverted, so records are never detached and the tree grows with every record.",
+      "caught_by": [
+        "test_parent_node_prunes_siblings"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "start events are used, so each record is yielded before its children are parsed and its text is empty.",
+      "caught_by": [
+        "test_uses_end_events_configuration"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The tag filter is dropped, so every end event is yielded, including child elements.",
+      "caught_by": [
+        "test_element_clearing",
+        "test_parent_node_prunes_siblings",
+        "test_streaming_record_extraction"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "An empty target tag is accepted, so iterparse receives an empty filter and yields nothing.",
+      "caught_by": [
+        "test_empty_tag_validation"
+      ]
+    }
+  ]
+}

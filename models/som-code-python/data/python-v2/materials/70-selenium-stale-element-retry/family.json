@@ -1,0 +1,72 @@
+{
+  "family_id": "70-selenium-stale-element-retry",
+  "domain": "python",
+  "area": "selenium",
+  "capability": "stale-element-recovery",
+  "requirement": "Implement ResilientElementAccessor that re-locates DOM elements from the WebDriver upon encountering StaleElementReferenceException, retrying up to max_retries with configurable delay, validating retry parameters and propagating non-stale exceptions.",
+  "skeleton": "class StaleElementReferenceException(Exception):\n    pass\n\nclass ResilientElementAccessor:\n    def __init__(self, max_retries: int = 3, retry_delay: float = 0.05) -> None:\n        ...\n    def get_text(self, driver, by: str, value: str) -> str:\n        ...\n    def click(self, driver, by: str, value: str) -> None:\n        ...\n",
+  "rationale": {
+    "teaches": "A stale-element retry that re-locates the element from the driver on each attempt, retries only StaleElementReferenceException, sleeps between attempts, validates its parameters, and raises the last error when retries run out.",
+    "why": "Retry loops look correct whether they re-locate or not; only a driver whose element goes stale between calls tells them apart. The fixture uses a fake driver that invalidates the element after the first lookup and counts find_element calls."
+  },
+  "oracle": "fixtures/test_70_selenium_stale_element_retry.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The element is located once outside the loop, so every retry reuses the same stale reference and never succeeds.",
+      "caught_by": [
+        "test_gold_stale_element_refetches_from_driver_and_succeeds",
+        "test_stale_reference_is_retried_on_click"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Every exception is retried, so a NoSuchElementException is swallowed and retried until the count runs out.",
+      "caught_by": [
+        "test_non_stale_exception_not_retried"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A zero max_retries or negative delay is accepted, so the accessor never tries or sleeps for a negative time.",
+      "caught_by": [
+        "test_retry_parameters_validation"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "break replaces continue after a stale error, so the loop stops after the first failure instead of retrying.",
+      "caught_by": [
+        "test_gold_stale_element_refetches_from_driver_and_succeeds",
+        "test_stale_reference_is_retried_on_click"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "An empty string is returned when retries are exhausted, so callers cannot tell a missing element from empty text.",
+      "caught_by": [
+        "test_exhausted_retries_raises_stale_exception"
+      ]
+    }
+  ]
+}

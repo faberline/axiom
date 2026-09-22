@@ -1,0 +1,71 @@
+{
+  "family_id": "92-openai-tool-call-dispatch",
+  "domain": "python",
+  "area": "openai",
+  "capability": "tool-call-argument-validation-and-dispatch",
+  "requirement": "Implement an OpenAI tool dispatcher that parses serialized tool arguments JSON, validates against Pydantic schemas, handles malformed JSON, verifies argument types, and executes registered tools safely.",
+  "skeleton": "OpenAIToolDispatcher with register_tool and execute_tool_call methods returning ToolExecutionResult.",
+  "rationale": {
+    "teaches": "A tool dispatcher that parses the arguments JSON string, validates the parsed dict against the registered Pydantic schema, reports unknown tools and validation failures as errors, and defaults missing arguments to an empty object.",
+    "why": "Malformed JSON, a wrong argument type, and an unknown tool all reach the dispatcher as strings, so only executing the dispatch shows which path is taken. The fixture sends each malformed input and checks the result status and error text."
+  },
+  "oracle": "fixtures/test_92_openai_tool_call_dispatch.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "model_validate_json is called on an already-parsed dict, so every validation raises a type error.",
+      "caught_by": [
+        "test_tool_dispatch_success_with_schema"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Schema validation is skipped, so a wrong argument type reaches the tool function and fails inside it.",
+      "caught_by": [
+        "test_schema_validation_failure_captured"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "An unknown tool returns success with None, so a typo in the tool name is silently ignored.",
+      "caught_by": [
+        "test_unregistered_tool_error"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Missing arguments default to an empty string, so json.loads raises on a tool call with no arguments.",
+      "caught_by": [
+        "test_default_empty_arguments_handling"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "An empty argument object is rejected, so a tool with no parameters cannot be called.",
+      "caught_by": [
+        "test_default_empty_arguments_handling",
+        "test_zero_argument_tool_boundary"
+      ]
+    }
+  ]
+}

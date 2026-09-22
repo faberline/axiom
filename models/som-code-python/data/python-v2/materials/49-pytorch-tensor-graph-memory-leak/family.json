@@ -1,0 +1,72 @@
+{
+  "family_id": "49-pytorch-tensor-graph-memory-leak",
+  "domain": "python",
+  "area": "pytorch",
+  "capability": "tensor-graph-memory-leak",
+  "requirement": "Implement EpochLossAccumulator class for tracking batch loss history across deep learning epochs, detaching tensors via .item() to eliminate autograd graph memory leaks, validating non-negative losses and positive batch sizes, and computing sample-weighted averages.",
+  "skeleton": "EpochLossAccumulator class with record_batch, compute_epoch_average, get_history, and reset methods.",
+  "rationale": {
+    "teaches": "Loss bookkeeping that calls .item() before storing, validates batch_size and non-negative loss, and weights the epoch average by samples.",
+    "why": "Appending a loss tensor keeps its whole autograd graph alive; memory grows per batch but nothing raises. The fixture checks that the stored history contains plain floats, which is the observable that rules out the leak."
+  },
+  "oracle": "fixtures/test_49_pytorch_tensor_graph_memory_leak.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "batch_size defaults to 0, so every recorded batch contributes zero weight and the average divides by zero.",
+      "caught_by": [
+        "test_default_batch_size_is_one"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A zero or negative batch_size is accepted instead of raising ValueError.",
+      "caught_by": [
+        "test_invalid_batch_size_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A loss of exactly 0.0 is rejected as invalid.",
+      "caught_by": [
+        "test_boundary_zero_loss_accepted"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The loss is accumulated without multiplying by batch_size, so the epoch average is unweighted.",
+      "caught_by": [
+        "test_gold_batch_recording_and_weighted_average",
+        "test_sample_weighted_average_uneven_batches"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The raw loss tensor is stored in history, so every batch's autograd graph stays alive for the whole epoch.",
+      "caught_by": [
+        "test_gold_batch_recording_and_weighted_average",
+        "test_history_contains_only_primitive_floats_no_grad_fn"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "family_id": "04-fastapi-patch-partial-update",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "patch-partial-update",
+  "requirement": "PATCH /items/{item_id} endpoint supporting partial updates with exclude_unset=True, preserving existing database fields when omitted in the request and properly updating nullable fields when explicit null is sent.",
+  "skeleton": "FastAPI PATCH route with Pydantic ItemUpdate and SQLAlchemy session.",
+  "rationale": {
+    "teaches": "PATCH semantics with exclude_unset: omitted fields stay untouched, an explicit null clears a nullable column, the change is committed, and an unknown id is a 404.",
+    "why": "The three model_dump variants differ by one keyword and produce three different behaviors that only a database round trip separates. The generator has to know which keyword encodes which semantics."
+  },
+  "oracle": "fixtures/test_04_fastapi_patch_partial_update.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Fields omitted from the PATCH body are overwritten with None, so a name-only update erases price and description.",
+      "caught_by": [
+        "test_patch_explicit_null_clears_nullable_description",
+        "test_patch_partial_update_preserves_unset_fields",
+        "test_patch_persists_changes_to_database"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "An explicit null is dropped from the update, so a client can never clear the description.",
+      "caught_by": [
+        "test_patch_explicit_null_clears_nullable_description"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The update is never committed, so a later GET still shows the old values.",
+      "caught_by": [
+        "test_patch_explicit_null_clears_nullable_description",
+        "test_patch_partial_update_preserves_unset_fields",
+        "test_patch_persists_changes_to_database"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "PATCH on a missing id returns 200 with a fabricated empty item instead of 404.",
+      "caught_by": [
+        "test_patch_nonexistent_item_returns_404"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Clearing the description stores the string N/A instead of null.",
+      "caught_by": [
+        "test_patch_explicit_null_clears_nullable_description"
+      ]
+    }
+  ]
+}

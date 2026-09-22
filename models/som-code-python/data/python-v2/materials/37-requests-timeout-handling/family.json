@@ -1,0 +1,71 @@
+{
+  "family_id": "37-requests-timeout-handling",
+  "domain": "python",
+  "area": "requests",
+  "capability": "timeout-handling",
+  "requirement": "Implement TimeoutHTTPAdapter and create_timeout_session enforcing default connect and read timeouts on all requests. It must validate that timeouts are strictly positive, replace timeout=None with default_timeout in send(), preserve caller-specified positive timeouts, and mount the adapter to both http:// and https:// schemes.",
+  "skeleton": "TimeoutHTTPAdapter subclass of HTTPAdapter and create_timeout_session factory enforcing non-null timeouts.",
+  "rationale": {
+    "teaches": "An HTTPAdapter subclass that enforces a (connect, read) default timeout, validates positivity, respects a caller's explicit positive timeout, and is mounted on both schemes.",
+    "why": "requests has no default timeout, so an unmodified adapter hangs forever on a silent peer. The fixture intercepts send and reads the effective timeout, since a real hang cannot be tested."
+  },
+  "oracle": "fixtures/test_37_requests_timeout_handling.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The default timeout is a single 60 second value, so connect and read share one budget instead of the separate 3.05 and 27 seconds.",
+      "caught_by": [
+        "test_default_timeout_is_tuple"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Zero and negative timeouts are accepted, so a caller can disable the timeout by passing 0.",
+      "caught_by": [
+        "test_negative_timeout_rejected",
+        "test_zero_timeout_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The check uses <, so a timeout of exactly 0 is accepted.",
+      "caught_by": [
+        "test_zero_timeout_rejected"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The caller's timeout is always overridden with the default, so a request that needs a longer read timeout cannot get one.",
+      "caught_by": [
+        "test_custom_timeout_preserved_in_send"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "A plain HTTPAdapter is mounted instead of TimeoutHTTPAdapter, so no default timeout is ever applied.",
+      "caught_by": [
+        "test_create_timeout_session_mounts_timeout_adapter"
+      ]
+    }
+  ]
+}

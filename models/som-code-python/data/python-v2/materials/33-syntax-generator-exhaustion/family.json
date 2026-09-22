@@ -1,0 +1,70 @@
+{
+  "family_id": "33-syntax-generator-exhaustion",
+  "domain": "python",
+  "area": "syntax",
+  "capability": "generator-exhaustion",
+  "requirement": "Implement StreamAnalyzer handling single-pass and multi-pass stream processing without generator exhaustion, with chunking and history resets.",
+  "skeleton": "StreamAnalyzer class with compute_stats, filter_and_split, chunk_stream, and clear methods.",
+  "rationale": {
+    "teaches": "Single-pass iterables: materialize once before computing several aggregates, validate chunk_size, allow exactly 500 items, keep items the predicate accepts, and reset history on clear.",
+    "why": "Consuming a generator twice does not raise; the second pass just sees nothing. The fixture passes a generator rather than a list so the exhaustion is observable as wrong statistics."
+  },
+  "oracle": "fixtures/test_33_syntax_generator_exhaustion.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The stream is consumed by the count, so sum sees nothing and min and max are hardcoded to zero.",
+      "caught_by": [
+        "test_compute_stats_with_generator"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "chunk_size of zero or less is accepted, so chunking loops forever or raises from range.",
+      "caught_by": [
+        "test_chunk_stream_negative_validation"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Exactly 500 items is rejected even though 500 is the documented limit.",
+      "caught_by": [
+        "test_stream_boundary_500_allowed"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The predicate is inverted, so filter_and_split keeps the rejected items and drops the accepted ones.",
+      "caught_by": [
+        "test_filter_and_split_predicate"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "clear does not touch history, so results from earlier streams persist.",
+      "caught_by": [
+        "test_clear_resets_history"
+      ]
+    }
+  ]
+}

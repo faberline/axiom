@@ -1,0 +1,71 @@
+{
+  "family_id": "39-celery-task-shadowing",
+  "domain": "python",
+  "area": "celery",
+  "capability": "task-shadowing",
+  "requirement": "Implement SafeTaskRegistry wrapping Celery with in-memory eager configuration (task_always_eager=True, broker_url=\"memory://\", result_backend=\"cache+memory://\") and duplicate task registration detection. It must enforce explicit non-empty task names, prevent task shadowing by raising TaskCollisionError on duplicates, support task execution and retrieval, and provide clean registry reset.",
+  "skeleton": "SafeTaskRegistry class with Celery app configuration, unique task registration decorator, and collision prevention.",
+  "rationale": {
+    "teaches": "A Celery task registry that is eager and in-memory by default, requires a non-empty explicit name, raises TaskCollisionError on duplicates, and unregisters tasks on reset.",
+    "why": "Celery silently replaces a task registered twice under the same name, so a second definition shadows the first with no error. The fixture registers a duplicate and expects the collision to be reported."
+  },
+  "oracle": "fixtures/test_39_celery_task_shadowing.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "eager defaults to False, so tasks are sent to a broker that does not exist and never execute in tests.",
+      "caught_by": [
+        "test_eager_in_memory_execution"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Duplicate names are accepted, so a later registration silently shadows the earlier task.",
+      "caught_by": [
+        "test_duplicate_task_registration_raises_collision"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "An empty or whitespace name passes the check, so a task with no usable name is registered.",
+      "caught_by": [
+        "test_empty_and_whitespace_task_names_rejected"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The explicit name is not passed to the task decorator, so Celery derives a module-qualified name and collision detection never matches.",
+      "caught_by": [
+        "test_reset_clears_app_tasks_and_registry",
+        "test_task_registered_under_explicit_name"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "reset clears the local name set but leaves tasks in app.tasks, so re-registering after reset raises or shadows.",
+      "caught_by": [
+        "test_reset_clears_app_tasks_and_registry"
+      ]
+    }
+  ]
+}

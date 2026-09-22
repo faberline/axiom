@@ -73,6 +73,7 @@ above it emits.
 | Section | File | Kind | Owner |
 |---|---|---|---|
 | Candidate discriminator training | discriminator.md | shipped, limited | STATUS `training-cli-surface`, `discriminator-training-cli` |
+| Corpus loader | discriminator.md | shipped | STATUS `corpus-loader` |
 | Layer records from the decompiler | discriminator.md | outcome | ROADMAP `decompiler-dsl-corpus` |
 | Discriminator on a real backbone | discriminator.md | outcome | ROADMAP `discriminator-on-a-real-backbone` |
 | L1 Planner | generation.md | outcome | ROADMAP `l1-planner` |

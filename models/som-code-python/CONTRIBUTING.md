@@ -11,7 +11,12 @@ The project is data plus the scripts that verify it. A family is a directory
 under `data/python-v2/materials/` with `family.json`, `gold`, and `miss_1`
 through `miss_5`, judged by the fixture of the same number under
 `data/python-v2/fixtures/`. Write the fixture first and watch every near miss
-fail on an assertion before the family counts. A snippet is one JSON file
+fail on an assertion before the family counts. The `family.json` also
+carries the family's rationale: `rationale.teaches`, `rationale.why`, the
+`oracle` fixture path, and for each near miss `why_wrong` and `caught_by`.
+Write `why_wrong` as the observable consequence of the defect, never the
+failure mode's name; take `caught_by` from the harness, which prints the
+declared and the actual failing tests whenever they differ. A snippet is one JSON file
 under `data/snippets/v1/<library>/` and is not in the ISA until the verifier's
 required set names it.
 
@@ -27,11 +32,13 @@ keeping the STATUS matrix true to what they observe.
 | Gate | Command |
 |---|---|
 | Oracle corpus, every family | `models/som-code-python/.venv/bin/python models/som-code-python/data/python-v2/fixtures/verify_harness.py` |
+| Curated rationale | `models/som-code-python/.venv/bin/python models/som-code-python/scripts/verify_curation.py` |
 | Snippet ISA v1 | `models/som-code-python/.venv/bin/python models/som-code-python/scripts/verify_snippets.py` |
 | Project test suite | `models/som-code-python/.venv/bin/python -m pytest models/som-code-python/tests -q` |
 | Product document contract | `uv run --python 3.13 --no-project scripts/meta/project_docs_contract.py check models/som-code-python --format json` |
 | META-doc contract | `uv run --project apps/aw aw metadoc check models/som-code-python` |
 
 Run the two document checks after editing `README.md`, `STATUS.md`,
-`ROADMAP.md`, or anything under `docs/product/`. The harness accepts family
+`ROADMAP.md`, or anything under `docs/product/`. Run the harness and the
+curation check after editing anything under `data/python-v2/`. The harness accepts family
 prefixes as arguments to scope a run, but the gate above is the unscoped one.

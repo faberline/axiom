@@ -1,0 +1,8 @@
+{
+  "state": "JavaScript frontend. Load the data for every id. Resolve to an array of data objects in the same order. fetchItem returns a Promise. Current implementation:\nasync function loadItems(ids) { return await ids.map(id => fetchItem(id)); }",
+  "candidates": [
+    {"id": "await-array", "text": "async function loadItems(ids) { return await ids.map(id => fetchItem(id)); }"},
+    {"id": "await-all", "text": "async function loadItems(ids) { return await Promise.all(ids.map(id => fetchItem(id))); }"},
+    {"id": "foreach", "text": "async function loadItems(ids) { return ids.forEach(async id => await fetchItem(id)); }"}
+  ]
+}

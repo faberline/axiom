@@ -1,0 +1,76 @@
+{
+  "family_id": "22-stdlib-asyncio-gather-exceptions",
+  "domain": "python",
+  "area": "stdlib",
+  "capability": "asyncio-gather-exception-handling",
+  "requirement": "Implement SafeBatchExecutor with execute_batch partitioning successes and failures, using return_exceptions=True or fail-fast sibling cancellation with first-exception semantics.",
+  "skeleton": "Asyncio batch task runner partitioning successes, failures, and handling sibling task cancellation.",
+  "rationale": {
+    "teaches": "Batch execution with gather: return_exceptions=True to partition results, exceptions routed to failures, cancellations counted separately, and pending siblings cancelled in fail-fast mode.",
+    "why": "gather's two modes look alike until one task raises. Whether siblings keep running, whether the exception is lost, and whether it is misfiled are only visible with a deliberately failing task."
+  },
+  "oracle": "fixtures/test_22_stdlib_asyncio_gather_exceptions.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "return_exceptions=False makes the first exception propagate out of gather, so no partition is ever produced.",
+      "caught_by": [
+        "test_batch_failures_not_dropped",
+        "test_batch_mixed_return_exceptions"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Exceptions are appended to successes, so a batch with failures reports every task as succeeded.",
+      "caught_by": [
+        "test_batch_failures_not_dropped",
+        "test_batch_mixed_return_exceptions"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Exceptions are silently dropped, so failures is always empty and the caller never learns a task failed.",
+      "caught_by": [
+        "test_batch_failures_not_dropped",
+        "test_batch_mixed_return_exceptions",
+        "test_fail_fast_cancels_siblings_and_counts_cancelled"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Cancelled tasks are appended to failures instead of counted, so cancelled_count stays 0 and failures over-reports.",
+      "caught_by": [
+        "test_fail_fast_cancels_siblings_and_counts_cancelled",
+        "test_fail_fast_does_not_count_cancellations_as_failures"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "Pending siblings are not cancelled after the first failure, so fail-fast mode leaves tasks running in the background.",
+      "caught_by": [
+        "test_fail_fast_cancels_siblings_and_counts_cancelled",
+        "test_fail_fast_does_not_count_cancellations_as_failures"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "family_id": "53-subprocess-zombie-lifecycle",
+  "domain": "python",
+  "area": "subprocess",
+  "capability": "zombie-process-reaping",
+  "requirement": "Supervise background subprocesses, managing lifecycle through termination, signal escalation, exit status reaping, and context manager cleanup.",
+  "skeleton": "ManagedProcess class with start, is_running, wait, terminate, stop methods and context manager.",
+  "rationale": {
+    "teaches": "Supervising a child process: poll for liveness, wait with a kill escalation on timeout, terminate only a running process, validate the command vector, and reap on context exit.",
+    "why": "A process that is never waited for stays a zombie and returncode stays None, but nothing raises. The fixture checks returncode and whether the pid still exists after stop."
+  },
+  "oracle": "fixtures/test_53_subprocess_zombie_lifecycle.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "wait returns 0 without waiting, so the child keeps running and is never reaped.",
+      "caught_by": [
+        "test_context_manager_cleans_up_on_exception",
+        "test_kill_unresponsive_process_reaps_zombie",
+        "test_normal_stop_reaps_process"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "is_running reads returncode without polling, so a child that already exited is still reported as running.",
+      "caught_by": [
+        "test_is_running_polls_and_reaps_finished_child"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "terminate only acts when the process is not running, so a live process is never signalled.",
+      "caught_by": [
+        "test_context_manager_cleans_up_on_exception"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A timeout of exactly 0 is accepted and every wait expires immediately.",
+      "caught_by": [
+        "test_stop_boundary_validation"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A bare string command is accepted, so Popen receives it as a single program name with no arguments.",
+      "caught_by": [
+        "test_cmd_validation"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "family_id": "64-aiohttp-response-release",
+  "domain": "python",
+  "area": "aiohttp",
+  "capability": "response-release",
+  "requirement": "Implement SafeResponseConsumer that guarantees explicit connection release via await response.release() on non-200 status codes, decoding errors, or early stream termination, preventing connection pool starvation and socket leaks in high-throughput aiohttp applications.",
+  "skeleton": "SafeResponseConsumer class with fetch_payload and read_header_value methods enforcing response release.",
+  "rationale": {
+    "teaches": "Guaranteed response release: await release on non-200, on decode errors, on any exception, and after reading a header, so pooled connections return to the pool.",
+    "why": "An unreleased response keeps its connection checked out; with a small pool the next request blocks. The fixture counts release calls per path with a fake response."
+  },
+  "oracle": "fixtures/test_64_aiohttp_response_release.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "release is never called, so every response keeps its connection checked out until garbage collection.",
+      "caught_by": [
+        "test_release_called_on_bad_status",
+        "test_release_called_on_json_parse_error"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "release is called without await, so the coroutine is created and discarded and the connection stays held.",
+      "caught_by": [
+        "test_header_reading_releases_connection",
+        "test_release_called_on_bad_status",
+        "test_release_called_on_json_parse_error"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "read_header_value returns the header without releasing, so a header-only read leaks a connection.",
+      "caught_by": [
+        "test_header_reading_releases_connection"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Only BadStatusError triggers release, so a decoding error leaks the connection.",
+      "caught_by": [
+        "test_release_called_on_json_parse_error"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "close is used instead of release, so the connection is destroyed instead of returned to the pool.",
+      "caught_by": [
+        "test_header_reading_releases_connection",
+        "test_release_called_on_bad_status",
+        "test_release_called_on_json_parse_error"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "family_id": "16-pydantic-json-schema-extra",
+  "domain": "python",
+  "area": "pydantic",
+  "capability": "json-schema-extra-callable-customization",
+  "requirement": "OpenAPI 3.1 schema customization via callable ConfigDict(json_schema_extra=augment_schema) injecting examples, x-metadata tags, and x-pii annotations.",
+  "skeleton": "Pydantic v2 BaseModel with ConfigDict callable json_schema_extra augmenting OpenAPI schema.",
+  "rationale": {
+    "teaches": "Pydantic v2 ConfigDict with a callable json_schema_extra that sets examples, x-metadata, and x-pii on the generated schema without removing properties.",
+    "why": "Schema customization is only visible in the JSON schema output. The v1 Config class, appending to a missing list, and popping properties all import fine and fail only when model_json_schema is called."
+  },
+  "oracle": "fixtures/test_16_pydantic_json_schema_extra.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "A v1-style inner Config class is used, so pydantic v2 ignores schema_extra and no customization appears in the schema.",
+      "caught_by": [
+        "test_augment_schema_callable_on_fresh_schema",
+        "test_classification_metadata_is_restricted",
+        "test_examples_conform_to_model_boundary_constraints",
+        "test_gold_json_schema_customization",
+        "test_json_schema_extra_v2_configuration"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "examples is appended to before it exists, so schema generation raises KeyError.",
+      "caught_by": [
+        "test_augment_schema_callable_on_fresh_schema",
+        "test_classification_metadata_is_restricted",
+        "test_examples_conform_to_model_boundary_constraints",
+        "test_gold_json_schema_customization",
+        "test_json_schema_extra_v2_configuration",
+        "test_schema_retains_properties_and_structure"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The properties block is removed from the schema instead of annotated, so consumers see no fields at all.",
+      "caught_by": [
+        "test_gold_json_schema_customization",
+        "test_schema_retains_properties_and_structure"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The example amount is 0.0, which violates the amount constraint the schema itself declares.",
+      "caught_by": [
+        "test_examples_conform_to_model_boundary_constraints"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The classification tag says public instead of restricted, so PII is advertised as safe.",
+      "caught_by": [
+        "test_classification_metadata_is_restricted",
+        "test_gold_json_schema_customization"
+      ]
+    }
+  ]
+}

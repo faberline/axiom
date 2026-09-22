@@ -1,0 +1,70 @@
+{
+  "family_id": "57-os-atomic-dir-exchange",
+  "domain": "python",
+  "area": "os",
+  "capability": "atomic-directory-exchange",
+  "requirement": "Safely manage directory provisioning, atomic swaps, and directory-based mutex locking without TOCTOU race conditions or windows of absence.",
+  "skeleton": "AtomicDirectoryDeployer class with ensure_directory, safe_remove_directory, acquire_lock, release_lock, and deploy_atomic methods.",
+  "rationale": {
+    "teaches": "Race-free directory operations: mkdir with exist_ok, catch FileNotFoundError instead of pre-checking, atomic mkdir as a mutex, os.replace with no delete window, and temp dirs on the same filesystem.",
+    "why": "Check-then-act code passes every single-threaded test and fails only when another process acts between the check and the act. The fixture injects that interleaving."
+  },
+  "oracle": "fixtures/test_57_os_atomic_dir_exchange.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The directory is checked and then created without exist_ok, so a concurrent creator makes mkdir raise FileExistsError.",
+      "caught_by": [
+        "test_ensure_directory_race_resilient"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Removal checks exists and then removes, so a concurrent removal raises FileNotFoundError instead of returning False.",
+      "caught_by": [
+        "test_safe_remove_directory_race_resilient"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The lock is an exists check followed by mkdir, so two acquirers can both pass the check and both hold the lock.",
+      "caught_by": [
+        "test_acquire_lock_race_resilient"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The old target is deleted before the rename, so there is a window where the deployed directory does not exist.",
+      "caught_by": [
+        "test_deploy_atomic_zero_window_of_absence"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The temp directory is created in the system temp location, so the final rename can cross filesystems and fail.",
+      "caught_by": [
+        "test_deploy_atomic_uses_sibling_directory"
+      ]
+    }
+  ]
+}

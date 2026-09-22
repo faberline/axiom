@@ -1,0 +1,70 @@
+{
+  "family_id": "26-stdlib-multiprocessing-process-lifecycle",
+  "domain": "python",
+  "area": "stdlib",
+  "capability": "multiprocessing-pool-lifecycle",
+  "requirement": "Implement ResilientWorkerPool with start, submit, collect_results, and graceful shutdown using poison pill sentinels, process reaping on timeout, and clean queue feeder thread management.",
+  "skeleton": "ResilientWorkerPool managing multiprocessing.Process workers and Queues.",
+  "rationale": {
+    "teaches": "A worker pool with explicit lifecycle: submit refuses when not running, collect_results honors a deadline, shutdown sends a sentinel per worker, joins with a timeout, and terminates only the stragglers.",
+    "why": "Pool lifecycle bugs hang or leak processes rather than raising. The fixture times every phase and checks that the worker processes are gone afterward."
+  },
+  "oracle": "fixtures/test_26_stdlib_multiprocessing_process_lifecycle.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "Terminated workers are never joined, so zombie processes remain after shutdown.",
+      "caught_by": [
+        "test_zombie_reaping_on_forced_termination"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "collect_results waits with no timeout, so a missing result blocks the caller forever.",
+      "caught_by": [
+        "test_collect_results_times_out_when_no_items"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "submit on a stopped pool silently enqueues instead of raising RuntimeError.",
+      "caught_by": [
+        "test_submit_rejects_when_stopped"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "start on a running pool rebuilds the worker list, so the original workers are orphaned and never shut down.",
+      "caught_by": [
+        "test_double_start_idempotent"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "shutdown terminates every worker immediately without a sentinel, so in-flight tasks are killed instead of finished.",
+      "caught_by": [
+        "test_graceful_shutdown_sentinels"
+      ]
+    }
+  ]
+}

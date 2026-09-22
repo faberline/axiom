@@ -1,0 +1,71 @@
+{
+  "family_id": "77-jwt-expiration-validation",
+  "domain": "python",
+  "area": "security",
+  "capability": "jwt-expiration-and-clock-skew",
+  "requirement": "JWT validation utility strictly enforcing expiration ('exp') claims, requiring mandatory 'exp' presence, limiting clock skew leeway to safe boundaries (<= 30s), and rejecting expired tokens.",
+  "skeleton": "ExpirableTokenManager class with issue_token and decode_token methods using PyJWT.",
+  "rationale": {
+    "teaches": "JWT decoding that requires exp and iat, verifies expiry, caps leeway at 30 seconds, raises on an expired token, and issues tokens that expire in the future.",
+    "why": "An expired token has a valid signature, so only the exp check rejects it. The fixture issues a token with a past exp and expects a ValueError, and checks the leeway boundary."
+  },
+  "oracle": "fixtures/test_77_jwt_expiration_validation.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "verify_exp is off, so an expired token is accepted.",
+      "caught_by": [
+        "test_expired_token_raises_value_error",
+        "test_token_missing_exp_claim_rejected"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "exp is not required, so a token that never expires is accepted.",
+      "caught_by": [
+        "test_token_missing_exp_claim_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Leeway has no upper bound, so a caller can set an hour of leeway and accept long-expired tokens.",
+      "caught_by": [
+        "test_excessive_leeway_rejected_in_init"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "An expired token is returned with an is_expired flag, so callers who ignore the flag accept it.",
+      "caught_by": [
+        "test_expired_token_raises_value_error"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "exp is set to now minus ttl, so every issued token is already expired.",
+      "caught_by": [
+        "test_valid_unexpired_token"
+      ]
+    }
+  ]
+}

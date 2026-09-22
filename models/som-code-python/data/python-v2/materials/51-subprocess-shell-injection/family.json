@@ -1,0 +1,81 @@
+{
+  "family_id": "51-subprocess-shell-injection",
+  "domain": "python",
+  "area": "subprocess",
+  "capability": "shell-injection-prevention",
+  "requirement": "Execute external commands safely using argument vectors without shell=True, preventing arbitrary command injection while enforcing allowlists, timeouts, and error handling.",
+  "skeleton": "SafeCommandRunner class with run method and execute_command helper.",
+  "rationale": {
+    "teaches": "Command execution with an argument vector and shell=False, a non-empty string-list check, an allowlist that blocks anything not in it, and a positive timeout.",
+    "why": "shell=True with a joined string runs every test command correctly and only fails when an argument contains a shell metacharacter. The fixture passes an argument with a semicolon and checks that it reaches the program literally."
+  },
+  "oracle": "fixtures/test_51_subprocess_shell_injection.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Arguments are joined into a string and run with shell=True, so a semicolon in an argument executes a second command.",
+      "caught_by": [
+        "test_disallowed_command_raises_permission_error",
+        "test_execute_command_helper",
+        "test_multiple_arguments_passed_intact",
+        "test_shell_injection_prevention",
+        "test_timeout_enforcement",
+        "test_valid_command_execution"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "args is not validated, so a bare string is accepted and Popen splits it character by character.",
+      "caught_by": [
+        "test_args_type_validation"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A timeout of exactly 0 is accepted and every command expires immediately.",
+      "caught_by": [
+        "test_timeout_boundary_validation"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The allowlist check is inverted, so allowed commands are refused and any other command runs.",
+      "caught_by": [
+        "test_disallowed_command_raises_permission_error"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "shell=True is passed with a list, so only the first element runs and the rest become shell positional parameters.",
+      "caught_by": [
+        "test_disallowed_command_raises_permission_error",
+        "test_execute_command_helper",
+        "test_multiple_arguments_passed_intact",
+        "test_non_zero_exit_code_raises_runtime_error",
+        "test_shell_injection_prevention",
+        "test_timeout_enforcement",
+        "test_valid_command_execution"
+      ]
+    }
+  ]
+}

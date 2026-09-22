@@ -1,0 +1,8 @@
+{
+  "id": "fastapi_init",
+  "description": "Instantiates the root FastAPI web application with top-level metadata.",
+  "imports": [
+    "from fastapi import FastAPI"
+  ],
+  "template": "{{app_name}} = FastAPI(\n    title=\"{{title}}\",\n    version=\"{{version}}\",\n    description=\"{{description}}\",\n)"
+}

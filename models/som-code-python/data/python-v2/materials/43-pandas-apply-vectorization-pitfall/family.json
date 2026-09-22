@@ -1,0 +1,77 @@
+{
+  "family_id": "43-pandas-apply-vectorization-pitfall",
+  "domain": "python",
+  "area": "pandas",
+  "capability": "apply-vectorization-pitfall",
+  "requirement": "Implement TransactionVectorizedScorer class for high-throughput financial transaction risk scoring. It must replace unvectorized row-by-row DataFrame.apply(axis=1) with vectorized pandas and numpy operations (np.where, column arithmetic, and clipping), validate non-empty DataFrames, enforce positive transaction weight parameters, clip scores to a configured max_cap, and preserve DataFrame index integrity.",
+  "skeleton": "High-performance vectorized scoring replacing unvectorized .apply(axis=1) and preserving index integrity.",
+  "rationale": {
+    "teaches": "Vectorized scoring with np.where and column arithmetic that keeps the DataFrame index, a positive weight check, a strict high-tier boundary, and a 100.0 cap.",
+    "why": "A row-by-row apply returns the same numbers on a default index and only breaks when the frame has a custom index or is large. The fixture uses a non-default index and a size that makes the apply version measurably slow."
+  },
+  "oracle": "fixtures/test_43_pandas_apply_vectorization_pitfall.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "max_cap defaults to 50.0, so scores between 50 and 100 are clipped without the caller asking.",
+      "caught_by": [
+        "test_branch_logic_high_vs_low_amounts",
+        "test_custom_index_preservation_and_vectorized_api",
+        "test_default_max_cap_allows_above_fifty",
+        "test_gold_vectorized_scoring_accuracy"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A non-positive weight is accepted, so a zero weight silently disables the frequency term.",
+      "caught_by": [
+        "test_negative_weight_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "An amount of exactly 1000.0 is scored in the high tier instead of the low tier.",
+      "caught_by": [
+        "test_exact_thousand_boundary_tier"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The high and low formulas are swapped in np.where, so large amounts get the low-tier score.",
+      "caught_by": [
+        "test_branch_logic_high_vs_low_amounts",
+        "test_custom_index_preservation_and_vectorized_api",
+        "test_default_max_cap_allows_above_fifty",
+        "test_exact_thousand_boundary_tier",
+        "test_gold_vectorized_scoring_accuracy"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Scores are built row by row into a Series with a fresh integer index, so they no longer align with the DataFrame's index.",
+      "caught_by": [
+        "test_custom_index_preservation_and_vectorized_api"
+      ]
+    }
+  ]
+}

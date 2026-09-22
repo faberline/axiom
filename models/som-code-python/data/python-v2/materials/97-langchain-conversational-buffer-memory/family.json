@@ -1,0 +1,84 @@
+{
+  "family_id": "97-langchain-conversational-buffer-memory",
+  "domain": "python",
+  "area": "langchain",
+  "capability": "conversational-buffer-window-pruning",
+  "requirement": "Implement SlidingWindowMemoryBuffer that manages multi-turn conversational history. It must preserve the initial SystemMessage at index 0 while pruning human/AI dialogue turns to a sliding window of max_messages: int = 10. It must enforce a maximum session limit max_sessions: int = 100 with LRU eviction in clear_expired_sessions(), preventing memory leaks from unbounded multi-tenant session accumulation.",
+  "skeleton": "Conversational buffer memory manager with sliding window pruning and LRU session eviction.",
+  "rationale": {
+    "teaches": "A sliding-window buffer that keeps the system message at index 0, prunes dialogue to the last max_messages turns, evicts the least recently used session at the session cap, and writes the pruned list back.",
+    "why": "A window that is one too wide or a session cache that never evicts grows slowly and passes a short test. The fixture fills past both limits and inspects lengths and the first message."
+  },
+  "oracle": "fixtures/test_97_langchain_conversational_buffer_memory.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "max_messages defaults to 0 and zero disables pruning, so the default buffer grows without bound.",
+      "caught_by": [
+        "test_default_buffer_enforces_pruning"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The system message is dropped on prune, so the model loses its instructions after the window fills.",
+      "caught_by": [
+        "test_system_prompt_preserved_after_window_pruning"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The window slice is one too long, so the buffer holds max_messages plus one turns.",
+      "caught_by": [
+        "test_default_buffer_enforces_pruning",
+        "test_exact_window_boundary",
+        "test_prune_history_mutates_underlying_storage",
+        "test_system_prompt_preserved_after_window_pruning"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The LRU eviction is dropped, so sessions accumulate past max_sessions.",
+      "caught_by": [
+        "test_session_capacity_eviction_lru"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The pruned slice is never assigned back, so pruning has no effect.",
+      "caught_by": [
+        "test_default_buffer_enforces_pruning",
+        "test_exact_window_boundary",
+        "test_prune_history_mutates_underlying_storage",
+        "test_system_prompt_preserved_after_window_pruning"
+      ]
+    }
+  ],
+  "source_hashes": {
+    "gold/candidate.py": "4ed35341c4b02da6fb868d10e39a9785002630e90d0f4cb8b322ee384c50f4f1",
+    "miss_1/candidate.py": "7f1f5458278dd66afd753cfbb5f5c55fd6c22695c11faf517f658d3dfb079ea4",
+    "miss_2/candidate.py": "db865b454950de4493e101c0547e84c6e1ef757e64df821aebe8bc8ae6fc9f95",
+    "miss_3/candidate.py": "77d661c2ab8833f4f2bb9a142c15751b36568a4a7621bdfd937776113a1e1e53",
+    "miss_4/candidate.py": "2f25431f2d9ac702f9b49a2c6e093da92954ea473c23a9d7d57f3b29d07f29cc",
+    "miss_5/candidate.py": "98c1274f6f2bbe7c4c306848ff3ec273ca3ded6ff64f8dd0e18bc9677a06a43d"
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "family_id": "08-asyncio-concurrency-limiter",
+  "domain": "python",
+  "area": "asyncio",
+  "capability": "concurrency-limiter-taskgroup",
+  "requirement": "Implement a ConcurrencyLimiter worker pool using asyncio.Semaphore to bound concurrent jobs to max_concurrency (>0), tracking active/peak concurrency and completed/failed jobs, ensuring semaphore tokens are released cleanly on job exceptions, and providing an async run_batch entrypoint using asyncio.TaskGroup.",
+  "skeleton": "Asyncio concurrency controller managing worker pool throughput with atomic telemetry.",
+  "rationale": {
+    "teaches": "A bounded worker pool: a Semaphore sized by max_concurrency, tokens released even when a job raises, honest active/peak/completed/failed counters, and a TaskGroup batch entry point.",
+    "why": "A concurrency limit is invisible in any single run. The observable is peak concurrency under load and whether capacity survives failures, which a fixture can measure with a counter inside the jobs."
+  },
+  "oracle": null,
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The semaphore token is not released when a job raises, so each failure permanently removes one slot until the pool starves.",
+      "caught_by": null
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "max_concurrency=0 is accepted and builds a zero-capacity semaphore, so run_batch blocks forever.",
+      "caught_by": null
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "A Lock replaces the Semaphore, so at most one job runs at a time whatever max_concurrency says.",
+      "caught_by": null
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "A failed job increments the completed counter, so telemetry reports failures as successes.",
+      "caught_by": null
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The default pool size is 1 instead of 4, so callers relying on the documented default get serialized execution.",
+      "caught_by": null
+    }
+  ]
+}

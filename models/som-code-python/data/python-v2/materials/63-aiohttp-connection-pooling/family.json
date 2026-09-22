@@ -1,0 +1,70 @@
+{
+  "family_id": "63-aiohttp-connection-pooling",
+  "domain": "python",
+  "area": "aiohttp",
+  "capability": "connection-pooling",
+  "requirement": "Implement PooledAiohttpManager with configured aiohttp.TCPConnector limits (limit, limit_per_host), connection concurrency bound via asyncio.Semaphore, session reuse across multiple concurrent requests with connector_owner=False, and comprehensive teardown.",
+  "skeleton": "PooledAiohttpManager class with TCPConnector limit configuration, concurrency semaphore, session reuse, and teardown.",
+  "rationale": {
+    "teaches": "A shared TCPConnector with limit and limit_per_host, a semaphore bounding in-flight requests, one session reused with connector_owner=False, and connector teardown.",
+    "why": "Pool limits are invisible until concurrency exceeds them. The fixture fires more requests than the limit and measures peak concurrency, and checks the connector is closed afterward."
+  },
+  "oracle": "fixtures/test_63_aiohttp_connection_pooling.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "A new ClientSession is created per request instead of reusing the shared one, so sessions leak on every call.",
+      "caught_by": [
+        "test_session_reused_across_batch_fetches"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "limit=0 means unlimited, so the connector opens as many sockets as there are requests.",
+      "caught_by": [
+        "test_connector_configuration"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "limit_per_host above max_connections is accepted, so the per-host cap can never take effect.",
+      "caught_by": [
+        "test_limit_per_host_exceeds_max_connections_rejected"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The connector is never closed, so its sockets outlive the manager.",
+      "caught_by": [
+        "test_teardown_closes_connector"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The semaphore is skipped, so peak concurrency is unbounded.",
+      "caught_by": [
+        "test_concurrency_bounded_by_semaphore"
+      ]
+    }
+  ]
+}

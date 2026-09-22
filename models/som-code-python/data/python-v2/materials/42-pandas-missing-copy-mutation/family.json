@@ -1,0 +1,73 @@
+{
+  "family_id": "42-pandas-missing-copy-mutation",
+  "domain": "python",
+  "area": "pandas",
+  "capability": "missing-copy-mutation",
+  "requirement": "Implement CohortFeatureTransformer class that extracts and enriches a slice of a master DataFrame. It must enforce explicit .copy() on sliced subsets to isolate mutations from the master DataFrame, validate cohort existence and positive scaling parameters, compute derived features (normalized_score and risk_tier), and guarantee that the master DataFrame remains unmodified after feature extraction.",
+  "skeleton": "Enforce explicit DataFrame .copy() on subset slices to prevent unintended caller DataFrame mutations and feature leakage.",
+  "rationale": {
+    "teaches": "Slicing a cohort with an explicit .copy() before adding columns, a positive scale check, a sane base_scale, and an inclusive tier boundary.",
+    "why": "Adding columns to a slice may or may not write through to the master frame depending on pandas internals, so the leak is nondeterministic across versions. The fixture asserts the master is byte-identical after extraction."
+  },
+  "oracle": "fixtures/test_42_pandas_missing_copy_mutation.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "base_scale defaults to 0.0, so every normalized score collapses to zero or divides by zero.",
+      "caught_by": [
+        "test_default_base_scale_transformation",
+        "test_exact_fifty_threshold_boundary",
+        "test_risk_tier_branch_assignment"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A non-positive scale is accepted, so a zero scale produces infinite or NaN scores.",
+      "caught_by": [
+        "test_zero_and_negative_scale_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A normalized score of exactly 50.0 lands in standard instead of high.",
+      "caught_by": [
+        "test_exact_fifty_threshold_boundary"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The tier labels are swapped, so high-risk rows are labeled standard and vice versa.",
+      "caught_by": [
+        "test_exact_fifty_threshold_boundary",
+        "test_risk_tier_branch_assignment"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The slice is not copied, so the derived columns are written into the master DataFrame.",
+      "caught_by": [
+        "test_master_dataframe_isolation"
+      ]
+    }
+  ]
+}

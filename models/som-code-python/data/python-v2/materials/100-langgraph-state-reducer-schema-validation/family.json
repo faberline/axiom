@@ -1,0 +1,80 @@
+{
+  "family_id": "100-langgraph-state-reducer-schema-validation",
+  "domain": "python",
+  "area": "langgraph",
+  "capability": "immutable-state-reducers-and-schema-contracts",
+  "requirement": "Implement ValidatedStateGraph with strict TypedDict schema definition and channel reducers. Nodes must treat input state as immutable and return partial state updates without in-place mutations of lists or dictionaries. Fields declared with list concatenation reducers (Annotated[list[str], operator.add]) must receive list values, not raw primitives. Output keys must conform strictly to the state schema.",
+  "skeleton": "State graph with TypedDict schema, list reducer validation, and immutable state updates.",
+  "rationale": {
+    "teaches": "Graph nodes that copy lists and dicts before updating, return list values for list-reducer channels, reject undeclared schema keys, and increment step_count from the incoming state.",
+    "why": "In-place mutation gives the right output while corrupting the caller's state. The fixture snapshots the input state before each node and checks it is unchanged afterward."
+  },
+  "oracle": "fixtures/test_100_langgraph_state_reducer_schema_validation.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The incoming messages list is appended in place, so the caller's state is mutated before the update is returned.",
+      "caught_by": [
+        "test_nodes_do_not_mutate_input_state_in_place",
+        "test_reducer_concatenates_messages_sequentially"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "shared_default_factory",
+      "why_wrong": "The incoming metadata dict is mutated in place and returned, so the caller's state changes and the same dict is shared.",
+      "caught_by": [
+        "test_nodes_do_not_mutate_input_state_in_place"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "A string is returned for the messages reducer, so list concatenation appends each character.",
+      "caught_by": [
+        "test_reducer_concatenates_messages_sequentially",
+        "test_step_count_increments_monotonically"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Undeclared keys are not rejected, so a node can write outside the schema.",
+      "caught_by": [
+        "test_validate_node_output_rejects_undeclared_schema_keys"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "step_count is reset to 1 instead of incremented, so the graph never counts past the first step.",
+      "caught_by": [
+        "test_step_count_increments_monotonically"
+      ]
+    }
+  ],
+  "source_hashes": {
+    "gold/candidate.py": "8e5433daccae353c55d3e30c921ba574b9682f495616a53cfb971c23b9962b8d",
+    "miss_1/candidate.py": "e6d5b2cb2ec276e6bf683e1d2603e79f49204f699be31f5017b2a690e99a25b1",
+    "miss_2/candidate.py": "d591f31d42ba83fa8c516c3e976a9e5133d51882c77a1ad43bb20de024b98242",
+    "miss_3/candidate.py": "60eaa54a2e6ef8276078708f47fe805b090851e3d049b25203f45cc066c8204f",
+    "miss_4/candidate.py": "f306801dc94108da26358d6d1b9da3d7a63efc09f0450b74140b57d7877db465",
+    "miss_5/candidate.py": "cbd6812a72d1eb59dfe33d37debdb2f2b18d5308d81893ec2252accba9488e2b"
+  }
+}

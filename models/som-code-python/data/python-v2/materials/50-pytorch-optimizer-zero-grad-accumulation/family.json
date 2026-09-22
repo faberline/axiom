@@ -1,0 +1,74 @@
+{
+  "family_id": "50-pytorch-optimizer-zero-grad-accumulation",
+  "domain": "python",
+  "area": "pytorch",
+  "capability": "optimizer-zero-grad-accumulation",
+  "requirement": "Implement GradientAccumulationManager class for multi-step gradient accumulation, scaling batch loss by 1.0/accumulation_steps, executing backward propagation, triggering optimizer step and mandatory zero_grad at boundary intervals, and flushing pending gradients.",
+  "skeleton": "GradientAccumulationManager class with backward_and_step, flush, and reset methods.",
+  "rationale": {
+    "teaches": "Gradient accumulation: scale each loss by 1/steps, call backward every batch, step and zero_grad only at the boundary, and flush leftovers at the end.",
+    "why": "Forgetting zero_grad or stepping one batch early still trains, just with the wrong effective batch size and inflated gradients. The fixture counts step and zero_grad calls per batch index with a mock optimizer."
+  },
+  "oracle": "fixtures/test_50_pytorch_optimizer_zero_grad_accumulation.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "accumulation_steps defaults to 1, so no accumulation happens and every batch triggers a step.",
+      "caught_by": [
+        "test_default_accumulation_steps_is_valid_positive"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "accumulation_steps of 0 or a non-integer is accepted, so the modulo raises ZeroDivisionError on the first batch.",
+      "caught_by": [
+        "test_invalid_accumulation_steps_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The step fires on step_idx modulo steps, so the optimizer steps on the very first batch and then every boundary is one batch early.",
+      "caught_by": [
+        "test_boundary_first_step_does_not_trigger_premature_step",
+        "test_flush_triggers_pending_step_and_zero_grad",
+        "test_gold_accumulation_cadence_and_zero_grad"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The loss is multiplied by accumulation_steps instead of divided, so the effective gradient is steps squared too large.",
+      "caught_by": [
+        "test_loss_scaled_by_accumulation_factor"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "zero_grad is never called, so gradients accumulate across every boundary and grow without bound.",
+      "caught_by": [
+        "test_flush_triggers_pending_step_and_zero_grad",
+        "test_gold_accumulation_cadence_and_zero_grad",
+        "test_zero_grad_called_after_optimizer_step"
+      ]
+    }
+  ]
+}

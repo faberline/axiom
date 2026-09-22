@@ -1,0 +1,72 @@
+{
+  "family_id": "68-playwright-explicit-waits",
+  "domain": "python",
+  "area": "playwright",
+  "capability": "explicit-wait-conditions",
+  "requirement": "Implement ResilientElementWaiter for UI automation that explicitly waits for DOM elements to reach target states ('visible', 'attached', 'detached', 'hidden') via page.wait_for_selector() and dynamic condition polling, validating positive timeouts and supported states, preventing race conditions from fixed time.sleep.",
+  "skeleton": "class ResilientElementWaiter:\n    def __init__(self, default_timeout: float = 10.0, poll_interval: float = 0.05) -> None:\n        ...\n    def wait_for_element(self, page, selector: str, state: str = 'visible', timeout = None):\n        ...\n    def wait_and_click(self, page, selector: str, timeout = None):\n        ...\n    def poll_condition(self, predicate, timeout = None) -> bool:\n        ...\n",
+  "rationale": {
+    "teaches": "Explicit waits through page.wait_for_selector with a target state, a visible default for clicks, positive timeouts, exceptions propagated, and a polling loop that sleeps between checks.",
+    "why": "A fixed sleep passes when the page is fast and fails when it is slow; an exception swallowed into None turns a timeout into a later AttributeError. The fixture uses a fake page with controllable timing."
+  },
+  "oracle": "fixtures/test_68_playwright_explicit_waits.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "A fixed sleep replaces the explicit wait, so the full timeout elapses on every call and a late element is still missed.",
+      "caught_by": [
+        "test_explicit_wait_uses_wait_for_selector_not_sleep",
+        "test_timeout_error_propagated",
+        "test_wait_and_click_requires_visible_state"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "wait_and_click waits for attached instead of visible, so it clicks an element that is not yet displayed.",
+      "caught_by": [
+        "test_wait_and_click_requires_visible_state"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Zero and negative timeouts and poll intervals are accepted, so waits expire immediately or spin.",
+      "caught_by": [
+        "test_timeout_and_interval_validation"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "A timeout is swallowed and None is returned, so the caller clicks on None and fails later.",
+      "caught_by": [
+        "test_timeout_error_propagated"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "poll_condition never sleeps, so it busy-spins the CPU until the deadline.",
+      "caught_by": [
+        "test_poll_condition_throttles_with_sleep"
+      ]
+    }
+  ]
+}

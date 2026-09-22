@@ -1,0 +1,73 @@
+{
+  "family_id": "47-sklearn-data-leakage-preprocessing",
+  "domain": "python",
+  "area": "scikit-learn",
+  "capability": "data-leakage-preprocessing",
+  "requirement": "Implement LeakFreeDataSplitter class that validates train/test split bounds and sample counts, splits datasets, fits the feature scaler strictly on the training partition only, and scales test data using training statistics to prevent data leakage.",
+  "skeleton": "StandardScaler and LeakFreeDataSplitter class with split_and_scale method returning scaled arrays and the fitted scaler.",
+  "rationale": {
+    "teaches": "Leak-free preprocessing: split first, fit the scaler on the training partition only, transform the test partition with those statistics, and validate lengths and test_size bounds.",
+    "why": "Fitting the scaler on the full dataset or on the test split still yields arrays of the right shape and plausible values. The fixture compares the scaler's learned mean to the training mean, which is the only direct evidence of where it was fit."
+  },
+  "oracle": "fixtures/test_47_sklearn_data_leakage_preprocessing.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "test_size defaults to 0.5, so half the data is held out instead of the documented fifth.",
+      "caught_by": [
+        "test_default_test_size_proportion"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Mismatched X and y lengths are not rejected, so the split silently misaligns labels.",
+      "caught_by": [
+        "test_mismatched_x_y_lengths_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "test_size of 0.0 or 1.0 is accepted, so one partition ends up empty.",
+      "caught_by": [
+        "test_boundary_test_sizes_rejected"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The scaler is fit on the test split and applied to training, so test statistics leak into the model.",
+      "caught_by": [
+        "test_gold_split_and_scale_proportions_and_shapes",
+        "test_scaler_fit_on_train_not_test"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The scaler is fit on the full dataset before splitting, so test statistics leak into every training feature.",
+      "caught_by": [
+        "test_gold_split_and_scale_proportions_and_shapes",
+        "test_scaler_fit_on_train_not_test",
+        "test_scaler_has_no_data_leakage_from_full_dataset"
+      ]
+    }
+  ]
+}

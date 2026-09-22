@@ -1,0 +1,70 @@
+{
+  "family_id": "40-redis-pubsub-pipeline",
+  "domain": "python",
+  "area": "redis",
+  "capability": "pubsub-pipeline",
+  "requirement": "Implement RedisTransactionPipeline and RedisPubSubManager classes providing atomic multi/exec pipelines with optimistic locking (watch/unwatch and WatchError retries up to max_retries), transaction rollback/reset on failure, and pubsub channel subscription, publishing, message dispatching, unsubscription, and connection cleanup.",
+  "skeleton": "RedisTransactionPipeline with optimistic locking retry logic and RedisPubSubManager with message dispatching and channel lifecycle.",
+  "rationale": {
+    "teaches": "Redis optimistic locking: watch the keys, retry on WatchError up to max_retries with a sane default, reset the pipeline on failure, and dispatch only real pubsub messages.",
+    "why": "A pipeline that retries one time too few or never resets still succeeds when nothing races. The fixture injects a WatchError sequence and counts attempts, which is the only way to observe retry arithmetic."
+  },
+  "oracle": "fixtures/test_40_redis_pubsub_pipeline.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "max_retries defaults to 0, so the first WatchError fails the transaction instead of retrying.",
+      "caught_by": [
+        "test_transaction_pipeline_default_retries"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "An empty watch_keys list is accepted, so the transaction runs without optimistic locking at all.",
+      "caught_by": [
+        "test_empty_watch_keys_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The loop runs max_retries times instead of max_retries plus one, so one fewer attempt is made than configured.",
+      "caught_by": [
+        "test_watch_error_retry_attempts"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Only subscribe confirmations are dispatched, so published messages never reach the handlers.",
+      "caught_by": [
+        "test_pubsub_dispatch_message_type"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The pipeline is not reset after a failure, so the next attempt starts with stale queued commands.",
+      "caught_by": [
+        "test_pipeline_finally_resets"
+      ]
+    }
+  ]
+}

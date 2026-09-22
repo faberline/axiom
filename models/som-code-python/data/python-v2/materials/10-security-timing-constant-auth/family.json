@@ -1,0 +1,60 @@
+{
+  "family_id": "10-security-timing-constant-auth",
+  "domain": "python",
+  "area": "security",
+  "capability": "timing-safe-token-authorization",
+  "requirement": "FastAPI authentication guard implementing timing-safe bearer token and HMAC signature validation via hmac.compare_digest, validating token structure, checking expiration timestamp (exp >= current_timestamp), enforcing required permission scopes (returning 401 Unauthorized for invalid/expired tokens, 403 Forbidden for insufficient scopes), and protecting against timing side channels.",
+  "skeleton": "FastAPI security guard with HMAC signature validation and constant-time token comparison.",
+  "rationale": {
+    "teaches": "A bearer-token guard built from hmac.compare_digest, an expiry check, a 401/403 split, exact header slicing, and an empty scope default that grants nothing.",
+    "why": "A variable-time comparison or an omitted expiry check passes every functional test with valid input. The family exists so the discriminator learns that the security-relevant call and the boundary check are part of the contract, not decoration."
+  },
+  "oracle": null,
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Signatures are compared with ==, so a remote attacker can recover the expected signature byte by byte from response timing.",
+      "caught_by": null
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The expiration check is omitted, so an expired token is accepted indefinitely.",
+      "caught_by": null
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "A valid token with insufficient scope answers 401 instead of 403, telling the client to re-authenticate when re-authenticating would not help.",
+      "caught_by": null
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The token is sliced from the seventh character without stripping, so the leading space stays in the token and every well-formed header fails to parse.",
+      "caught_by": null
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "A token with an empty scope list is granted read and admin, so a scopeless token becomes an admin token.",
+      "caught_by": null
+    }
+  ]
+}

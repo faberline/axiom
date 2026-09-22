@@ -1,0 +1,72 @@
+{
+  "family_id": "71-crypto-hash-password-algorithm",
+  "domain": "python",
+  "area": "security",
+  "capability": "password-hashing-algorithm",
+  "requirement": "Password hashing and verification utility implementing secure PBKDF2-HMAC-SHA256 with cryptographically random 16-byte salt, constant-time verification via hmac.compare_digest, non-empty password validation, and explicit rejection of weak digests (MD5, SHA1).",
+  "skeleton": "PasswordHasher class with hash_password and verify_password using hashlib and hmac.",
+  "rationale": {
+    "teaches": "PBKDF2-HMAC-SHA256 with a fresh 16-byte random salt per hash, constant-time verification, an empty-password guard, and refusal of MD5 and SHA1.",
+    "why": "Any digest function produces a hex string that round-trips through verify, so the algorithm choice is invisible to a verify-only test. The fixture decodes the stored format and re-derives with PBKDF2 to confirm the algorithm and that two hashes of the same password differ."
+  },
+  "oracle": "fixtures/test_71_crypto_hash_password_algorithm.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "MD5 replaces PBKDF2, so the stored hash is fast to brute-force and does not match a PBKDF2 re-derivation.",
+      "caught_by": [
+        "test_hash_password_success_and_verify",
+        "test_rejects_md5_and_sha1_digests"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "SHA1 replaces PBKDF2, so the hash has no work factor and does not match a PBKDF2 re-derivation.",
+      "caught_by": [
+        "test_hash_password_success_and_verify",
+        "test_rejects_md5_and_sha1_digests"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A fixed salt is used for every password, so two users with the same password get identical hashes.",
+      "caught_by": [
+        "test_hash_password_random_salt"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Verification uses == instead of compare_digest, so the comparison time leaks how many leading bytes match.",
+      "caught_by": [
+        "test_constant_time_comparison_enforced"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "An empty password is hashed instead of rejected, so an account can be created with no password.",
+      "caught_by": [
+        "test_empty_password_rejected"
+      ]
+    }
+  ]
+}

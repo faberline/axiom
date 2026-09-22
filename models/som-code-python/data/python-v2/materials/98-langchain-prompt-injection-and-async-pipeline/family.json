@@ -1,0 +1,81 @@
+{
+  "family_id": "98-langchain-prompt-injection-and-async-pipeline",
+  "domain": "python",
+  "area": "langchain",
+  "capability": "secure-prompt-and-async-lcel-execution",
+  "requirement": "Implement SecureAsyncLCELPipeline that prevents PromptTemplate injection and executes async LCEL chains without blocking the asyncio event loop. User inputs must be safely encapsulated as human messages without evaluating curly braces {} as template formatting keys. Sync heavy preprocessing must be offloaded via asyncio.to_thread. The pipeline's astream() method must yield token chunks incrementally.",
+  "skeleton": "Secure prompt formatter and async LCEL pipeline with non-blocking offload and streaming.",
+  "rationale": {
+    "teaches": "A pipeline that keeps user input in its own human message, strips role delimiters in strict mode, offloads sync work with asyncio.to_thread, and streams tokens incrementally.",
+    "why": "Injection succeeds only when user text is concatenated into the system role, and blocking shows only under a concurrent task. The fixture injects a fake System: line and times a concurrent coroutine during the sync step."
+  },
+  "oracle": "fixtures/test_98_langchain_prompt_injection_and_async_pipeline.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "User input is concatenated into the system message, so a user can rewrite the system instruction.",
+      "caught_by": [
+        "test_default_sanitization_is_active",
+        "test_role_separation_and_structure",
+        "test_strict_delimiter_sanitization"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Role delimiters are not stripped, so a user message containing a System: line is passed through.",
+      "caught_by": [
+        "test_default_sanitization_is_active",
+        "test_strict_delimiter_sanitization"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The sync digest runs on the event loop, so concurrent coroutines stall while it computes.",
+      "caught_by": [
+        "test_ainvoke_does_not_block_asyncio_event_loop"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "All tokens are accumulated and yielded once, so the caller sees nothing until the stream ends.",
+      "caught_by": [
+        "test_astream_yields_incrementally"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "strict_sanitization defaults to False, so the default pipeline passes injected delimiters through.",
+      "caught_by": [
+        "test_default_sanitization_is_active"
+      ]
+    }
+  ],
+  "source_hashes": {
+    "gold/candidate.py": "9542cf2a9b224fe1167ffa33952bbe3ff7d90134ffec8d81c45e6fd36ea7eb27",
+    "miss_1/candidate.py": "a0cce79527572f3d7e57d98ad897ac61adb2b45d518e457cdc0286a010d83556",
+    "miss_2/candidate.py": "bf3affaa6e0fb6a7c9be194177c9ff1b1095d5c00c14bc02259273abf0ff381d",
+    "miss_3/candidate.py": "75013a5da3ba5d18d54b8369eb35b972afcc6d7d9986881d1ab792d2f0732a6b",
+    "miss_4/candidate.py": "4cc936f6dbfb15ae95bccfff546c1bb0474d4755e4b1db8193762535075162eb",
+    "miss_5/candidate.py": "3ed8ee9661ec2a2c9ac9fa5f93e59b32fdf8e42a3929856e5a31ac38ee44e4ad"
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "family_id": "12-fastapi-background-tasks",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "background-tasks-dispatch-and-lifecycle",
+  "requirement": "Create a POST /orders endpoint returning 202 Accepted, scheduling BackgroundTasks.add_task(process_order, order_id), updating in-memory ORDERS_DB status from pending to processed, recording audit log, and validating quantity > 0 with lowercase email normalization.",
+  "skeleton": "FastAPI route with BackgroundTasks parameter, in-memory state transition, and audit logging.",
+  "rationale": {
+    "teaches": "An accept-then-process endpoint: 202 status, add_task with a real callable, a state transition the worker performs, unconditional audit logging, and a quantity constraint that allows one.",
+    "why": "Background work is invisible in the response, so a generated route can return 202 while nothing ever runs. The fixture inspects the in-memory state after the request, which is the only way to prove the task was scheduled and completed."
+  },
+  "oracle": "fixtures/test_12_fastapi_background_tasks.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The endpoint answers 200 instead of 202, so the client assumes the order was processed synchronously.",
+      "caught_by": [
+        "test_audit_log_records_non_partner_customer",
+        "test_background_task_dispatched_and_callable",
+        "test_customer_email_normalized_to_lowercase",
+        "test_duplicate_order_id_returns_409_conflict",
+        "test_order_status_transitions_from_pending_to_processed",
+        "test_single_item_order_quantity_one_accepted",
+        "test_submit_order_returns_202_accepted"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "add_task receives None instead of process_order, so the background task crashes and the order stays pending.",
+      "caught_by": [
+        "test_audit_log_records_non_partner_customer",
+        "test_background_task_dispatched_and_callable",
+        "test_customer_email_normalized_to_lowercase",
+        "test_duplicate_order_id_returns_409_conflict",
+        "test_order_status_transitions_from_pending_to_processed",
+        "test_single_item_order_quantity_one_accepted",
+        "test_submit_order_returns_202_accepted"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The worker never sets status to processed, so every order stays pending forever.",
+      "caught_by": [
+        "test_order_status_transitions_from_pending_to_processed"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Only partner.com customers are audit-logged, so every other order is processed without a trace.",
+      "caught_by": [
+        "test_audit_log_records_non_partner_customer"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "quantity must exceed 1, so a single-item order is rejected with 422.",
+      "caught_by": [
+        "test_audit_log_records_non_partner_customer",
+        "test_background_task_dispatched_and_callable",
+        "test_duplicate_order_id_returns_409_conflict",
+        "test_order_status_transitions_from_pending_to_processed",
+        "test_single_item_order_quantity_one_accepted"
+      ]
+    }
+  ]
+}

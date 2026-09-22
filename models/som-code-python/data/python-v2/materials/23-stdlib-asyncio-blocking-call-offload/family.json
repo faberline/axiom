@@ -1,0 +1,72 @@
+{
+  "family_id": "23-stdlib-asyncio-blocking-call-offload",
+  "domain": "python",
+  "area": "stdlib",
+  "capability": "asyncio-blocking-call-offload-executor",
+  "requirement": "Implement OffloadedComputeEngine using loop.run_in_executor with a managed ThreadPoolExecutor, synchronized call_count tracking with asyncio.Lock, and proper exception propagation.",
+  "skeleton": "Offloaded compute engine offloading blocking sync execution to worker threads without blocking asyncio event loop.",
+  "rationale": {
+    "teaches": "Offloading a blocking call with loop.run_in_executor on a managed ThreadPoolExecutor, a lock-protected counter, and unmodified exception propagation.",
+    "why": "Calling the sync function directly or wrapping it in a coroutine returns the correct value while freezing the event loop. The fixture measures loop responsiveness during the call, which is the only way to observe the offload."
+  },
+  "oracle": "fixtures/test_23_stdlib_asyncio_blocking_call_offload.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The blocking function is called directly on the event loop, so every other task stalls for its full duration.",
+      "caught_by": [
+        "test_event_loop_not_blocked_during_execution",
+        "test_managed_executor_used_without_spawning_unbounded_executors"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Wrapping the call in an inner coroutine still runs it on the loop thread, so the loop blocks exactly as before.",
+      "caught_by": [
+        "test_event_loop_not_blocked_during_execution",
+        "test_managed_executor_used_without_spawning_unbounded_executors"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "A fresh ThreadPoolExecutor is created per call and never shut down, so threads accumulate across calls.",
+      "caught_by": [
+        "test_managed_executor_used_without_spawning_unbounded_executors"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "call_count is incremented without the lock, so concurrent calls lose updates.",
+      "caught_by": [
+        "test_call_count_lock_synchronization"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Exceptions from the worker are swallowed and None is returned, so callers cannot tell failure from a None result.",
+      "caught_by": [
+        "test_worker_exception_is_propagated"
+      ]
+    }
+  ]
+}

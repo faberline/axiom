@@ -1,0 +1,21 @@
+.venv/
+.python/
+.cache/
+__pycache__/
+.pytest_cache/
+*.pyc
+.DS_Store
+node_modules/
+runs/
+
+# data/: only the executable python-v2 corpus and the snippet ISA are tracked.
+# Legacy corpora carried over from the jev-like project (data/som/,
+# data/python-v1-rejected/) stay local until they are re-audited.
+data/*
+!data/python-v2/
+!data/snippets/
+
+# models/: nothing under it is tracked. The v4 seed adapter that
+# som/specialists/som_config.py expects under models/som-seeds/v4 and any
+# downloaded base model stay local; see STATUS `legacy-ranker-lineage`.
+models/

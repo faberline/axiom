@@ -1,8 +1,9 @@
 # Corpus
 
 What a model trainer and a corpus author get from the oracle families: one
-layout, one harness, and a label that a fixture earned by running the
-candidates. This area spans the README capability `oracle-corpus`.
+layout, one harness, a label that a fixture earned by running the
+candidates, and the written reason each record is in the corpus. This area
+spans the README capabilities `oracle-corpus` and `curated-rationale`.
 
 ## Executable oracle families
 
@@ -13,7 +14,9 @@ candidates. This area spans the README capability `oracle-corpus`.
   a `gold`, and `miss_1` through `miss_5`. The harness maps each family to
   its fixture, runs every candidate, and exits 0 only when every gold exits 0
   and every near miss fails on an assertion rather than a syntax or
-  collection error. A family prefix scopes the run.
+  collection error, on exactly the tests its `caught_by` declares, with the
+  declared `oracle` being the fixture that ran. A family prefix scopes the
+  run.
 - Limits today: families `08-asyncio-concurrency-limiter`,
   `09-pydantic-field-cross-validation`, and
   `10-security-timing-constant-auth` have no fixture; the harness reports
@@ -23,8 +26,37 @@ candidates. This area spans the README capability `oracle-corpus`.
 - Non-goals: a Docker, Terraform, or Git family (ROADMAP
   `platform-pilot-families`); restoring the legacy ranker corpora (ROADMAP
   `legacy-ranker-lineage`).
-- Neighbours: none; first section of the area.
+- Neighbours: [Curated rationale](#curated-rationale) below, whose
+  `caught_by` this harness measures.
 - Status rows: `oracle-corpus`.
+
+## Curated rationale
+
+- Problem: none open as shipped; the limit below is removed by the outcome
+  that follows.
+- Who: model trainers who clone the corpus and need to know why a record is
+  there before they train on it; critic authors who need the defect named
+  and the test that exposes it.
+- Promise: Every `family.json` states what the family teaches and why its
+  oracle has to be executable, names the fixture the harness must run, and
+  for every near miss states the observable consequence of its defect and
+  the fixture tests that fail on it. `caught_by` is measured by running the
+  candidate, and the harness fails when the declaration and the measurement
+  differ. The curation check refuses a missing or trivial field, a
+  consequence that only repeats the failure mode, a test the fixture does
+  not define, a label word in candidate source, and a comment or docstring
+  that differs across the six candidates. The README under `data/python-v2`
+  carries the reasoning for a reader who starts from the data.
+- Limits today: families `08-asyncio-concurrency-limiter`,
+  `09-pydantic-field-cross-validation`, and
+  `10-security-timing-constant-auth` have no fixture, so their `oracle` and
+  `caught_by` are `null` and their `why_wrong` sentences are unmeasured.
+- Non-goals: a rationale generated from the diff (the sentence is authored,
+  the test list is measured); a per-line annotation of the candidates.
+- Neighbours: [Executable oracle families](#executable-oracle-families)
+  above, whose harness measures `caught_by`; [Oracle fixtures
+  complete](#oracle-fixtures-complete) below, which removes the limit.
+- Status rows: `curated-rationale`.
 
 ## Oracle fixtures complete
 
@@ -33,13 +65,15 @@ candidates. This area spans the README capability `oracle-corpus`.
   them.
 - Who: model trainers, who would otherwise load three unproven labels.
 - Promise: Every family has a fixture, the harness reports no skipped
-  family, and a family without a fixture makes the harness exit non-zero.
+  family, a family without a fixture makes the harness exit non-zero, and no
+  `oracle` or `caught_by` field is `null`.
 - Non-goals: new families; changing the family layout.
 - Open: whether a fixture-less family should fail the whole run or only be
   excluded from the count with a non-zero exit; either way the exit is
   non-zero.
 - Neighbours: [Executable oracle families](#executable-oracle-families)
-  above, whose Limits this removes.
+  and [Curated rationale](#curated-rationale) above, whose Limits this
+  removes.
 - Outcome: `oracle-fixtures-complete`. Tracking: Not assigned.
 
 ## Algorithm, data structure, and design pattern families
@@ -64,6 +98,25 @@ candidates. This area spans the README capability `oracle-corpus`.
   outcome in [data-pipeline.md](data-pipeline.md), which will record which
   snippets each gold used.
 - Outcome: `algorithm-data-structure-and-design-pattern-families`. Tracking: Not assigned.
+
+## Non-minimal near misses
+
+- Problem: Every near miss is a one-line edit of its gold, so a model can
+  score the corpus by edit distance without learning the behaviour the
+  fixture judges.
+- Who: model trainers, whose validation score would overstate the
+  discriminator; critic authors, who need a defect that is not the only
+  changed line.
+- Promise: Families gain near misses that are refactored or carry two
+  defects, each still failing its fixture on an assertion with a measured
+  `caught_by`, and `diff` against the gold shows more than one hunk.
+- Non-goals: new families; a change to the harness.
+- Open: how many such candidates a family needs; whether they replace two
+  of the five minimal ones or extend the set past six, which changes the
+  layout the curation check enforces.
+- Neighbours: [Curated rationale](#curated-rationale) above, whose check
+  the new candidates must pass.
+- Outcome: `non-minimal-near-misses`. Tracking: Not assigned.
 
 ## Non-goals in this area
 

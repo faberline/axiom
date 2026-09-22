@@ -1,0 +1,77 @@
+{
+  "family_id": "11-fastapi-custom-exception-handlers",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "custom-exception-handlers",
+  "requirement": "Create a POST /transfers endpoint with TransferRequest, DomainException hierarchy (InsufficientFundsException 402, AccountNotFoundException 404), RFC error envelope with details and request_id, X-Request-ID header tracing, and balance check.",
+  "skeleton": "FastAPI route with custom exception handlers, RFC error envelope, X-Request-ID propagation, and account balance validation.",
+  "rationale": {
+    "teaches": "Domain exceptions mapped to a JSONResponse with the right status, a stable error envelope including details and request_id, and X-Request-ID propagated from the request to the response header.",
+    "why": "A handler that returns a plain dict or a 200 still produces valid JSON, so a body-only check passes. The oracle reads status, body shape, and response headers together, which is what the generator must assemble."
+  },
+  "oracle": "fixtures/test_11_fastapi_custom_exception_handlers.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Insufficient funds answers 200 OK, so the client treats a rejected transfer as successful.",
+      "caught_by": [
+        "test_insufficient_funds_handler_returns_json_response",
+        "test_insufficient_funds_rfc_envelope_contains_details",
+        "test_insufficient_funds_status_code_402",
+        "test_request_id_preserved_from_header_in_error_envelope"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The details field is dropped from the envelope, so the client never learns which balance or amount failed.",
+      "caught_by": [
+        "test_account_not_found_returns_404_error_envelope",
+        "test_insufficient_funds_rfc_envelope_contains_details"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The handler returns a bare dict, so the response status collapses to 200 and the X-Request-ID header is never set.",
+      "caught_by": [
+        "test_insufficient_funds_handler_returns_json_response",
+        "test_insufficient_funds_rfc_envelope_contains_details",
+        "test_insufficient_funds_status_code_402",
+        "test_request_id_preserved_from_header_in_error_envelope"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The incoming X-Request-ID header is ignored and a fresh uuid is generated, so the caller's trace id never appears in the error.",
+      "caught_by": [
+        "test_request_id_preserved_from_header_in_error_envelope"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A transfer that would leave exactly zero balance is rejected as insufficient funds.",
+      "caught_by": [
+        "test_transfer_success_exact_balance_zero"
+      ]
+    }
+  ]
+}

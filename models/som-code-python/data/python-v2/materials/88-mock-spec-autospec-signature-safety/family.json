@@ -1,0 +1,83 @@
+{
+  "family_id": "88-mock-spec-autospec-signature-safety",
+  "domain": "python",
+  "area": "unittest.mock",
+  "capability": "mock-autospec-signature-enforcement",
+  "requirement": "Implement a service test mock builder create_repository_mock that enforces strict signature validation against the target interface UserRepository. Mocks must reject non-existent methods and invalid call signatures (missing required args, unknown kwargs) with TypeError or AttributeError using autospec=True / create_autospec.",
+  "skeleton": "Interface class UserRepository and factory build_user_repo_mock().",
+  "rationale": {
+    "teaches": "A repository mock built with create_autospec instance=True, so unknown methods raise AttributeError and wrong signatures raise TypeError, with return values set on the autospecced method and errors propagated.",
+    "why": "A plain Mock accepts any method and any arguments, so a test against it passes even after the interface changes. The fixture calls a non-existent method and a wrong signature and expects errors."
+  },
+  "oracle": "fixtures/test_88_mock_spec_autospec_signature_safety.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "A bare Mock is returned, so any method name and any arguments are accepted.",
+      "caught_by": [
+        "test_catches_bare_mock_wrong_default",
+        "test_catches_class_autospec_boundary",
+        "test_catches_wrong_branch_suppressed_errors",
+        "test_gold_valid_calls_succeed"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "spec without autospec checks attribute names but not signatures, so a call with a missing argument passes.",
+      "caught_by": [
+        "test_catches_bare_mock_wrong_default",
+        "test_catches_class_autospec_boundary",
+        "test_catches_wrong_branch_suppressed_errors",
+        "test_gold_valid_calls_succeed"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "instance=False autospecs the class, so calling the mock returns an instance mock and method calls need self.",
+      "caught_by": [
+        "test_catches_bare_mock_wrong_default",
+        "test_catches_class_autospec_boundary",
+        "test_catches_wrong_branch_suppressed_errors",
+        "test_gold_valid_calls_succeed"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "find_by_id is replaced with a plain Mock, so its signature is no longer enforced.",
+      "caught_by": [
+        "test_catches_missing_validation_unbound_method",
+        "test_catches_shallow_spec_wrong_api_call"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "TypeError and AttributeError are swallowed and None is returned, so a signature mismatch looks like a successful call.",
+      "caught_by": [
+        "test_catches_bare_mock_wrong_default",
+        "test_catches_missing_validation_unbound_method",
+        "test_catches_shallow_spec_wrong_api_call",
+        "test_catches_wrong_branch_suppressed_errors"
+      ]
+    }
+  ]
+}

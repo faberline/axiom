@@ -1,0 +1,60 @@
+{
+  "family_id": "09-pydantic-field-cross-validation",
+  "domain": "python",
+  "area": "pydantic",
+  "capability": "model-cross-field-validation",
+  "requirement": "Pydantic v2 CampaignPromotion model validating promotional discounts with model_config extra='forbid', start_date and end_date (end_date > start_date), discount_percent (0.0 < discount <= 100.0), minimum_spend (>= 0.0), and a model_validator(mode='after') enforcing that when is_tiered is True, tier_thresholds list must be non-empty and strictly monotonically increasing.",
+  "skeleton": "Pydantic v2 model with model_config extra forbidden and multi-field temporal/tiered validators.",
+  "rationale": {
+    "teaches": "Pydantic v2 cross-field validation: extra fields forbidden, end after start, discount and spend ranges, tier thresholds checked only when tiered, and an after-validator that returns self.",
+    "why": "A model validator that returns None or checks the inverted flag still imports and even instantiates for happy-path input. Only boundary payloads expose it, so the family exists to supply those payloads."
+  },
+  "oracle": null,
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Unknown fields are accepted instead of rejected, so a typo in a payload key passes validation silently.",
+      "caught_by": null
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "end_date equal to start_date is accepted, so a zero-length campaign validates.",
+      "caught_by": null
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Tier thresholds are checked only when is_tiered is False, so a tiered promotion with empty or unsorted thresholds validates.",
+      "caught_by": null
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The after-validator returns None, so validation produces None instead of the model instance.",
+      "caught_by": null
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "is_tiered defaults to True, so every promotion that omits thresholds fails unless the caller explicitly opts out.",
+      "caught_by": null
+    }
+  ]
+}

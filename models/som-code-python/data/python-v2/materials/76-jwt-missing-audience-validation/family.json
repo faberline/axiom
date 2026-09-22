@@ -1,0 +1,77 @@
+{
+  "family_id": "76-jwt-missing-audience-validation",
+  "domain": "python",
+  "area": "security",
+  "capability": "jwt-audience-and-issuer-validation",
+  "requirement": "JWT validation service strictly enforcing audience ('aud') and issuer ('iss') claims, rejecting tokens intended for other microservices, requiring explicit 'aud' claims, and preventing substring audience confusion.",
+  "skeleton": "AudienceTokenVerifier class with issue_token and verify_token methods using PyJWT.",
+  "rationale": {
+    "teaches": "JWT verification that requires aud, iss, and sub, matches audience and issuer exactly through PyJWT, and refuses empty expected values at construction.",
+    "why": "A token minted for another service carries a valid signature, so only the claim checks reject it. The fixture issues tokens for a different audience and issuer and expects rejection."
+  },
+  "oracle": "fixtures/test_76_jwt_missing_audience_validation.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Audience verification is off, so a token minted for another service is accepted.",
+      "caught_by": [
+        "test_foreign_audience_rejected",
+        "test_missing_audience_claim_rejected",
+        "test_substring_audience_spoofing_rejected"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "aud is not required, so a token without an audience claim is accepted.",
+      "caught_by": [
+        "test_foreign_audience_rejected",
+        "test_missing_audience_claim_rejected",
+        "test_substring_audience_spoofing_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Audience is matched by substring, so a token for api-internal is accepted by api.",
+      "caught_by": [
+        "test_foreign_audience_rejected",
+        "test_missing_audience_claim_rejected",
+        "test_substring_audience_spoofing_rejected"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Issuer verification is off, so a token from a different issuer is accepted.",
+      "caught_by": [
+        "test_foreign_issuer_rejected"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Empty expected audience and issuer are accepted and skip their checks, so the default verifier checks neither.",
+      "caught_by": [
+        "test_empty_audience_or_issuer_rejected_in_init",
+        "test_foreign_issuer_rejected"
+      ]
+    }
+  ]
+}

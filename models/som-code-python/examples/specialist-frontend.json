@@ -1,0 +1,8 @@
+{
+  "state": "A React TypeScript search box must debounce requests, cancel stale work, and keep the latest result.",
+  "question": "Which patch satisfies the frontend requirements?",
+  "candidates": [
+    {"id": "abort-controller", "text": "useEffect(() => { const controller = new AbortController(); void load(query, controller.signal); return () => controller.abort(); }, [query]);"},
+    {"id": "fire-and-forget", "text": "useEffect(() => { void load(query); }, [query]);"}
+  ]
+}

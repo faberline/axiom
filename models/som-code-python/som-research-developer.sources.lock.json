@@ -1,0 +1,6 @@
+{
+  "model": {"repo": "Qwen/Qwen3-0.6B", "revision": "c1899de289a04d12100db370d81485cdf75e47ca"},
+  "banking77": {"repo": "PolyAI-LDN/task-specific-datasets", "revision": "57ec275d8078af65b7731c2a98be812d844a6d6b", "license": "CC-BY-4.0"},
+  "emotion": {"repo": "dair-ai/emotion", "revision": "cab853a1dbdf4c42c2b3ef2173804746df8825fe", "license": "Education and research only"},
+  "ag_news": {"repo": "fancyzhx/ag_news", "revision": "eb185aade064a813bc0b7f42de02595523103ca4", "license": "See original dataset terms; local research evaluation only"}
+}

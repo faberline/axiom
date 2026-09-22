@@ -1,0 +1,8 @@
+{
+  "state": "Python 3.12. Each call to add_tag without an explicit list must start with an empty list. A list passed by the caller must receive the appended tag. Current implementation:\ndef add_tag(tag, tags=[]):\n    tags.append(tag)\n    return tags",
+  "candidates": [
+    {"id": "fresh-default", "text": "def add_tag(tag, tags=None):\n    if tags is None:\n        tags = []\n    tags.append(tag)\n    return tags"},
+    {"id": "copy-always", "text": "def add_tag(tag, tags=None):\n    tags = list(tags or [])\n    tags.append(tag)\n    return tags"},
+    {"id": "keep-default", "text": "def add_tag(tag, tags=[]):\n    tags.append(tag)\n    return tags"}
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "family_id": "81-pytest-fixture-scope-leak",
+  "domain": "python",
+  "area": "pytest",
+  "capability": "fixture-lifecycle-and-state-isolation",
+  "requirement": "Implement a test fixture context manager and state container (TestStateContainer) that guarantees complete state isolation across consecutive test runs. State mutations in test 1 must never bleed into test 2.",
+  "skeleton": "TestStateContainer class with set/get/clear/is_pristine methods and managed_state_fixture context manager providing fresh or cleanly reset state.",
+  "rationale": {
+    "teaches": "A state fixture that hands out a fresh container per test, clears it in a finally block, and uses clear rather than a copy so a second test starts pristine.",
+    "why": "State leakage only shows across two consecutive tests where the first mutates and the second inspects. The fixture runs the context manager twice, with and without an exception, and checks is_pristine."
+  },
+  "oracle": "fixtures/test_81_pytest_fixture_scope_leak.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "A module-level container is shared and only cleared when an explicit instance is passed, so the second test sees the first test's keys.",
+      "caught_by": [
+        "test_default_fixture_state_isolation"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The finally block does nothing, so state survives into the next test.",
+      "caught_by": [
+        "test_cleanup_guaranteed_on_exception",
+        "test_shared_instance_cleaned_up_on_exit"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "clear copies the store instead of clearing it, so the container is never emptied.",
+      "caught_by": [
+        "test_cleanup_guaranteed_on_exception",
+        "test_container_clear_resets_store_and_history",
+        "test_shared_instance_cleaned_up_on_exit"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "finally is replaced by except and re-raise, so cleanup runs only on exception and a passing test leaves state behind.",
+      "caught_by": [
+        "test_shared_instance_cleaned_up_on_exit"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "clear runs after yield without try/finally, so a test that raises skips cleanup.",
+      "caught_by": [
+        "test_cleanup_guaranteed_on_exception"
+      ]
+    }
+  ]
+}

@@ -3,7 +3,8 @@
 What a model trainer gets from the engine today, and what has to change before
 the discriminator's score means anything: the training CLI, the corpus
 records it should be learning from, and the backbone it should be training.
-This area spans the README capability `training-cli-surface`.
+This area spans the README capabilities `training-cli-surface` and
+`corpus-loader`.
 
 ## Candidate discriminator training
 
@@ -24,6 +25,28 @@ This area spans the README capability `training-cli-surface`.
   running a candidate at inference.
 - Neighbours: none; first section of the area.
 - Status rows: `training-cli-surface`, `discriminator-training-cli`.
+
+## Corpus loader
+
+- Problem: none open as shipped; the limit below belongs to the backbone
+  outcome in this area.
+- Who: model trainers who train on `som-code`, `som-code-python`, and
+  `som-code-rust` in one run; critic authors who need the corpus's
+  `why_wrong` and `caught_by` on the row, not re-derived by the engine.
+- Promise: `som train` accepts `--data-dir` once per corpus and unions them
+  in the order given; every near miss's `why_wrong` and `caught_by` reach its
+  training row exactly as the corpus wrote them, and a gold candidate carries
+  neither; an empty corpus and a family id that two corpora both claim are
+  refused with the directories named.
+- Limits today: the training loop reads only the candidate texts and the
+  gold id, so the curation fields are loaded and not yet trained on.
+- Non-goals: rewriting or validating a corpus's rationale (the corpus
+  project's curation check owns that); loading a layer record.
+- Neighbours: [Candidate discriminator training](#candidate-discriminator-training)
+  above, which consumes the rows; [Layer records from the
+  decompiler](#layer-records-from-the-decompiler) below, which widens what a
+  row carries.
+- Status rows: `corpus-loader`.
 
 ## Layer records from the decompiler
 

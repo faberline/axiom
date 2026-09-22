@@ -1,0 +1,71 @@
+{
+  "family_id": "61-aiohttp-session-lifecycle",
+  "domain": "python",
+  "area": "aiohttp",
+  "capability": "session-lifecycle",
+  "requirement": "Implement ManagedAiohttpClient with explicit async context manager protocol (__aenter__ and __aexit__), lazy session initialization, active connection tracking, and guaranteed asynchronous session closure via await session.close() on exit or explicit close(). Validate timeout parameters and prevent resource leaks when exceptions occur inside the context.",
+  "skeleton": "ManagedAiohttpClient class with async context manager, lazy session creation, timeout validation, and guaranteed cleanup.",
+  "rationale": {
+    "teaches": "An async context manager around aiohttp.ClientSession: lazy creation, reuse while open, awaited close on exit and on explicit close, a positive timeout, and refusal after close.",
+    "why": "A ClientSession that is dropped without an awaited close logs a warning and leaks the connector. The fixture inspects session.closed and counts sessions created, which is where each miss shows."
+  },
+  "oracle": "fixtures/test_61_aiohttp_session_lifecycle.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The session reference is dropped without awaiting close, so the connector and its sockets leak.",
+      "caught_by": [
+        "test_explicit_async_close",
+        "test_session_lifecycle_context_manager"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "__aexit__ sets a flag instead of calling close, so leaving the context leaves the session open.",
+      "caught_by": [
+        "test_session_lifecycle_context_manager"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A zero or negative timeout is accepted, so every request fails immediately.",
+      "caught_by": [
+        "test_timeout_validation"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "A new ClientSession is created on every call, so each request opens a fresh connection pool and the earlier ones leak.",
+      "caught_by": [
+        "test_session_instance_reuse"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "get_session on a closed client returns a session instead of raising, so callers keep using a client that was shut down.",
+      "caught_by": [
+        "test_reopen_closed_client_raises"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "family_id": "69-playwright-context-lifecycle",
+  "domain": "python",
+  "area": "playwright",
+  "capability": "browser-context-lifecycle",
+  "requirement": "Implement ManagedBrowserSession that guarantees Playwright browser and context process cleanup via context managers and try...finally blocks, ensuring browser.close() and context.close() are always executed even if user actions raise exceptions, preventing zombie browser processes.",
+  "skeleton": "class ManagedBrowserSession:\n    def __init__(self, launcher = None, auto_context: bool = True) -> None:\n        ...\n    def open(self):\n        ...\n    def close(self) -> None:\n        ...\n    def __enter__(self):\n        ...\n    def __exit__(self, exc_type, exc_val, exc_tb) -> None:\n        ...\n    def run_scoped(self, action):\n        ...\n",
+  "rationale": {
+    "teaches": "A browser session whose close runs in nested try/finally so the browser closes even when the context close raises, run_scoped closes on exception, and close is idempotent.",
+    "why": "A browser left open after an exception is a zombie process that outlives the test. The fixture raises inside the scoped action and checks both close calls happened."
+  },
+  "oracle": "fixtures/test_69_playwright_context_lifecycle.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "run_scoped closes only after a successful action, so an action that raises leaves the browser running.",
+      "caught_by": [
+        "test_scoped_session_guarantees_cleanup_on_action_exception"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "close closes the context but never the browser, so the browser process leaks.",
+      "caught_by": [
+        "test_context_manager_does_not_suppress_exceptions",
+        "test_full_browser_process_is_closed_not_just_context",
+        "test_scoped_session_cleans_up_on_success",
+        "test_scoped_session_guarantees_cleanup_on_action_exception"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "__exit__ returns True, so every exception raised inside the with block is swallowed.",
+      "caught_by": [
+        "test_context_manager_does_not_suppress_exceptions"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "close is not idempotent and dereferences None on the second call, so closing twice raises.",
+      "caught_by": [
+        "test_idempotent_close_no_error_on_repeat_or_uninitialized"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The finally is replaced with an except that re-raises, so close is skipped on the success path.",
+      "caught_by": [
+        "test_scoped_session_cleans_up_on_success"
+      ]
+    }
+  ]
+}

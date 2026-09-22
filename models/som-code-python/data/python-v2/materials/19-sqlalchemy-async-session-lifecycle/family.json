@@ -1,0 +1,73 @@
+{
+  "family_id": "19-sqlalchemy-async-session-lifecycle",
+  "domain": "python",
+  "area": "sqlalchemy",
+  "capability": "async-session-lifecycle",
+  "requirement": "FastAPI POST /transfers bank balance transfer endpoint managing AsyncSession lifecycle, enforcing balance validation, atomic transaction commit, and guaranteed rollback on error with clean session release.",
+  "skeleton": "FastAPI POST /transfers with AsyncSession lifecycle and rollback isolation.",
+  "rationale": {
+    "teaches": "An AsyncSession transfer: balance check before mutation, both balances updated, awaited commit, and rollback plus close in the error path.",
+    "why": "In async code a missing await or a missing rollback produces a coroutine that is never run or a session left dirty, neither of which raises where it happens. The oracle checks balances and session state after a failed transfer."
+  },
+  "oracle": "fixtures/test_19_sqlalchemy_async_session_lifecycle.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "Rollback and close are never called on error, so a failed transfer leaves the session dirty and open.",
+      "caught_by": [
+        "test_transfer_error_path_rolls_back_and_releases_session"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "session.commit() is called without await, so the coroutine is never executed and nothing is persisted.",
+      "caught_by": [
+        "test_transfer_commits_not_just_flush",
+        "test_transfer_success_commits_and_updates_balances"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The receiver's balance is never credited, so money leaves the sender and vanishes.",
+      "caught_by": [
+        "test_transfer_success_commits_and_updates_balances"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The balance check is missing, so a transfer larger than the balance succeeds and drives it negative.",
+      "caught_by": [
+        "test_transfer_error_path_rolls_back_and_releases_session",
+        "test_transfer_overdraft_validation"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The transaction is flushed but not committed, so the transfer disappears when the session closes.",
+      "caught_by": [
+        "test_transfer_commits_not_just_flush",
+        "test_transfer_success_commits_and_updates_balances"
+      ]
+    }
+  ]
+}

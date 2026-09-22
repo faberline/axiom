@@ -1,0 +1,70 @@
+{
+  "family_id": "83-pytest-raises-match-precision",
+  "domain": "python",
+  "area": "pytest",
+  "capability": "exception-assertion-regex-precision",
+  "requirement": "Implement a transaction validation system and test harness that verifies specific exception types AND exact error message patterns with regex precision, preventing loose or absent match checks.",
+  "skeleton": "process_withdrawal validator raising specific TransactionError subtypes and verify_exception_match test harness helper.",
+  "rationale": {
+    "teaches": "An exception harness that checks the exact type and a regex match on the message, a withdrawal validator that rejects zero amounts, and a status check that only allows active accounts.",
+    "why": "A harness that catches Exception or ignores the pattern passes on any error, so a wrong error type or message goes unnoticed. The fixture raises the wrong subtype and a near-miss message and expects the harness to fail."
+  },
+  "oracle": "fixtures/test_83_pytest_raises_match_precision.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Only the pattern's truthiness is checked, so any message passes as long as a pattern was given.",
+      "caught_by": [
+        "test_mismatched_message_raises_assertion_error"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The pattern is compared by equality, so a regex like 'insufficient.*funds' never matches.",
+      "caught_by": [
+        "test_regex_pattern_match_verification"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Zero amounts pass validation, so a withdrawal of 0 succeeds.",
+      "caught_by": [
+        "test_zero_amount_raises_value_error"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Exception is caught instead of the expected type, so a ValueError passes a check for InsufficientFundsError.",
+      "caught_by": [
+        "test_wrong_exception_type_raises_assertion_error"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Only suspended accounts are rejected, so a closed or pending account can withdraw.",
+      "caught_by": [
+        "test_invalid_status_frozen_raises_invalid_account_status"
+      ]
+    }
+  ]
+}

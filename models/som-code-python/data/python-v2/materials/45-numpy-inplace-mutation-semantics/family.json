@@ -1,0 +1,77 @@
+{
+  "family_id": "45-numpy-inplace-mutation-semantics",
+  "domain": "numpy",
+  "area": "memory-mutation",
+  "capability": "inplace-mutation-semantics",
+  "requirement": "Implement SignalGainProcessor class for signal gain processing. It must enforce pure out-of-place transformations when in_place=False (never mutating the caller's input array buffer or sharing memory), support explicit in-place mutation when in_place=True, validate strictly positive gain factors, apply threshold gating, and reject non-floating-point array inputs.",
+  "skeleton": "SignalGainProcessor class with __init__ and process_signal methods enforcing out-of-place copy semantics and in-place gating.",
+  "rationale": {
+    "teaches": "Out-of-place by default with an explicit copy, in-place only when asked, a floating dtype check, and an inclusive threshold gate.",
+    "why": "Whether the caller's buffer was touched is invisible in the return value. The fixture keeps a copy of the input and checks both equality and np.shares_memory."
+  },
+  "oracle": "fixtures/test_45_numpy_inplace_mutation_semantics.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "in_place defaults to True, so the caller's signal buffer is overwritten without being asked.",
+      "caught_by": [
+        "test_gold_signal_processing",
+        "test_out_of_place_preserves_input_by_default"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Integer arrays are accepted, so the gain multiplication truncates or overflows silently.",
+      "caught_by": [
+        "test_rejects_integer_dtype_signal"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The gate uses > instead of >=, so samples exactly at the threshold are zeroed.",
+      "caught_by": [
+        "test_exact_threshold_value_receives_gain"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The gate is inverted, so samples below the threshold are kept and the loud ones are zeroed.",
+      "caught_by": [
+        "test_exact_threshold_value_receives_gain",
+        "test_explicit_in_place_false_does_not_share_memory",
+        "test_explicit_in_place_true_mutates_input",
+        "test_gating_branch_direction",
+        "test_gold_signal_processing"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The copy is skipped, so out-of-place mode still mutates the caller's array.",
+      "caught_by": [
+        "test_explicit_in_place_false_does_not_share_memory",
+        "test_gold_signal_processing",
+        "test_out_of_place_preserves_input_by_default"
+      ]
+    }
+  ]
+}

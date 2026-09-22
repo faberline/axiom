@@ -1,0 +1,73 @@
+{
+  "family_id": "74-crypto-predictable-iv-nonce",
+  "domain": "python",
+  "area": "security",
+  "capability": "cryptographic-nonce-generation",
+  "requirement": "Cryptographic initialization vector manager for AES-CBC with Encrypt-then-MAC (HMAC-SHA256), strictly enforcing cryptographically random 16-byte IVs per encryption, constant-time MAC verification, and preventing IV reuse or predictable sequences.",
+  "skeleton": "SecureCBCEncryptor class with encrypt and decrypt methods using cryptography.hazmat.primitives.ciphers and hmac.",
+  "rationale": {
+    "teaches": "AES-CBC with a fresh random 16-byte IV per message, Encrypt-then-MAC over IV plus ciphertext, constant-time MAC verification before decryption, and IV length validated.",
+    "why": "A predictable IV yields valid ciphertext that decrypts correctly, so a round-trip test passes. The fixture encrypts twice and compares IVs, and tampers with the MAC to check decryption is refused."
+  },
+  "oracle": "fixtures/test_74_crypto_predictable_iv_nonce.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The IV is a counter, so an attacker who sees one IV predicts every later one.",
+      "caught_by": [
+        "test_iv_uniqueness_and_non_predictability"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The IV is the current timestamp, so two messages in the same second share an IV and IVs are guessable.",
+      "caught_by": [
+        "test_iv_uniqueness_and_non_predictability"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "One IV is generated at construction and reused, so every message from the instance shares it.",
+      "caught_by": [
+        "test_iv_uniqueness_and_non_predictability"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The MAC check is skipped, so a tampered ciphertext decrypts to garbage without an error.",
+      "caught_by": [
+        "test_tampered_ciphertext_fails_mac",
+        "test_tampered_mac_rejected"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The IV is 8 random bytes zero-padded to 16, so half of each IV is constant.",
+      "caught_by": [
+        "test_roundtrip_cbc_encryption",
+        "test_tampered_ciphertext_fails_mac",
+        "test_tampered_mac_rejected"
+      ]
+    }
+  ]
+}

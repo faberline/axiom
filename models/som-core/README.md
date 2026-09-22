@@ -20,10 +20,12 @@ generation layers are documented, not implemented. The
 
 1. Create the project environment with `uv sync` inside `models/som-core`
    and confirm the MLX device with `models/som-core/.venv/bin/som verify`.
-2. Train the discriminator against a corpus directory with
-   `models/som-core/.venv/bin/som train --data-dir models/som-code-python/data/python-v2`
-   (add `--smoke` for a bounded run); the run directory records a
-   `training_summary.json` and one checkpoint per update step.
+2. Train the discriminator against one or more corpus directories with
+   `models/som-core/.venv/bin/som train --data-dir models/som-code-python/data/python-v2`,
+   repeating `--data-dir` once per corpus to train on `som-code`,
+   `som-code-python`, and `som-code-rust` together (add `--smoke` for a
+   bounded run); the run directory records a `training_summary.json` and one
+   checkpoint per update step.
 3. Serve the checkpoint with `models/som-core/.venv/bin/som serve` once a
    real backbone exists; today the command only preloads the dataset and
    prints the stub banner.
@@ -52,7 +54,10 @@ component in this repository.
   Typer app in `src/som_core/cli.py` is the whole CLI surface.
 - Training data is read through `src/som_core/dataset.py`, which expects the
   `data/python-v2/materials/<family>/` layout that
-  [`models/som-code-python`](../som-code-python/README.md) documents.
+  [`models/som-code-python`](../som-code-python/README.md) documents and
+  passes that project's curation fields (`rationale`, `oracle`, `why_wrong`,
+  `caught_by`) through to the training row; the module docstring states the
+  loader's rules.
 - The layer contract, including the planner's `SCOPE_TOO_LARGE` refusal and
   the L3 operation vocabulary, is the reference document above; the product
   promises per layer live under [docs/product](docs/product/README.md).
@@ -64,6 +69,7 @@ component in this repository.
 | Capability | ID | User promise | Sources |
 |---|---|---|---|
 | Training CLI surface | `training-cli-surface` | The `som` entry point installs from this project and lists the `verify`, `train`, and `serve` commands with their documented options. | `models/som-core` |
+| Corpus loader | `corpus-loader` | `som train` unions every `--data-dir` corpus into one dataset in the order given, carries each near miss's `why_wrong` and `caught_by` through to its training row unchanged, and refuses an empty corpus or a family id that two corpora both claim. | `models/som-core` |
 
 ### Training CLI surface
 
@@ -73,6 +79,17 @@ component in this repository.
 - Sources:
   - `models/som-core` owns the Typer app and the training loop behind it.
 - Gate: `models/som-core/.venv/bin/som --help`
+
+### Corpus loader
+
+- ID: `corpus-loader`
+- Promise: `som train` unions every `--data-dir` corpus into one dataset in
+  the order given, carries each near miss's `why_wrong` and `caught_by`
+  through to its training row unchanged, and refuses an empty corpus or a
+  family id that two corpora both claim.
+- Sources:
+  - `models/som-core` owns the loader and the pytest cases that hold it to this.
+- Gate: `models/som-core/.venv/bin/python -m pytest models/som-core/tests -q`
 
 ## Supporting documents
 

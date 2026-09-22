@@ -1,0 +1,83 @@
+{
+  "family_id": "87-mock-patch-target-import-path",
+  "domain": "python",
+  "area": "unittest.mock",
+  "capability": "mock-patch-lookup-namespace-binding",
+  "requirement": "Demonstrate and test the correct target namespace for unittest.mock.patch. When module worker_service imports from notification_client import send_alert, patching must target where the symbol is looked up (worker_service.send_alert), NOT where it was originally defined (notification_client.send_alert).",
+  "skeleton": "Simulated module namespaces NotificationClientModule and WorkerServiceModule, with execute_worker_with_mock().",
+  "rationale": {
+    "teaches": "Patching send_alert on the module that looks it up, not the module that defines it, and restoring that same attribute in a finally block.",
+    "why": "Patching the defining module leaves the consumer's bound reference untouched, so the real function still runs. The fixture checks the mock was called and the original is restored afterward."
+  },
+  "oracle": "fixtures/test_87_mock_patch_target_import_path.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The defining module is patched, so the worker still calls the real send_alert and the mock is never called.",
+      "caught_by": [
+        "test_catches_patch_where_defined_wrong_api_call",
+        "test_catches_wrong_default_alert_status",
+        "test_gold_worker_mock_interception_and_cleanup"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The result is rewritten with alert_sent False, so the caller cannot see that the mock was called.",
+      "caught_by": [
+        "test_catches_patch_where_defined_wrong_api_call",
+        "test_catches_wrong_default_alert_status",
+        "test_gold_worker_mock_interception_and_cleanup"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The original is never restored, so the mock leaks into later tests.",
+      "caught_by": [
+        "test_catches_missing_cleanup",
+        "test_catches_wrong_boundary_cleanup_target",
+        "test_catches_wrong_branch_cleanup_conditional",
+        "test_gold_worker_mock_interception_and_cleanup"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The original is restored only when the mock was not called, so the normal path leaves the mock in place.",
+      "caught_by": [
+        "test_catches_missing_cleanup",
+        "test_catches_wrong_boundary_cleanup_target",
+        "test_catches_wrong_branch_cleanup_conditional",
+        "test_gold_worker_mock_interception_and_cleanup"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The original is restored onto the defining module instead of the worker module, so the worker keeps the mock.",
+      "caught_by": [
+        "test_catches_missing_cleanup",
+        "test_catches_wrong_boundary_cleanup_target",
+        "test_catches_wrong_branch_cleanup_conditional",
+        "test_gold_worker_mock_interception_and_cleanup"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "family_id": "34-syntax-decorator-wraps",
+  "domain": "python",
+  "area": "syntax",
+  "capability": "decorator-wraps",
+  "requirement": "Implement audit_logged decorator preserving wrapped function metadata via functools.wraps and HandlerRegistry with capacity bounds and stats tracking.",
+  "skeleton": "audit_logged decorator function and HandlerRegistry class with register, execute, get_doc, and clear methods.",
+  "rationale": {
+    "teaches": "A logging decorator that preserves the wrapped function's name and docstring with functools.wraps, a registry that rejects non-callables, allows exactly 20 handlers, looks up by presence, and clears its stats.",
+    "why": "A decorator without wraps still runs the function; only introspection of __name__ and __doc__ reveals the loss. The fixture reads them, which is what documentation and tooling do."
+  },
+  "oracle": "fixtures/test_34_syntax_decorator_wraps.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "functools.wraps is omitted, so every decorated handler reports the name wrapper and loses its docstring.",
+      "caught_by": [
+        "test_audit_logged_preserves_metadata"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A non-callable is accepted as a handler, so execution fails later with TypeError instead of at registration.",
+      "caught_by": [
+        "test_register_callable_validation"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The capacity check uses >, so a 21st handler is accepted.",
+      "caught_by": [
+        "test_register_boundary_twenty_limit"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The membership checks are inverted, so execute and get_doc raise for registered handlers and proceed for unknown ones.",
+      "caught_by": [
+        "test_clear_resets_stats_and_handlers",
+        "test_execute_registered_handler"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "clear removes handlers but keeps stats, so call counts survive a reset.",
+      "caught_by": [
+        "test_clear_resets_stats_and_handlers"
+      ]
+    }
+  ]
+}

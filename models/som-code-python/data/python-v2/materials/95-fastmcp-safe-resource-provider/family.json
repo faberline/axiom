@@ -1,0 +1,70 @@
+{
+  "family_id": "95-fastmcp-safe-resource-provider",
+  "domain": "python",
+  "area": "fastmcp",
+  "capability": "resource-path-traversal-prevention",
+  "requirement": "Implement a safe Model Context Protocol (MCP) file resource provider that enforces directory containment, canonical path resolution, regular file verification, and maximum file size limits.",
+  "skeleton": "SafeMCPResourceProvider with read_resource and is_path_safe methods returning MCPResourceContent.",
+  "rationale": {
+    "teaches": "A file resource provider that resolves the candidate path and checks containment with is_relative_to, rejects absolute components, enforces a size limit inclusively, and reads UTF-8 text.",
+    "why": "Path traversal only shows with a crafted relative path like ../secret or a sibling directory sharing the root's prefix. The fixture creates both and expects PermissionError."
+  },
+  "oracle": "fixtures/test_95_fastmcp_safe_resource_provider.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Containment is checked by string prefix, so a sibling directory named root_dir2 passes as inside root_dir.",
+      "caught_by": [
+        "test_path_traversal_sibling_prefix_defense"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The traversal check is dropped, so ../ paths read files outside the root.",
+      "caught_by": [
+        "test_absolute_path_traversal_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A file exactly at the size limit is rejected, so the documented maximum is not readable.",
+      "caught_by": [
+        "test_exact_max_file_size_boundary_allowed"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "max_file_size defaults to 1000 bytes, so ordinary text files are rejected by default.",
+      "caught_by": [
+        "test_default_max_file_size_is_one_megabyte"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Files are decoded as latin1 and labeled octet-stream, so UTF-8 content is corrupted.",
+      "caught_by": [
+        "test_read_resource_content_is_str"
+      ]
+    }
+  ]
+}

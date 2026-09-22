@@ -1,0 +1,73 @@
+{
+  "family_id": "52-subprocess-pipe-deadlock",
+  "domain": "python",
+  "area": "subprocess",
+  "capability": "pipe-deadlock-prevention",
+  "requirement": "Safely stream and capture standard output and error from external processes using proc.communicate() without deadlocking OS pipe buffers.",
+  "skeleton": "SafeOutputCollector class with run_and_capture method and stream_process helper.",
+  "rationale": {
+    "teaches": "Output capture with communicate so both pipes drain concurrently, stderr captured, a non-zero exit turned into RuntimeError, and a positive timeout.",
+    "why": "Reading stdout after wait works for small outputs and deadlocks once the child fills the 64 KiB pipe buffer. The fixture spawns a child that writes more than the buffer."
+  },
+  "oracle": "fixtures/test_52_subprocess_pipe_deadlock.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The parent waits before reading, so a child that fills the pipe buffer blocks forever and the wait times out.",
+      "caught_by": [
+        "test_large_stdout_avoids_pipe_buffer_deadlock",
+        "test_stdin_input_piped_successfully"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "After a timeout the process is killed but never drained, so its pipes and exit status leak.",
+      "caught_by": [
+        "test_missing_cleanup_reaps_zombie_on_timeout"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A non-zero exit code is ignored, so a failed command returns as if it succeeded.",
+      "caught_by": [
+        "test_failing_process_raises_runtime_error_with_stderr"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A timeout of exactly 0 is accepted and every command expires immediately.",
+      "caught_by": [
+        "test_timeout_boundary_validation"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "stderr is not captured, so error output goes to the parent's terminal and the returned stderr is always empty.",
+      "caught_by": [
+        "test_failing_process_raises_runtime_error_with_stderr",
+        "test_normal_output_capture",
+        "test_stream_process_helper"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "id": "pydantic_base",
+  "description": "Defines a Pydantic v2 BaseModel class header configured with from_attributes = True to enable seamless serialization of SQLAlchemy ORM objects.",
+  "imports": [
+    "from pydantic import BaseModel, ConfigDict"
+  ],
+  "template": "class {{model_name}}(BaseModel):\n    model_config = ConfigDict(from_attributes=True)"
+}

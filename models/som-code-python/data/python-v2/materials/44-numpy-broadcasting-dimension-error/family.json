@@ -1,0 +1,84 @@
+{
+  "family_id": "44-numpy-broadcasting-dimension-error",
+  "domain": "numpy",
+  "area": "broadcasting",
+  "capability": "broadcasting-dimension-error",
+  "requirement": "Implement SampleMatrixNormalizer class providing per-sample (per-row) mean centering and standard deviation scaling on 2D numerical arrays. It must use explicit dimension preservation (keepdims=True) to prevent silent broadcasting errors, validate 2D shape, enforce strictly positive epsilon, and support optional feature centering.",
+  "skeleton": "SampleMatrixNormalizer class with __init__ and normalize_samples methods ensuring 2D keepdims broadcasting.",
+  "rationale": {
+    "teaches": "Per-row normalization with keepdims=True so the (n,1) statistics broadcast against (n,m), a 2D shape check, a minimum of two features, and a small epsilon.",
+    "why": "Dropping keepdims makes the statistics (n,) and NumPy raises only when n != m; on square inputs it silently normalizes along the wrong axis. The fixture uses a non-square matrix."
+  },
+  "oracle": "fixtures/test_44_numpy_broadcasting_dimension_error.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "epsilon defaults to 1.0, so every row's standard deviation is inflated and the output is nowhere near unit variance.",
+      "caught_by": [
+        "test_boundary_two_column_matrix_accepted",
+        "test_default_epsilon_scale_fidelity",
+        "test_gold_per_sample_normalization",
+        "test_normalizes_rows_not_columns",
+        "test_optional_feature_centering"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A 1D or 3D input is not rejected, so the axis arithmetic raises deep inside NumPy or returns garbage.",
+      "caught_by": [
+        "test_rejects_non_2d_array"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A matrix with exactly two features is rejected.",
+      "caught_by": [
+        "test_boundary_two_column_matrix_accepted"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Statistics are computed along axis 0, so the normalization is per feature instead of per sample.",
+      "caught_by": [
+        "test_boundary_two_column_matrix_accepted",
+        "test_default_epsilon_scale_fidelity",
+        "test_gold_per_sample_normalization",
+        "test_normalizes_rows_not_columns",
+        "test_optional_feature_centering",
+        "test_square_and_rectangular_matrix_broadcasting"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "keepdims is dropped, so the (n,) statistics fail to broadcast against a non-square (n,m) matrix.",
+      "caught_by": [
+        "test_boundary_two_column_matrix_accepted",
+        "test_default_epsilon_scale_fidelity",
+        "test_gold_per_sample_normalization",
+        "test_normalizes_rows_not_columns",
+        "test_optional_feature_centering",
+        "test_square_and_rectangular_matrix_broadcasting"
+      ]
+    }
+  ]
+}

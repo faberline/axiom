@@ -1,0 +1,73 @@
+{
+  "family_id": "58-typer-cli-exception-exit-code",
+  "domain": "python",
+  "area": "typer",
+  "capability": "cli-exception-exit-code-propagation",
+  "requirement": "Typer CLI pipeline command with strict exception handling and distinct process exit codes (0 for success, 1 for missing artifact, 2 for validation error, 3 for runtime failure), logging errors to stderr.",
+  "skeleton": "Typer app with deploy command executing deployment and mapping exceptions to typer.Exit codes and stderr logs.",
+  "rationale": {
+    "teaches": "A Typer command that maps each failure class to a distinct exit code through typer.Exit and writes errors to stderr.",
+    "why": "A CLI that prints the error and exits 0 looks fine in a terminal and breaks every script that checks the exit code. The fixture runs the command through CliRunner and asserts the code and the stream."
+  },
+  "oracle": "fixtures/test_58_typer_cli_exception_exit_code.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The missing-artifact branch prints but never raises typer.Exit, so the command exits 0.",
+      "caught_by": [
+        "test_missing_artifact_exits_code_1_and_logs_to_stderr"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The existence check is inverted, so an existing artifact is reported missing and a missing one proceeds.",
+      "caught_by": [
+        "test_deploy_success_exits_zero",
+        "test_empty_artifact_exits_code_3_without_raw_traceback",
+        "test_invalid_env_exits_code_2",
+        "test_missing_artifact_exits_code_1_and_logs_to_stderr"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "A runtime failure re-raises the raw exception, so the user sees a traceback and the exit code is not 3.",
+      "caught_by": [
+        "test_empty_artifact_exits_code_3_without_raw_traceback"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "A validation error exits with code 1, which the contract reserves for a missing artifact.",
+      "caught_by": [
+        "test_invalid_env_exits_code_2"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The error message is written to stdout, so scripts capturing stdout receive it as data.",
+      "caught_by": [
+        "test_missing_artifact_exits_code_1_and_logs_to_stderr"
+      ]
+    }
+  ]
+}

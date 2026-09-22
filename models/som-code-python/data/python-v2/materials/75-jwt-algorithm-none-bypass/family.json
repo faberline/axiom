@@ -1,0 +1,73 @@
+{
+  "family_id": "75-jwt-algorithm-none-bypass",
+  "domain": "python",
+  "area": "security",
+  "capability": "jwt-algorithm-enforcement",
+  "requirement": "JWT authentication service enforcing strict signature algorithm whitelists, explicitly forbidding and rejecting 'none' algorithm bypass attacks, and validating token signature integrity with secret keys.",
+  "skeleton": "JWTAuthService class with create_token and decode_token methods using PyJWT.",
+  "rationale": {
+    "teaches": "JWT decoding with a server-side algorithm whitelist, none rejected at construction, signature verification always on, no unverified fallback, and a secret of at least 16 characters.",
+    "why": "A token with alg=none and an empty signature decodes to a valid-looking payload if any path skips verification. The fixture forges such a token and one with a wrong secret and expects both to be rejected."
+  },
+  "oracle": "fixtures/test_75_jwt_algorithm_none_bypass.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Signature verification is disabled and none is whitelisted, so any unsigned token is accepted.",
+      "caught_by": [
+        "test_alg_none_token_rejected",
+        "test_forbidden_none_algorithm_init_rejected",
+        "test_invalid_signature_rejected"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The algorithm is read from the token header, so a client chooses none and bypasses the signature.",
+      "caught_by": [
+        "test_alg_none_token_rejected",
+        "test_forbidden_none_algorithm_init_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The forbidden-algorithm check is dropped, so a caller can whitelist none.",
+      "caught_by": [
+        "test_forbidden_none_algorithm_init_rejected"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "A signature failure falls back to unverified decoding, so a token with a wrong secret is accepted.",
+      "caught_by": [
+        "test_invalid_signature_rejected"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "An empty secret is the default and verification is tied to its truthiness, so the default service verifies nothing.",
+      "caught_by": [
+        "test_short_secret_rejected"
+      ]
+    }
+  ]
+}

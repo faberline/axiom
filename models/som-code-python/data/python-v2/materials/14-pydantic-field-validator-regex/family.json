@@ -1,0 +1,73 @@
+{
+  "family_id": "14-pydantic-field-validator-regex",
+  "domain": "python",
+  "area": "pydantic",
+  "capability": "field-validator-regex-normalization",
+  "requirement": "IoT device profile model with @field_validator enforcing E.164 phone formatting with mode=\"before\" pre-cleaning, strict SemVer 2.0.0 firmware with anchors, and lowercase normalized 64-hex fingerprint in mode=\"after\".",
+  "skeleton": "Pydantic v2 BaseModel with pre-compiled regex validators and mode-specific data sanitation.",
+  "rationale": {
+    "teaches": "Anchored regexes with match, a before-mode validator that cleans raw input, an after-mode validator that lowercases, and a validator that raises rather than substituting a default.",
+    "why": "Regex validators fail open in quiet ways: a missing anchor accepts junk suffixes, search accepts embedded matches, and a substituted default hides bad input. Each has a payload that exposes it."
+  },
+  "oracle": "fixtures/test_14_pydantic_field_validator_regex.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The SemVer regex is unanchored and applied with search, so a string like garbage1.2.3garbage validates.",
+      "caught_by": [
+        "test_semver_unanchored_trailing_garbage_rejected"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The phone regex only allows 2 to 11 digits after the country code, so valid E.164 numbers with 12 to 15 digits are rejected.",
+      "caught_by": [
+        "test_international_e164_phone_boundaries_accepted",
+        "test_invalid_phone_formats_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The phone validator runs in after mode, so raw input with spaces or dashes fails type validation before it can be cleaned.",
+      "caught_by": [
+        "test_formatted_phone_mode_before_precleaning"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The fingerprint is not lowercased, so the same fingerprint in upper case is stored as a different value.",
+      "caught_by": [
+        "test_fingerprint_lowercase_normalization",
+        "test_gold_valid_device_profile"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "An invalid firmware string is replaced with 0.0.0 instead of raising, so bad input is silently accepted.",
+      "caught_by": [
+        "test_invalid_semver_raises_validation_error",
+        "test_semver_unanchored_trailing_garbage_rejected"
+      ]
+    }
+  ]
+}

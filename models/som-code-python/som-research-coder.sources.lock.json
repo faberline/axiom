@@ -1,0 +1,12 @@
+{
+  "model": {
+    "repo": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+    "revision": "019cc73c45c770444708a6dd8690c66243cc5c80",
+    "license": "Apache-2.0"
+  },
+  "upstream": {
+    "repo": "Qwen/Qwen2.5-Coder-7B-Instruct",
+    "reference_revision": "c03e6d358207e414f1eca0bb1891e29f1db0e242",
+    "note": "Upstream reference for attribution; the exact original revision used by the community conversion is not claimed."
+  }
+}

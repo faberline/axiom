@@ -1,0 +1,73 @@
+{
+  "family_id": "02-fastapi-item-lookup-404",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "item-lookup-404-guard",
+  "requirement": "Implement GET /items/{item_id} with Path(..., ge=1) validation, returning 200 for existing active items, 404 Not Found for non-existent or inactive items, and 422 for invalid path parameter IDs.",
+  "skeleton": "FastAPI route with Path parameter validation and SQLAlchemy single-entity lookup.",
+  "rationale": {
+    "teaches": "Single-entity lookup with correct absence semantics: 404 for missing or soft-deleted rows, 422 for an invalid id, and a filter that actually uses the id.",
+    "why": "The not-found path is where generated code substitutes return None, a 400, or forgets the where clause. Every variant answers with a status the client can read, so one test per branch pins the contract."
+  },
+  "oracle": "fixtures/test_02_fastapi_item_lookup_404.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "A missing item yields 200 with a null body instead of 404, so clients cannot distinguish absent from present.",
+      "caught_by": [
+        "test_lookup_inactive_item_returns_404",
+        "test_lookup_nonexistent_item_returns_404"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A missing item is reported as 400 Bad Request, blaming the request syntax for a not-found condition.",
+      "caught_by": [
+        "test_lookup_inactive_item_returns_404",
+        "test_lookup_nonexistent_item_returns_404"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "item_id=0 and negative ids reach the database and answer 404 instead of the 422 the path constraint should produce.",
+      "caught_by": [
+        "test_lookup_path_param_zero_rejected_with_422"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The where clause is missing, so every id returns the first row in the table.",
+      "caught_by": [
+        "test_lookup_inactive_item_returns_404",
+        "test_lookup_nonexistent_item_returns_404"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Inactive soft-deleted items are returned with 200 instead of being treated as not found.",
+      "caught_by": [
+        "test_lookup_inactive_item_returns_404"
+      ]
+    }
+  ]
+}

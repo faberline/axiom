@@ -1,0 +1,71 @@
+{
+  "family_id": "30-stdlib-json-csv-streaming-recursion",
+  "domain": "python",
+  "area": "stdlib",
+  "capability": "json-csv-streaming-recursion",
+  "requirement": "Implement StreamSafeDataProcessor with max_depth validation to prevent JSON recursion errors, chunk-based CSV streaming without full in-memory read, trailing batch preservation, and safe column summaries.",
+  "skeleton": "StreamSafeDataProcessor class with safe_parse_json, stream_csv_records, and compute_column_summary.",
+  "rationale": {
+    "teaches": "Streaming-safe data handling: a depth pre-scan before json.loads with a sane default, batch-wise CSV iteration that never materializes the file, the trailing partial batch emitted, and an empty-column summary that returns zeros.",
+    "why": "A generator that reads the whole file into a list produces identical batches and only differs in memory. The fixture measures peak memory and feeds deeply nested JSON, which is where these misses separate from gold."
+  },
+  "oracle": "fixtures/test_30_stdlib_json_csv_streaming_recursion.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The depth pre-scan is gone, so deeply nested JSON reaches json.loads and blows the recursion limit instead of raising ValueError.",
+      "caught_by": [
+        "test_deep_json_recursion_rejected",
+        "test_safe_parse_json_default_depth"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The CSV is read fully into a list before batching, so a large file consumes memory proportional to its size.",
+      "caught_by": [
+        "test_stream_csv_records_does_not_eagerly_read_entire_file"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "max_depth defaults to 10000, so the depth guard never fires before Python's own recursion limit does.",
+      "caught_by": [
+        "test_safe_parse_json_default_depth"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The trailing partial batch is never yielded, so rows past the last full batch are silently dropped.",
+      "caught_by": [
+        "test_stream_csv_records_generator_chunking"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The empty-column guard is removed, so summarizing an empty column raises on min and max.",
+      "caught_by": [
+        "test_compute_column_summary_empty_csv"
+      ]
+    }
+  ]
+}

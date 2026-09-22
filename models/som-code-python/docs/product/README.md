@@ -50,7 +50,7 @@ Boundaries that every section inherits:
 
 | Reader | What they hold the corpus to |
 |---|---|
-| Model trainer | Every family the engine loads has a gold that passes and near misses that fail on behaviour, so a label is never a guess. |
+| Model trainer | Every family the engine loads has a gold that passes and near misses that fail on behaviour, so a label is never a guess, and every record says why it is in the corpus. |
 | Corpus author | One layout, one harness, one verifier; a new family or snippet is accepted or refused by a command, not by review. |
 | Generator author | The ISA is complete enough to express the gold of every family it claims, and the decompiled records name which instructions the gold used. |
 
@@ -64,19 +64,23 @@ Boundaries that every section inherits:
 | H2 | `uv-runnable-packaging` | [data-pipeline.md](data-pipeline.md) § uv-runnable packaging |
 | H2 | `legacy-suite-retired` | [data-pipeline.md](data-pipeline.md) § Legacy suite retired |
 | H3 | `snippet-isa-v2` | [snippet-isa.md](snippet-isa.md) § Snippet ISA v2 |
+| H3 | `non-minimal-near-misses` | [corpus.md](corpus.md) § Non-minimal near misses |
 
 H1 is the data the engine cannot train without: the three unproven families,
 the families the project exists to teach, and the layer records the
 generator learns from. H2 is hygiene that unblocks tooling. H3 widens the ISA
-once an assembler exists to consume it.
+once an assembler exists to consume it and hardens the near misses once the
+discriminator trains on the corpus.
 
 ## Section index
 
 | Section | File | Kind | Owner |
 |---|---|---|---|
 | Executable oracle families | corpus.md | shipped, limited | STATUS `oracle-corpus` |
+| Curated rationale | corpus.md | shipped, limited | STATUS `curated-rationale` |
 | Oracle fixtures complete | corpus.md | outcome | ROADMAP `oracle-fixtures-complete` |
 | Algorithm, data structure, and design pattern families | corpus.md | outcome | ROADMAP `algorithm-data-structure-and-design-pattern-families` |
+| Non-minimal near misses | corpus.md | outcome | ROADMAP `non-minimal-near-misses` |
 | Snippet ISA v1 | snippet-isa.md | shipped | STATUS `snippet-isa` |
 | Snippet ISA v2 | snippet-isa.md | outcome | ROADMAP `snippet-isa-v2` |
 | Project test suite | data-pipeline.md | shipped, limited | STATUS `python-test-suite` |

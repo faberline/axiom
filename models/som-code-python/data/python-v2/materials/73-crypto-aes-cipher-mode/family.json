@@ -1,0 +1,72 @@
+{
+  "family_id": "73-crypto-aes-cipher-mode",
+  "domain": "python",
+  "area": "security",
+  "capability": "symmetric-cipher-mode-safety",
+  "requirement": "Symmetric encryption utility enforcing authenticated AES-GCM mode with random 12-byte nonces, associated data authentication, and explicit rejection of insecure ECB mode.",
+  "skeleton": "AuthenticatedCipher class with encrypt and decrypt methods using cryptography.hazmat.primitives.ciphers.aead.AESGCM.",
+  "rationale": {
+    "teaches": "AES-GCM with a random 12-byte nonce per message, associated data bound into the tag, 16 or 32 byte keys only, nonce length checked on decrypt, and InvalidTag turned into a ValueError.",
+    "why": "ECB and a fixed nonce both encrypt and decrypt round-trip perfectly; the flaw only shows when two ciphertexts are compared. The fixture encrypts the same plaintext twice and expects different bytes and a tag failure when the associated data changes."
+  },
+  "oracle": "fixtures/test_73_crypto_aes_cipher_mode.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "AES-ECB replaces GCM, so identical plaintext blocks produce identical ciphertext blocks and there is no integrity tag.",
+      "caught_by": [
+        "test_associated_data_tamper_rejected",
+        "test_ciphertext_tamper_rejected",
+        "test_detect_ecb_pattern_leakage"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The nonce is all zeros, so two messages with the same key reuse the nonce and the keystream is recoverable.",
+      "caught_by": [
+        "test_unique_nonce_per_encryption"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Decrypt passes None as associated data, so a message whose associated data was tampered still decrypts.",
+      "caught_by": [
+        "test_roundtrip_encryption_decryption"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "8-byte keys are accepted and zero-padded to 16, so a 64-bit key masquerades as AES-128.",
+      "caught_by": [
+        "test_invalid_key_length_rejected"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Nonce length is not checked on decrypt, so a wrong-length nonce raises ValueError from the library instead of a clear validation error.",
+      "caught_by": [
+        "test_invalid_nonce_length_rejected"
+      ]
+    }
+  ]
+}

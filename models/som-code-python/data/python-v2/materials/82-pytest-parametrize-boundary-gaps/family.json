@@ -1,0 +1,70 @@
+{
+  "family_id": "82-pytest-parametrize-boundary-gaps",
+  "domain": "python",
+  "area": "pytest",
+  "capability": "test-parametrization-equivalence-partitioning",
+  "requirement": "Provide a comprehensive test specification table and validation evaluator testing a record filtering function against boundary cases: empty string category, zero, negative bounds, and None.",
+  "skeleton": "filter_records(records, min_score, category) and get_boundary_test_cases() function providing full equivalence partitions.",
+  "rationale": {
+    "teaches": "A boundary test table covering empty-string category, zero and negative min_score, and None, with a filter that treats 0 as a real threshold, uses strict less-than, and matches category exactly.",
+    "why": "A table that drops the zero row cannot tell 'if min_score:' from 'is not None', so the filter bug and the table gap hide each other. The fixture runs the full table and checks each partition is present."
+  },
+  "oracle": "fixtures/test_82_pytest_parametrize_boundary_gaps.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The empty-string category case is dropped, so the table never checks that an empty category is a filter, not a wildcard.",
+      "caught_by": [
+        "test_boundary_cases_presence"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The zero and negative rows are replaced by mid and high thresholds, so the falsy-zero bug is never exercised.",
+      "caught_by": [
+        "test_boundary_cases_presence"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "min_score is tested for truthiness, so a threshold of 0 is treated as no threshold and records with negative scores pass.",
+      "caught_by": [
+        "test_filter_records_zero_boundary"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Records equal to min_score are excluded, so a threshold of 50 drops a score of exactly 50.",
+      "caught_by": [
+        "test_filter_records_zero_boundary"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Category is matched by substring, so a filter for 'a' matches 'alpha' and 'beta'.",
+      "caught_by": [
+        "test_filter_records_category_exact_match"
+      ]
+    }
+  ]
+}

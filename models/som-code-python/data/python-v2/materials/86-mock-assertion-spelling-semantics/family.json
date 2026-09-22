@@ -1,0 +1,81 @@
+{
+  "family_id": "86-mock-assertion-spelling-semantics",
+  "domain": "python",
+  "area": "unittest.mock",
+  "capability": "mock-assertion-call-verification",
+  "requirement": "Implement an audit dispatch verifier AuditDispatchVerifier that tests an event notifier. Must use exact, valid Mock assertion methods (assert_called_once_with, call_count == 1). Must never use non-existent methods (like assert_not_called_with) or uninvoked attribute accesses (mock.assert_called_once without parentheses).",
+  "skeleton": "An event dispatcher EventDispatcher and verifier function verify_single_dispatch(sink, expected_event, expected_payload).",
+  "rationale": {
+    "teaches": "A verifier that calls assert_called_once_with with parentheses and the expected arguments, and checks call_count equals exactly one.",
+    "why": "A misspelled Mock assertion returns a new child mock instead of asserting, and an un-called method reference does nothing, so a broken verifier passes every test. The fixture dispatches twice and zero times and expects the verifier to fail."
+  },
+  "oracle": "fixtures/test_86_mock_assertion_spelling_semantics.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "assert_not_called_with does not exist on Mock, so the call returns a child mock and asserts nothing.",
+      "caught_by": [
+        "test_catches_duplicate_dispatch_wrong_default",
+        "test_catches_excessive_calls_boundary",
+        "test_catches_inverted_call_count_branch",
+        "test_catches_wrong_api_call_or_mismatched_payload",
+        "test_catches_zero_calls_missing_validation",
+        "test_gold_single_dispatch_success"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "assert_called_with checks only the last call and the count check allows more than one, so a double dispatch passes.",
+      "caught_by": [
+        "test_catches_duplicate_dispatch_wrong_default",
+        "test_catches_excessive_calls_boundary"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "assert_called_once is referenced without parentheses and the count check is never false, so nothing is verified.",
+      "caught_by": [
+        "test_catches_duplicate_dispatch_wrong_default",
+        "test_catches_excessive_calls_boundary",
+        "test_catches_wrong_api_call_or_mismatched_payload",
+        "test_catches_zero_calls_missing_validation"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The count check is inverted, so exactly one call fails and any other count passes.",
+      "caught_by": [
+        "test_catches_inverted_call_count_branch",
+        "test_gold_single_dispatch_success"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The count check only fails above two, so zero or two dispatches pass.",
+      "caught_by": [
+        "test_catches_duplicate_dispatch_wrong_default",
+        "test_catches_excessive_calls_boundary"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "family_id": "32-syntax-late-binding-closures",
+  "domain": "python",
+  "area": "syntax",
+  "capability": "late-binding-closures",
+  "requirement": "Implement RulePipeline with proper closure scope binding in generator and scaler loops, boundary validation, and history management.",
+  "skeleton": "RulePipeline class with register_threshold_checks, build_indexed_scalers, evaluate, and clear methods.",
+  "rationale": {
+    "teaches": "Late-binding closures in loops: capture the loop variable through a default argument, reject an empty factor list, allow exactly 20 thresholds, require all rules to pass, and clear history fully.",
+    "why": "A closure over a loop variable returns the last value for every scaler, a bug that is only visible when more than one closure is called after the loop ends. The fixture builds several and calls each."
+  },
+  "oracle": "fixtures/test_32_syntax_late_binding_closures.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The lambda closes over the loop variable, so every scaler multiplies by the last factor.",
+      "caught_by": [
+        "test_scalers_early_binding"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "An empty factor list is accepted and yields no scalers instead of raising ValueError.",
+      "caught_by": [
+        "test_empty_factors_validation"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Exactly 20 thresholds is rejected even though 20 is the documented maximum.",
+      "caught_by": [
+        "test_thresholds_boundary_twenty_allowed"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "evaluate passes when any rule holds instead of all, so a value failing one threshold is accepted.",
+      "caught_by": [
+        "test_evaluate_mode_all"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "clear leaves the evaluation history in place, so history grows across resets.",
+      "caught_by": [
+        "test_clear_resets_history_and_rules"
+      ]
+    }
+  ]
+}

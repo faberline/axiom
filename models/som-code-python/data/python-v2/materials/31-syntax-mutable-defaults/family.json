@@ -1,0 +1,71 @@
+{
+  "family_id": "31-syntax-mutable-defaults",
+  "domain": "python",
+  "area": "syntax",
+  "capability": "mutable-defaults",
+  "requirement": "Implement AuditLogger and AuditEvent ensuring immutable default argument handling, tag boundary limits, and state clearing.",
+  "skeleton": "AuditEvent dataclass and AuditLogger class with record_event, get_events_by_tag, and clear methods.",
+  "rationale": {
+    "teaches": "The mutable default argument trap: a None sentinel with a fresh copy per call, an honest empty default for metadata, a tag limit at 10, and a clear that resets every index.",
+    "why": "A shared default list is invisible in a single call and shows up only as state from a previous call leaking into the next. Two calls in one test are enough to prove it, and the discriminator must learn that the None sentinel is the contract."
+  },
+  "oracle": "fixtures/test_31_syntax_mutable_defaults.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "shared_default_factory",
+      "why_wrong": "tags defaults to one shared list that is stored by reference, so tags appended to one event appear on every later event.",
+      "caught_by": [
+        "test_record_event_defaults_independent"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Missing metadata defaults to env=prod, so events without metadata are silently tagged as production.",
+      "caught_by": [
+        "test_record_event_default_metadata_empty",
+        "test_record_event_defaults_independent"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The tag limit is not enforced, so an event with 11 or more tags is accepted.",
+      "caught_by": [
+        "test_record_event_tags_limit_validation"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The limit is checked with >=, so exactly 10 tags is rejected.",
+      "caught_by": [
+        "test_record_event_tags_boundary_ten_allowed"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "clear empties the event list but not the tag index, so get_events_by_tag returns stale events after a clear.",
+      "caught_by": [
+        "test_clear_cleans_index_and_events"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "family_id": "65-lxml-xxe-injection",
+  "domain": "python",
+  "area": "lxml",
+  "capability": "secure-xml-parsing-xxe",
+  "requirement": "Implement SecureXmlParser wrapping lxml.etree.XMLParser with strict XXE protection: resolve_entities=False, no_network=True, and load_dtd=False. Constructor must validate security parameters, reject unsafe entity resolution, and safely parse untrusted XML strings and streams into DOM elements and flat dictionaries.",
+  "skeleton": "SecureXmlParser class with __init__, parse_string, and extract_flat_dict using lxml.etree.",
+  "rationale": {
+    "teaches": "An lxml parser hardened against XXE: resolve_entities False, no_network True, load_dtd False, enforced in the constructor, used on every parse, with an empty-input check.",
+    "why": "XXE protection is a parser flag that every benign document ignores. The fixture parses a document with an external entity pointing at a local file and expects the entity to stay unresolved."
+  },
+  "oracle": "fixtures/test_65_lxml_xxe_injection.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "resolve_entities defaults to True and the guard is inverted, so external entities are expanded and a crafted document reads local files.",
+      "caught_by": [
+        "test_parser_configuration_flags",
+        "test_reject_unsafe_resolve_entities",
+        "test_xxe_entity_expansion_blocked"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "fromstring is called without the hardened parser, so the default parser resolves entities.",
+      "caught_by": [
+        "test_uses_hardened_parser_instance",
+        "test_xxe_entity_expansion_blocked"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The guard is inverted, so resolve_entities=True is accepted silently.",
+      "caught_by": [
+        "test_reject_unsafe_resolve_entities"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The guard is inverted, so no_network=False is accepted silently.",
+      "caught_by": [
+        "test_reject_unsafe_no_network"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The empty-input check is replaced by a size check, so an empty string reaches the parser and raises XMLSyntaxError instead of ValueError.",
+      "caught_by": [
+        "test_empty_input_validation"
+      ]
+    }
+  ]
+}

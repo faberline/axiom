@@ -1,0 +1,70 @@
+{
+  "family_id": "79-secrets-token-generation",
+  "domain": "python",
+  "area": "security",
+  "capability": "cryptographically-secure-token-generation",
+  "requirement": "Cryptographic token and random value generation service enforcing use of the secrets module (CSPRNG) rather than predictable pseudo-random generators (random module), enforcing minimum token entropy boundaries (>= 16 bytes), and validating positive bounds.",
+  "skeleton": "SecureTokenService class with generate_hex_token, generate_url_safe_token, generate_bounded_int, and choose_securely methods using secrets.",
+  "rationale": {
+    "teaches": "Token generation through the secrets module only, a 16-byte minimum, and a positive-bound check for bounded integers.",
+    "why": "random and secrets produce the same shape of output; only the module matters. The fixture patches the random module and asserts it is never called, and checks the boundaries."
+  },
+  "oracle": "fixtures/test_79_secrets_token_generation.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Hex tokens come from random.getrandbits, so the sequence is predictable from a few observed tokens.",
+      "caught_by": [
+        "test_random_module_not_used_for_generation"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "URL-safe tokens come from random.choices, so they are predictable.",
+      "caught_by": [
+        "test_random_module_not_used_for_generation"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Bounded integers come from random.randint, so they are predictable.",
+      "caught_by": [
+        "test_random_module_not_used_for_generation"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The minimum token size is 2 bytes, so a 16-bit token is accepted.",
+      "caught_by": [
+        "test_minimum_entropy_boundary_enforced"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A non-positive upper bound returns 0 instead of raising, so a misconfigured caller always gets 0.",
+      "caught_by": [
+        "test_bounded_int_non_positive_rejected"
+      ]
+    }
+  ]
+}

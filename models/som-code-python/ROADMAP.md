@@ -15,15 +15,17 @@ support state is in [STATUS.md](STATUS.md).
 
 - ID: `oracle-fixtures-complete`
 - Outcome: Every family under `data/python-v2/materials` has a fixture, the
-  harness reports no skipped family, and it exits non-zero when a family has
-  no fixture instead of skipping it.
+  harness reports no skipped family, it exits non-zero when a family has no
+  fixture instead of skipping it, and no `oracle` or `caught_by` field is
+  `null`.
 - Boundary: The three missing fixtures for `08-asyncio-concurrency-limiter`,
   `09-pydantic-field-cross-validation`, and
   `10-security-timing-constant-auth`, plus the harness's handling of a
   missing fixture; not new families.
 - Completion evidence: The harness run over `08 09 10` shows each gold
-  exiting 0 and each near miss failing on an assertion, and a run with one
-  fixture renamed away exits non-zero.
+  exiting 0 and each near miss failing on exactly its declared `caught_by`,
+  the curation check reports no `null` field, and a run with one fixture
+  renamed away exits non-zero.
 - Tracking: Not assigned.
 
 ### Algorithm, data structure, and design pattern families
@@ -82,6 +84,20 @@ support state is in [STATUS.md](STATUS.md).
 
 ## Later outcomes
 
+### Non-minimal near misses
+
+- ID: `non-minimal-near-misses`
+- Outcome: Families gain near misses that are not a one-line edit of the
+  gold candidate, refactored or carrying two defects, so a discriminator that
+  scores edit distance instead of behaviour stops scoring well on the corpus.
+- Boundary: New near-miss candidates and their `family.json` entries under
+  `data/python-v2/materials`, each still failing its fixture on an assertion
+  with a measured `caught_by`; not new families and not the harness.
+- Completion evidence: The harness and the curation check exit 0 over the
+  changed families, and `diff` between each new candidate and its gold shows
+  more than one hunk.
+- Tracking: Not assigned.
+
 ### Snippet ISA v2
 
 - ID: `snippet-isa-v2`
@@ -100,10 +116,11 @@ support state is in [STATUS.md](STATUS.md).
 ### Legacy ranker lineage
 
 - ID: `legacy-ranker-lineage`
-- Reason: The specialist and developer ranker research, its runtimes, the v4
-  seed adapter, and the `som-research-*` lock files predate the layer model
-  and are kept only so that history can be read; nothing here promises to
-  restore their data or keep their tests green.
+- Reason: The specialist and developer ranker research, its runtimes, and
+  the `som-research-*` lock files predate the layer model and are kept only
+  so that history can be read; the v4 seed adapter they expect stays local
+  and untracked. Nothing here promises to restore their data or keep their
+  tests green.
 
 ### Platform pilot families
 

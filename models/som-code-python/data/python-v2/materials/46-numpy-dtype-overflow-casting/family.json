@@ -1,0 +1,76 @@
+{
+  "family_id": "46-numpy-dtype-overflow-casting",
+  "domain": "numpy",
+  "area": "dtype-casting",
+  "capability": "dtype-overflow-casting",
+  "requirement": "Implement SafeImagePixelRescaler class for intensity rescaling. It must prevent silent integer overflow and modulo wraparound by upcasting inputs to float64 prior to arithmetic, clamping output intensities to the target dtype's valid dynamic range ([0, 255] for uint8, [0, 65535] for uint16), validating scale factors and supported dtypes, and safely casting to the target dtype.",
+  "skeleton": "SafeImagePixelRescaler class with __init__ and rescale_intensity methods preventing modular integer wraparound via float64 upcasting.",
+  "rationale": {
+    "teaches": "Integer-safe rescaling: upcast to float64 before arithmetic, clamp to the target dtype's range, validate the scale, and support only uint8 and uint16.",
+    "why": "Multiplying a uint8 image without upcasting wraps modulo 256 and returns a valid-looking image. The fixture uses pixel values that overflow, where the wrapped result is visibly wrong."
+  },
+  "oracle": "fixtures/test_46_numpy_dtype_overflow_casting.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The default target is int8, so a rescaled image is clamped to 127 and negative values are possible.",
+      "caught_by": [
+        "test_default_target_dtype_is_uint8"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A non-positive scale is accepted, so the whole image collapses to the offset.",
+      "caught_by": [
+        "test_negative_or_zero_scale_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The uint8 ceiling is 256.0, so a clamped value of 256 wraps to 0 on the final cast.",
+      "caught_by": [
+        "test_clip_upper_bound_boundary_does_not_wrap",
+        "test_gold_rescaling_and_clipping",
+        "test_no_silent_intermediate_overflow",
+        "test_target_dtype_branch_limits"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The dtype ranges are swapped, so uint8 output is clamped at 65535 and wraps on cast.",
+      "caught_by": [
+        "test_clip_upper_bound_boundary_does_not_wrap",
+        "test_gold_rescaling_and_clipping",
+        "test_no_silent_intermediate_overflow",
+        "test_target_dtype_branch_limits"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Arithmetic runs in the input integer dtype, so bright pixels wrap around instead of saturating.",
+      "caught_by": [
+        "test_no_silent_intermediate_overflow"
+      ]
+    }
+  ]
+}

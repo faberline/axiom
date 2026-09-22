@@ -1,0 +1,72 @@
+{
+  "family_id": "29-stdlib-os-atomic-file-write",
+  "domain": "python",
+  "area": "stdlib",
+  "capability": "os-atomic-file-write",
+  "requirement": "Implement AtomicFileOps providing write_text_atomic and write_json_atomic with temp file in target parent dir, fsync durability, atomic replacement, and cleanup on failure.",
+  "skeleton": "AtomicFileOps class with static methods write_text_atomic and write_json_atomic.",
+  "rationale": {
+    "teaches": "Atomic file replacement: a temp file in the target's directory, fsync before rename, os.replace for the swap, and temp-file cleanup on failure.",
+    "why": "Every miss writes the correct bytes on the happy path. Only a failure injected mid-write shows a truncated target, a leaked temp file, or a cross-device rename error."
+  },
+  "oracle": "fixtures/test_29_stdlib_os_atomic_file_write.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The target is opened directly for writing, so a failure mid-write leaves a truncated file in place.",
+      "caught_by": [
+        "test_original_file_preserved_on_write_failure",
+        "test_temp_file_created_in_same_parent_directory"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The temp file lives in the system temp directory, so the rename can cross filesystems and fail with EXDEV.",
+      "caught_by": [
+        "test_temp_file_created_in_same_parent_directory"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "fsync is skipped, so the rename can land before the data reaches disk.",
+      "caught_by": [
+        "test_fsync_called_before_replace",
+        "test_temp_file_cleaned_up_on_failure"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The temp file is not removed when writing fails, so each failure leaks a file next to the target.",
+      "caught_by": [
+        "test_temp_file_cleaned_up_on_failure"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "os.rename is used instead of os.replace, so on Windows an existing target makes the swap fail.",
+      "caught_by": [
+        "test_atomic_replace_called"
+      ]
+    }
+  ]
+}

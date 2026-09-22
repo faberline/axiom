@@ -1,0 +1,72 @@
+{
+  "family_id": "93-openai-resilient-chat-session",
+  "domain": "python",
+  "area": "openai",
+  "capability": "rate-limit-backoff-and-context-compaction",
+  "requirement": "Implement a resilient OpenAI chat session manager with exponential backoff on 429 rate limit errors, context window compaction preserving system prompt, and configurable max retries.",
+  "skeleton": "ResilientChatSession with add_message, prune_history_for_context, and send_message methods.",
+  "rationale": {
+    "teaches": "A chat session that retries 429 errors with exponential backoff up to max_retries, defaults to 3 retries, prunes history while keeping the system prompt, and refuses to prune below a minimal history.",
+    "why": "A retry loop that stops one attempt early or a pruner that drops the system prompt still returns a response. The fixture uses a fake client that raises 429 a set number of times and inspects the pruned history."
+  },
+  "oracle": "fixtures/test_93_openai_resilient_chat_session.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The system-prompt check is inverted, so pruning drops the system prompt when one exists and keeps it when there is none.",
+      "caught_by": [
+        "test_prune_history_preserves_system_prompt"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The retry loop gives up at max_retries instead of after it, so one fewer retry is attempted than configured.",
+      "caught_by": [
+        "test_retry_boundary_allows_configured_attempts"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "max_retries defaults to 0, so a single 429 fails the request.",
+      "caught_by": [
+        "test_default_max_retries_is_three"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The minimal-history guards are dropped, so pruning an almost empty history removes the only user message.",
+      "caught_by": [
+        "test_prune_history_short_conversation_validation"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The legacy completions endpoint is called, so chat-format messages are rejected by the API.",
+      "caught_by": [
+        "test_prune_history_preserves_system_prompt",
+        "test_retry_boundary_allows_configured_attempts",
+        "test_send_message_calls_chat_completions"
+      ]
+    }
+  ]
+}

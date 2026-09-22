@@ -1,0 +1,74 @@
+{
+  "family_id": "06-sqlalchemy-atomic-order-rollback",
+  "domain": "python",
+  "area": "sqlalchemy",
+  "capability": "atomic-order-rollback",
+  "requirement": "Atomic multi-item order placement POST /orders decrementing product stock and creating OrderItem records, rolling back all database mutations cleanly when any product has insufficient stock.",
+  "skeleton": "FastAPI order placement endpoint with multi-item inventory validation and atomic SQLAlchemy transaction rollback.",
+  "rationale": {
+    "teaches": "An atomic multi-row order: validate every line first, commit once, roll back on any failure, and treat exactly-remaining stock as sufficient.",
+    "why": "A partial commit leaves inventory inconsistent while every request still returns a sensible status. Checking stock after a deliberately failed order is the only way to see it, and the fixture does exactly that."
+  },
+  "oracle": "fixtures/test_06_sqlalchemy_atomic_order_rollback.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Each line is committed inside the loop, so when a later line fails the earlier stock decrements survive the rollback.",
+      "caught_by": [
+        "test_atomic_rollback_on_insufficient_stock"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The failed order is never rolled back, so the pending decrements stay in the dirty session and can leak into the next commit.",
+      "caught_by": [
+        "test_atomic_rollback_on_insufficient_stock",
+        "test_subsequent_order_succeeds_after_rollback"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "An order for exactly the remaining stock is rejected as insufficient.",
+      "caught_by": [
+        "test_order_exact_stock_boundary_succeeds"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Stock is decremented without being checked, so an order can drive stock negative and still succeed.",
+      "caught_by": [
+        "test_atomic_rollback_on_insufficient_stock",
+        "test_insufficient_stock_fails_without_negative_stock",
+        "test_subsequent_order_succeeds_after_rollback"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The order is only flushed, never committed, so the decrement and the OrderItem rows vanish when the session ends.",
+      "caught_by": [
+        "test_order_exact_stock_boundary_succeeds",
+        "test_valid_order_persisted_to_database"
+      ]
+    }
+  ]
+}

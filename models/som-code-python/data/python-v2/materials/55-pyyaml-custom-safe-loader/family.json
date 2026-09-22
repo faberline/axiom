@@ -1,0 +1,73 @@
+{
+  "family_id": "55-pyyaml-custom-safe-loader",
+  "domain": "python",
+  "area": "yaml",
+  "capability": "custom-safe-loader-extensibility",
+  "requirement": "Extend PyYAML safely with custom tags using an isolated SafeLoader subclass, preventing global state pollution and handling missing environment variables.",
+  "skeleton": "SafeAppConfigLoader subclass, ApplicationConfigParser class, create_secure_yaml_loader and load_custom_config helpers.",
+  "rationale": {
+    "teaches": "Extending YAML with a custom tag on an isolated SafeLoader subclass, so the global SafeLoader stays untouched, with a defined env-var default and a mapping root check.",
+    "why": "Registering the constructor on yaml.SafeLoader itself works in the same process and silently changes every other caller's parser. The fixture asserts the global loader does not know the tag afterward."
+  },
+  "oracle": "fixtures/test_55_pyyaml_custom_safe_loader.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The custom loader subclasses yaml.Loader, so the extension inherits arbitrary object construction.",
+      "caught_by": [
+        "test_arbitrary_code_execution_blocked",
+        "test_helpers"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The constructor is registered on the global SafeLoader, so every yaml.safe_load call in the process now honours the env tag.",
+      "caught_by": [
+        "test_global_safeloader_not_polluted"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The env-var branch is inverted, so a set variable yields the default and a missing one yields None.",
+      "caught_by": [
+        "test_env_fallback_used_when_var_missing",
+        "test_missing_env_without_default_raises_error",
+        "test_valid_env_interpolation"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The empty-name check compares a length to a negative number, so an empty env tag is accepted.",
+      "caught_by": [
+        "test_empty_var_name_boundary_rejected"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A non-mapping root is accepted, so a scalar document passes as configuration.",
+      "caught_by": [
+        "test_scalar_root_rejected"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "family_id": "00-fastapi-item-create-201",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "route-status-and-persistence",
+  "requirement": "Create a POST /items endpoint that accepts JSON payload with name, price (>0.0), and optional description, validates input, persists to SQLite DB, and returns HTTP 201 Created with the created item.",
+  "skeleton": "FastAPI route with Pydantic payload validation and SQLAlchemy in-memory persistence.",
+  "rationale": {
+    "teaches": "A create endpoint that gets every contract detail right at once: 201 on success, a gt=0 price constraint, a real commit, and faithful passthrough of the client's payload.",
+    "why": "A generator assembling a route from snippets usually gets the shape right and the details wrong: the status code, the constraint boundary, flush versus commit. Each detail is observable through one HTTP round trip plus one database read, so the oracle separates code that looks right from code that is right."
+  },
+  "oracle": "fixtures/test_00_fastapi_item_create_201.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Creation answers 200 OK instead of 201 Created, so a client that checks for 201 treats the insert as not having happened.",
+      "caught_by": [
+        "test_create_item_allows_decimal_price_under_one",
+        "test_create_item_description_persisted",
+        "test_create_item_success_201"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A zero or negative price is accepted and persisted instead of being rejected with 422.",
+      "caught_by": [
+        "test_create_item_rejects_negative_or_zero_price"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The insert is flushed but never committed, so the item disappears when the session closes and a later read finds nothing.",
+      "caught_by": [
+        "test_create_item_description_persisted",
+        "test_create_item_success_201"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The description the client sent is discarded and stored as null.",
+      "caught_by": [
+        "test_create_item_description_persisted",
+        "test_create_item_success_201"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Prices between 0 and 1 are rejected with 422 even though the contract only forbids non-positive prices.",
+      "caught_by": [
+        "test_create_item_allows_decimal_price_under_one"
+      ]
+    }
+  ]
+}

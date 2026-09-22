@@ -1,0 +1,74 @@
+{
+  "family_id": "84-pytest-autouse-teardown-ordering",
+  "domain": "python",
+  "area": "pytest",
+  "capability": "autouse-fixture-stack-teardown-ordering",
+  "requirement": "Implement a layered test environment manager managing three interdependent resources (LockManager -> DatabaseSession -> AuditRecorder) guaranteeing exact LIFO teardown under normal and exception conditions.",
+  "skeleton": "ResourceLifecycleTracker class and layered_test_environment context manager with strict LIFO nesting.",
+  "rationale": {
+    "teaches": "Three nested try/finally blocks so teardown always runs in exact reverse setup order, even when the test body raises, with a per-instance event list.",
+    "why": "Teardown ordering passes on the happy path with plain sequential code; only an exception inside the body exposes skipped or misordered teardown. The fixture raises inside the context and compares the event list."
+  },
+  "oracle": "fixtures/test_84_pytest_autouse_teardown_ordering.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The lock manager teardown is skipped, so the outermost resource is never released.",
+      "caught_by": [
+        "test_lifo_teardown_guaranteed_on_exception",
+        "test_lifo_teardown_normal_execution"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The try/finally nesting is removed, so an exception in the body skips every teardown.",
+      "caught_by": [
+        "test_lifo_teardown_guaranteed_on_exception"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The audit and lock teardown labels are swapped, so the recorded order is not LIFO.",
+      "caught_by": [
+        "test_lifo_teardown_guaranteed_on_exception",
+        "test_lifo_teardown_normal_execution"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The event list defaults to a shared module-level list, so events from one tracker appear in the next.",
+      "caught_by": [
+        "test_independent_tracker_instances",
+        "test_lifo_teardown_guaranteed_on_exception"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The db_session teardown records audit_recorder, so the db session is never recorded as torn down.",
+      "caught_by": [
+        "test_lifo_teardown_guaranteed_on_exception",
+        "test_lifo_teardown_normal_execution"
+      ]
+    }
+  ]
+}

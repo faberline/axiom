@@ -1,0 +1,73 @@
+{
+  "family_id": "56-shutil-rmtree-symlink-traversal",
+  "domain": "python",
+  "area": "shutil",
+  "capability": "symlink-traversal-protection",
+  "requirement": "Safely purge workspace files, symlinks, and directories without traversing symlinks outside workspace root, preventing arbitrary deletion of external files.",
+  "skeleton": "SafeWorkspaceCleaner class with clean_target method ensuring paths stay within workspace_root and unlinking symlinks without following them.",
+  "rationale": {
+    "teaches": "Workspace cleanup that unlinks a symlink instead of following it, checks containment with is_relative_to on the resolved parent, and raises on escape.",
+    "why": "rmtree on a directory symlink or a walk with followlinks deletes files outside the workspace, which no in-workspace test notices. The fixture plants a symlink to an external directory and checks the external files survive."
+  },
+  "oracle": "fixtures/test_56_shutil_rmtree_symlink_traversal.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The candidate is resolved before the symlink check, so a symlink to an external directory is treated as that directory and its contents are deleted.",
+      "caught_by": [
+        "test_directory_symlink_unlinked_cleanly",
+        "test_symlink_pointing_to_external_dir_unlinked_without_deleting_target"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Containment is a string prefix check, so a sibling directory whose name starts with the workspace name is accepted.",
+      "caught_by": [
+        "test_sibling_directory_prefix_bypass_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The symlink check is missing, so a directory symlink is passed to rmtree and the target's files are removed.",
+      "caught_by": [
+        "test_directory_symlink_unlinked_cleanly",
+        "test_symlink_pointing_to_external_dir_unlinked_without_deleting_target"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The walk follows symlinks, so files reachable through a link outside the workspace are unlinked.",
+      "caught_by": [
+        "test_internal_symlink_to_external_not_traversed"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "An escaping path returns False instead of raising PermissionError, so the caller cannot distinguish refusal from a missing target.",
+      "caught_by": [
+        "test_parent_escape_raises_permission_error",
+        "test_sibling_directory_prefix_bypass_rejected"
+      ]
+    }
+  ]
+}

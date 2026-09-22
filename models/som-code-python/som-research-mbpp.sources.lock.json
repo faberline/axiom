@@ -1,0 +1,23 @@
+{
+  "repo": "google-research-datasets/mbpp",
+  "revision": "4bb6404fdc6cacfda99d4ac4205087b89d32030c",
+  "license": "CC-BY-4.0",
+  "attribution": "Austin et al. (2021), Program Synthesis with Large Language Models, Google Research. Adaptations add failing mutations and candidate-choice rows.",
+  "dataset_url": "https://huggingface.co/datasets/google-research-datasets/mbpp",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "files": {
+    "README.md": {
+      "sha256": "6377d5c76ba46b9e650daa6d5eb592e671c9b15586e39f23f50ed9bf2ac54cf6",
+      "url": "https://huggingface.co/datasets/google-research-datasets/mbpp/resolve/4bb6404fdc6cacfda99d4ac4205087b89d32030c/README.md"
+    },
+    "sanitized/train-00000-of-00001.parquet": {
+      "sha256": "d95f8ad6d2fff08fe4826122d6e3e31f75716825d0c5c340d297aca5e9e0de0e",
+      "url": "https://huggingface.co/datasets/google-research-datasets/mbpp/resolve/4bb6404fdc6cacfda99d4ac4205087b89d32030c/sanitized/train-00000-of-00001.parquet"
+    },
+    "sanitized/validation-00000-of-00001.parquet": {
+      "sha256": "27e065fcab3c863959933328a7fdbf404e1bcb5464b1be6fe0dcd9530e420204",
+      "url": "https://huggingface.co/datasets/google-research-datasets/mbpp/resolve/4bb6404fdc6cacfda99d4ac4205087b89d32030c/sanitized/validation-00000-of-00001.parquet"
+    }
+  },
+  "boundary": "Only official sanitized training and validation partitions are downloaded; official test is excluded from training and calibration."
+}

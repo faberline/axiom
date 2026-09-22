@@ -1,0 +1,71 @@
+{
+  "family_id": "21-stdlib-asyncio-task-cancellation",
+  "domain": "python",
+  "area": "stdlib",
+  "capability": "asyncio-task-cancellation-lifecycle",
+  "requirement": "Implement ResilientJobRunner with run_job and cancel_job managing cooperative task cancellation, shielding cleanup coroutines, updating job status to 'cancelled', and ensuring cancel_job awaits task completion within timeout.",
+  "skeleton": "Asyncio job runner managing task lifecycle, cancellation propagation, and shielded cleanup.",
+  "rationale": {
+    "teaches": "Cooperative cancellation: catch CancelledError, record cancelled, shield the cleanup coroutine, re-raise, and make cancel_job wait for the task to finish within a timeout.",
+    "why": "Cancellation handling that swallows the exception or skips the shield still passes a happy-path run. The fixture cancels mid-flight and inspects status, cleanup completion, and task state afterward."
+  },
+  "oracle": "fixtures/test_21_stdlib_asyncio_task_cancellation.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "CancelledError is swallowed and the coroutine returns None, so the task reports as finished normally instead of cancelled.",
+      "caught_by": [
+        "test_cancellation_reraises_cancelled_error"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Only Exception is caught, so CancelledError bypasses the handler, the status never becomes cancelled, and cleanup never runs.",
+      "caught_by": [
+        "test_cancellation_cleanup_shielded",
+        "test_cancellation_status_and_cleanup_run"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The cleanup coroutine is not shielded, so a second cancel aborts cleanup halfway.",
+      "caught_by": [
+        "test_cancellation_cleanup_shielded"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "A cancelled job is recorded as failed, so callers cannot tell cancellation from a crash.",
+      "caught_by": [
+        "test_cancellation_status_and_cleanup_run"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "cancel_job returns True immediately without waiting, so the caller proceeds while the task is still running.",
+      "caught_by": [
+        "test_cancel_job_awaits_task_completion"
+      ]
+    }
+  ]
+}

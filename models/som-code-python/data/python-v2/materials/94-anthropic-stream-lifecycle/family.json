@@ -1,0 +1,74 @@
+{
+  "family_id": "94-anthropic-stream-lifecycle",
+  "domain": "python",
+  "area": "anthropic",
+  "capability": "stream-context-and-truncation-handling",
+  "requirement": "Implement an Anthropic message streaming handler that safely manages stream context lifecycle, records text chunks, detects token limit truncation, and handles stream errors.",
+  "skeleton": "AnthropicStreamHandler with collect_stream and stream_text_chunks methods returning StreamSummary dataclass.",
+  "rationale": {
+    "teaches": "Streaming through the messages.stream context manager, reading the final message inside it, flagging max_tokens as truncation, refusing empty messages, and defaulting max_tokens to 1024.",
+    "why": "A stream used outside its context manager still yields text, but its connection is never closed. The fixture uses a fake stream that records enter and exit and reports stop_reason."
+  },
+  "oracle": "fixtures/test_94_anthropic_stream_lifecycle.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The stream is used outside its context manager, so the connection is never closed after the final message.",
+      "caught_by": [
+        "test_stream_context_cleanup_on_completion"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "end_turn is flagged as truncation, so every normal completion is reported as truncated and real truncation is not.",
+      "caught_by": [
+        "test_stream_context_cleanup_on_completion",
+        "test_truncation_detection_on_max_tokens"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Empty message lists are sent to the API, so the error surfaces from the client instead of as a ValueError.",
+      "caught_by": [
+        "test_empty_messages_validation"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "max_tokens defaults to 100, so a normal response is truncated by default.",
+      "caught_by": [
+        "test_default_max_tokens_parameter"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "get_final_message is called after leaving the context, so the stop reason is read from a closed stream.",
+      "caught_by": [
+        "test_default_max_tokens_parameter",
+        "test_final_message_retrieval_sequence",
+        "test_stream_context_cleanup_on_completion",
+        "test_truncation_detection_on_max_tokens"
+      ]
+    }
+  ]
+}

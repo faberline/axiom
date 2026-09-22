@@ -1,0 +1,77 @@
+{
+  "family_id": "01-fastapi-query-pagination",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "query-pagination-envelope",
+  "requirement": "Implement GET /items with validated page (ge=1) and size (ge=1, le=100) parameters, calculating correct (page-1)*size offset, total count via func.count(), ceiling pages, and deterministic ascending order.",
+  "skeleton": "FastAPI route with Query parameters and SQLAlchemy pagination metadata envelope.",
+  "rationale": {
+    "teaches": "Offset pagination arithmetic and a truthful envelope: offset is (page-1)*size, total comes from a count query, pages rounds up, ordering is stable, and page=0 is a 422.",
+    "why": "Pagination bugs are silent: every response is well-formed and only the numbers are wrong. Inserting a known number of rows and walking every page makes each arithmetic slip observable and deterministic."
+  },
+  "oracle": "fixtures/test_01_fastapi_query_pagination.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The offset starts at page*size, so the first page of items is never returned to anyone.",
+      "caught_by": [
+        "test_pagination_deterministic_ascending_order",
+        "test_pagination_first_page_correct_offset",
+        "test_pagination_second_page_correct_offset"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "total is the length of the current page, so total and pages are capped at the page size and the envelope under-reports the collection.",
+      "caught_by": [
+        "test_pagination_pages_calculation_ceiling",
+        "test_pagination_second_page_correct_offset",
+        "test_pagination_total_count_not_truncated"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "pages uses floor division, so a partial last page is not counted and clients stop one page early.",
+      "caught_by": [
+        "test_pagination_pages_calculation_ceiling",
+        "test_pagination_second_page_correct_offset"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Rows come back in descending id order, so page 1 shows the newest rows instead of the ascending order the contract promises.",
+      "caught_by": [
+        "test_pagination_deterministic_ascending_order",
+        "test_pagination_first_page_correct_offset",
+        "test_pagination_second_page_correct_offset"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "page=0 is accepted and clamped to the first page instead of being rejected with 422, so an invalid request silently succeeds.",
+      "caught_by": [
+        "test_pagination_rejects_page_zero"
+      ]
+    }
+  ]
+}

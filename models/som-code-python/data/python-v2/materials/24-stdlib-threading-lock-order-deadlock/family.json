@@ -1,0 +1,72 @@
+{
+  "family_id": "24-stdlib-threading-lock-order-deadlock",
+  "domain": "python",
+  "area": "stdlib",
+  "capability": "threading-lock-order-deadlock",
+  "requirement": "Implement SafeTransferManager with account ID-based lock hierarchy to prevent deadlocks, single-lock self-transfer handling, balance validation, and transaction rollback on credit failure.",
+  "skeleton": "SafeTransferManager and Account classes with deadlock-free lock acquisition.",
+  "rationale": {
+    "teaches": "Deadlock-free transfers through a global lock order by account id, a single-lock path for self-transfers, a balance check, and rollback when the credit fails.",
+    "why": "Lock-order bugs pass every sequential test and deadlock only under contention. The fixture drives opposing transfers concurrently with a timeout, turning a hang into a red."
+  },
+  "oracle": "fixtures/test_24_stdlib_threading_lock_order_deadlock.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Locks are taken in argument order, so two opposing transfers acquire in opposite order and deadlock.",
+      "caught_by": [
+        "test_concurrent_transfers_no_deadlock",
+        "test_lock_acquisition_hierarchy"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A self-transfer tries to take the same non-reentrant lock twice and deadlocks.",
+      "caught_by": [
+        "test_self_transfer_no_deadlock"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The balance check is gone, so a transfer can overdraw the source account.",
+      "caught_by": [
+        "test_insufficient_funds_rejected"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "A failing credit leaves the debit in place, so money is destroyed instead of rolled back.",
+      "caught_by": [
+        "test_rollback_on_credit_failure"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The else branch of the ordering ternary repeats the argument order, so half of all transfer pairs still deadlock.",
+      "caught_by": [
+        "test_concurrent_transfers_no_deadlock",
+        "test_lock_acquisition_hierarchy"
+      ]
+    }
+  ]
+}

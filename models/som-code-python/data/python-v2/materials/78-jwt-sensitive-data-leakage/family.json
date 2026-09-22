@@ -1,0 +1,76 @@
+{
+  "family_id": "78-jwt-sensitive-data-leakage",
+  "domain": "python",
+  "area": "security",
+  "capability": "jwt-claim-sanitization",
+  "requirement": "JWT claim sanitizer preventing leakage of plaintext sensitive credentials (passwords, secrets, private keys, API keys, SSNs, credit card numbers) in unencrypted JWT claims, recursively inspecting nested dictionaries and normalizing key casing.",
+  "skeleton": "JWTClaimSanitizer class with create_safe_token and decode_token methods using PyJWT.",
+  "rationale": {
+    "teaches": "A claim sanitizer that refuses any claim whose normalized key contains a sensitive pattern, recursing into nested dicts, regardless of value type or length.",
+    "why": "A JWT payload is base64, not encrypted, so a password claim is readable by anyone holding the token. The fixture tries mixed-case keys, nested dicts, and short values and expects each to be refused."
+  },
+  "oracle": "fixtures/test_78_jwt_sensitive_data_leakage.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "No sanitization runs, so a password claim is encoded into the token in plaintext.",
+      "caught_by": [
+        "test_case_insensitive_sensitive_claim_rejected",
+        "test_nested_sensitive_claim_rejected",
+        "test_top_level_sensitive_claim_rejected"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Keys are matched exactly and case-sensitively, so API_KEY and Password pass.",
+      "caught_by": [
+        "test_case_insensitive_sensitive_claim_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Nested dicts are not inspected, so a password inside a profile object passes.",
+      "caught_by": [
+        "test_nested_sensitive_claim_rejected"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Sensitive values are base64-encoded instead of refused, so the secret is still recoverable from the token.",
+      "caught_by": [
+        "test_case_insensitive_sensitive_claim_rejected",
+        "test_nested_sensitive_claim_rejected",
+        "test_top_level_sensitive_claim_rejected"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Only string values longer than 20 characters are checked, so a short password or a numeric SSN passes.",
+      "caught_by": [
+        "test_case_insensitive_sensitive_claim_rejected",
+        "test_nested_sensitive_claim_rejected",
+        "test_top_level_sensitive_claim_rejected"
+      ]
+    }
+  ]
+}

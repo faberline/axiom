@@ -1,0 +1,8 @@
+{
+  "state": "FastAPI endpoint accepts an optional limit. Missing limit must use 20; zero and negative values must return HTTP 422.",
+  "question": "Which patch satisfies the backend requirements?",
+  "candidates": [
+    {"id": "validated-query", "text": "from fastapi import Query\nlimit: int = Query(20, ge=1, le=100)"},
+    {"id": "unchecked-query", "text": "limit: int = 20"}
+  ]
+}

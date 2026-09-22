@@ -1,0 +1,79 @@
+{
+  "family_id": "28-stdlib-pathlib-safe-traversal",
+  "domain": "python",
+  "area": "stdlib",
+  "capability": "pathlib-safe-traversal",
+  "requirement": "Implement SafeFileSandbox with safe path resolution, path traversal prevention, symlink escape detection, and safe read/write operations.",
+  "skeleton": "SafeFileSandbox class with resolve_safe_path, safe_read_text, and safe_write_text.",
+  "rationale": {
+    "teaches": "Sandboxed path resolution: strip leading separators, resolve symlinks before checking, use is_relative_to for containment, and raise PermissionError on escape.",
+    "why": "Path traversal defenses fail on the case the author did not test: a sibling directory with the same prefix, an absolute path, or a symlink out of the root. Each miss passes the plain dot-dot test and fails one of those."
+  },
+  "oracle": "fixtures/test_28_stdlib_pathlib_safe_traversal.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Containment is a string prefix check, so /sandbox_evil passes as inside /sandbox.",
+      "caught_by": [
+        "test_sibling_directory_bypass_rejected"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Leading slashes are not stripped, so an absolute path replaces the root and escapes the sandbox.",
+      "caught_by": [
+        "test_leading_slash_treated_relative_to_sandbox"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The check runs on the unresolved path, so a symlink inside the root that points outside passes.",
+      "caught_by": [
+        "test_dotdot_traversal_rejected",
+        "test_sibling_directory_bypass_rejected",
+        "test_symlink_escape_rejected",
+        "test_traversal_raises_permission_error_not_root"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The prefix check runs before resolve, so dot-dot segments pass the check and then resolve outside the root.",
+      "caught_by": [
+        "test_dotdot_traversal_rejected",
+        "test_sibling_directory_bypass_rejected",
+        "test_symlink_escape_rejected",
+        "test_traversal_raises_permission_error_not_root"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "An escaping path silently resolves to the sandbox root instead of raising, so the caller reads or writes the wrong file.",
+      "caught_by": [
+        "test_dotdot_traversal_rejected",
+        "test_sibling_directory_bypass_rejected",
+        "test_symlink_escape_rejected",
+        "test_traversal_raises_permission_error_not_root"
+      ]
+    }
+  ]
+}

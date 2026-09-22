@@ -1,0 +1,80 @@
+{
+  "family_id": "99-langgraph-cycle-recursion-control",
+  "domain": "python",
+  "area": "langgraph",
+  "capability": "graph-cycle-recursion-safeguards",
+  "requirement": "Implement ResilientGraphRunner representing a cyclic agent loop (agent -> tool -> evaluator). The conditional edge router route_next_step(state) must evaluate completion and terminate at 'END' when is_complete == True OR when iteration >= max_iterations. It must prevent infinite recursion loops and enforce a strict recursion_limit safeguard.",
+  "skeleton": "Cyclic state graph runner with termination router and recursion limit guard.",
+  "rationale": {
+    "teaches": "A cyclic graph runner whose router returns END on completion or when the iteration count reaches max_iterations, with a recursion limit guard and a default of 5 iterations.",
+    "why": "A loop without a termination guard runs forever on a state that never completes. The fixture runs with is_complete never set and expects END after max_iterations and GraphRecursionLimitError past the limit."
+  },
+  "oracle": "fixtures/test_99_langgraph_cycle_recursion_control.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The iteration termination is dropped, so an incomplete state loops until the recursion guard fires.",
+      "caught_by": [
+        "test_route_next_step_returns_end_on_iteration_cap"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The iteration cap is checked against max_iterations plus 5, so the loop overruns its budget by five steps.",
+      "caught_by": [
+        "test_route_next_step_returns_end_on_iteration_cap"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Completion routes back to agent instead of END, so a finished task keeps running.",
+      "caught_by": [
+        "test_graph_normal_completion_terminates_at_end",
+        "test_route_next_step_returns_end_on_completion",
+        "test_uncompletable_task_terminates_at_max_iterations"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The recursion limit check is dropped, so a router that never returns END loops forever.",
+      "caught_by": [
+        "test_recursion_limit_raises_error"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "max_iterations defaults to 1000, so the default runner loops far past a reasonable budget.",
+      "caught_by": [
+        "test_default_max_iterations_bound"
+      ]
+    }
+  ],
+  "source_hashes": {
+    "gold/candidate.py": "e41b6c68c88b91a7720eeab47b85f43462abc5a9106ae14cac6be99d92d551bf",
+    "miss_1/candidate.py": "0b16938f79c94eced3879be5f1476952820d7a50fb19f3f5d8e081a70c4b5267",
+    "miss_2/candidate.py": "473117e281d9fdedb8376e5e1a83007b246b1cbf09ad34879cc913f31e0f239e",
+    "miss_3/candidate.py": "2b993a63c72fec0d584624f880adfee2f65fe7ff729161b23845a3425c5ab596",
+    "miss_4/candidate.py": "0e820cdf301b9c4091604ecf9a3d6385fbbac835ad3830a827d9eda937e96039",
+    "miss_5/candidate.py": "33a97f99b19688230bc558ad08800ff0aa3c8a6e81c2cbc080726ac7c9548cb6"
+  }
+}

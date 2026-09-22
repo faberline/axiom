@@ -1,0 +1,71 @@
+{
+  "family_id": "13-fastapi-complex-dependency-trees",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "complex-dependency-trees-and-generator-lifecycle",
+  "requirement": "Create a multi-tier SaaS dependency tree: get_api_key -> get_tenant_context -> get_scoped_repository with generator yield and finally: repo.close(), admin tenant override guard, and dependency caching.",
+  "skeleton": "FastAPI multi-tier dependency hierarchy with generator lifecycle management and role-based tenant routing.",
+  "rationale": {
+    "teaches": "A three-level dependency chain where the leaf is a generator with finally-close, an admin-only tenant override, and default dependency caching so one request builds one repository.",
+    "why": "Dependency trees are assembled from snippets that each look right in isolation. Whether the repo closes, whether a non-admin can hop tenants, and whether the cache is on can only be seen by exercising the whole chain, which the fixture does."
+  },
+  "oracle": "fixtures/test_13_fastapi_complex_dependency_trees.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The repository is yielded without a finally block, so a route that raises leaves it open.",
+      "caught_by": [
+        "test_scoped_repository_closed_in_finally_cleanup"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Any authenticated user can override the tenant, so a regular user reads another tenant's data.",
+      "caught_by": [
+        "test_non_admin_cannot_override_tenant_403"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The admin override is ignored and the home tenant is used, so the override header has no effect.",
+      "caught_by": [
+        "test_admin_override_sets_override_tenant"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The dependency returns the repository instead of yielding it, so close is never called at all.",
+      "caught_by": [
+        "test_get_scoped_repository_is_generator_dependency",
+        "test_scoped_repository_closed_in_finally_cleanup"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "use_cache=False rebuilds the repository for every parameter that depends on it, so one request opens multiple repositories.",
+      "caught_by": [
+        "test_dependency_caching_shares_repo_instance"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "family_id": "96-fastmcp-tool-schema-validator",
+  "domain": "python",
+  "area": "fastmcp",
+  "capability": "strict-tool-schema-generation-and-validation",
+  "requirement": "Implement a FastMCP tool schema validator that inspects Python function signatures and type hints, generates strict JSON Schemas with additionalProperties=False, maps types including arrays, and validates schema compliance.",
+  "skeleton": "FastMCPToolSchemaValidator with generate_schema_for_function and validate_schema methods.",
+  "rationale": {
+    "teaches": "A schema generator that emits type object with additionalProperties false in strict mode, resolves list item types, marks parameters without defaults as required, and defaults to strict.",
+    "why": "A schema missing additionalProperties false accepts every payload, and a bare array type accepts any items. The fixture validates a payload with an extra key and a wrongly typed list against the generated schema."
+  },
+  "oracle": "fixtures/test_96_fastmcp_tool_schema_validator.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "additionalProperties is never set, so a payload with unknown keys validates.",
+      "caught_by": [
+        "test_strict_schema_has_additional_properties_false"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "List parameters emit a bare array schema, so a list of the wrong item type validates.",
+      "caught_by": [
+        "test_array_parameter_includes_items_schema",
+        "test_strict_schema_has_additional_properties_false"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "strict_mode defaults to False, so the default generator accepts unknown keys.",
+      "caught_by": [
+        "test_default_strict_mode_is_true"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The required list is built only in strict mode by the wrong condition, so optional parameters are marked required and required ones are not.",
+      "caught_by": [
+        "test_strict_mode_requires_all_parameters",
+        "test_strict_schema_has_additional_properties_false"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The root type is dict instead of object, so the schema is invalid JSON Schema.",
+      "caught_by": [
+        "test_strict_schema_has_additional_properties_false",
+        "test_top_level_parameters_type_is_object"
+      ]
+    }
+  ]
+}

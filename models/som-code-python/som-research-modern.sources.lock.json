@@ -1,0 +1,12 @@
+{
+  "model": {
+    "repo": "mlx-community/Qwen3.5-4B-4bit",
+    "revision": "0e7ffd5c629ef7719d4cbc04069232580bfa9d9c"
+  },
+  "upstream": {
+    "repo": "Qwen/Qwen3.5-4B",
+    "reference_revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+    "license": "Apache-2.0",
+    "note": "Upstream reference for attribution; the exact original revision used by the community conversion is not claimed."
+  }
+}

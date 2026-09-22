@@ -1,0 +1,72 @@
+{
+  "family_id": "35-syntax-metaclass-mro",
+  "domain": "python",
+  "area": "syntax",
+  "capability": "metaclass-mro",
+  "requirement": "Implement ComponentMeta metaclass registration and cooperative multiple inheritance process chain using super() across mixins and BaseComponent.",
+  "skeleton": "ComponentMeta metaclass, BaseComponent class, LoggingMixin, ValidationMixin, and ComponentManager class.",
+  "rationale": {
+    "teaches": "A registering metaclass that validates component_name, a cooperative process chain through super() across mixins, an inclusive priority range of 0 to 100, and a lookup that raises only when the class is missing.",
+    "why": "Calling the base class directly instead of super() skips the sibling mixin silently; the return value is still a dict. The fixture inspects the order of mixin side effects, which only the MRO chain produces."
+  },
+  "oracle": "fixtures/test_35_syntax_metaclass_mro.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "process calls BaseComponent directly instead of super(), so the mixins after it in the MRO never run.",
+      "caught_by": [
+        "test_cooperative_multiple_inheritance_mro"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A class with no component_name registers anyway, so the registry contains an unnamed entry.",
+      "caught_by": [
+        "test_metaclass_component_name_validation"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "priority 100 is rejected even though the range is inclusive.",
+      "caught_by": [
+        "test_priority_boundary_hundred_allowed"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The lookup condition is inverted, so a found class raises and a missing one is returned as None.",
+      "caught_by": [
+        "test_clear_resets_registry_and_history",
+        "test_cooperative_multiple_inheritance_mro",
+        "test_execute_component_success"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "clear leaves the processing history intact.",
+      "caught_by": [
+        "test_clear_resets_registry_and_history"
+      ]
+    }
+  ]
+}

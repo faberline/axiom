@@ -1,0 +1,71 @@
+{
+  "family_id": "20-sqlalchemy-bulk-operations",
+  "domain": "python",
+  "area": "sqlalchemy",
+  "capability": "bulk-operations",
+  "requirement": "FastAPI POST /telemetry/bulk endpoint inserting batches of readings using SQLAlchemy 2.0 multi-row insert with .returning() in strictly 1 INSERT statement per 50-row batch, committing generated IDs.",
+  "skeleton": "FastAPI POST /telemetry/bulk with SQLAlchemy bulk multi-row insert and returning.",
+  "rationale": {
+    "teaches": "A SQLAlchemy 2.0 multi-row insert with returning: one INSERT per batch, a commit, a rejected empty payload, every row included, and the generated ids echoed back.",
+    "why": "A per-row loop returns the same ids as a bulk insert, so only a statement count separates them. The family makes the statement count and the id echo part of the contract a generator must meet."
+  },
+  "oracle": "fixtures/test_20_sqlalchemy_bulk_operations.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Each reading is inserted with its own statement, so a 50-row batch issues 50 INSERTs instead of one.",
+      "caught_by": [
+        "test_bulk_insert_strictly_one_statement"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The batch is flushed but never committed, so the rows disappear when the session closes.",
+      "caught_by": [
+        "test_bulk_insert_persists_to_database"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "An empty readings list is accepted and answered 200 instead of rejected with 400.",
+      "caught_by": [
+        "test_bulk_insert_rejects_empty_payload"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The last reading in every batch is sliced off before insert, so each batch persists one row short.",
+      "caught_by": [
+        "test_bulk_insert_persists_to_database",
+        "test_bulk_insert_returns_all_ids"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "returning is dropped, so the response reports a count but an empty ids list.",
+      "caught_by": [
+        "test_bulk_insert_returns_all_ids"
+      ]
+    }
+  ]
+}

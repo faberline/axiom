@@ -1,0 +1,74 @@
+{
+  "family_id": "85-mock-patch-leak-pollution",
+  "domain": "python",
+  "area": "unittest.mock",
+  "capability": "mock-patch-cleanup-and-restoration",
+  "requirement": "Implement a test isolation runner (run_with_patched_clock) that patches target module attributes for the duration of a test and guarantees 100% restoration of the original target object even when the test raises an exception.",
+  "skeleton": "RemoteClockService with staticmethod get_timestamp(), run_with_patched_clock helper, and verify_clock_unpolluted verification.",
+  "rationale": {
+    "teaches": "A patch helper that starts a patcher with the requested value and stops it in a finally block, so the original attribute is restored even when the test raises.",
+    "why": "A patch that is never stopped pollutes every later test but passes its own. The fixture runs a raising test and then checks the class attribute is the original."
+  },
+  "oracle": "fixtures/test_85_mock_patch_leak_pollution.py",
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The patcher is never stopped, so the patched timestamp leaks into every later test.",
+      "caught_by": [
+        "test_failing_test_restores_original_target",
+        "test_successful_run_restores_original_target"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "stop runs after the test without finally, so a raising test leaves the patch active.",
+      "caught_by": [
+        "test_failing_test_restores_original_target"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "finally is replaced by except and re-raise, so a passing test leaves the patch active.",
+      "caught_by": [
+        "test_failing_test_restores_original_target",
+        "test_successful_run_restores_original_target"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "start is called where stop should be, so the patch is applied twice and never removed.",
+      "caught_by": [
+        "test_failing_test_restores_original_target",
+        "test_successful_run_restores_original_target"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The patched return value is hardcoded to 1000, so the requested target_time is ignored.",
+      "caught_by": [
+        "test_failing_test_restores_original_target",
+        "test_successful_run_restores_original_target"
+      ]
+    }
+  ]
+}

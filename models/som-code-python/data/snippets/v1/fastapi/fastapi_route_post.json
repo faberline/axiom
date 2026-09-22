@@ -1,0 +1,8 @@
+{
+  "id": "fastapi_route_post",
+  "description": "Declares an asynchronous HTTP POST handler with payload validation, HTTP 201 Created status code, and response serialization.",
+  "imports": [
+    "from fastapi import status"
+  ],
+  "template": "@{{router_name}}.post(\"{{path}}\", response_model={{response_model}}, status_code=status.HTTP_201_CREATED)\nasync def {{handler_name}}(payload: {{request_model}}):\n    \"\"\"{{docstring}}\"\"\"\n    return payload"
+}

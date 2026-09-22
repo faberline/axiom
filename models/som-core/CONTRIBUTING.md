@@ -8,9 +8,10 @@ How to change `models/som-core`. What it promises lives in
 in the root [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 The project is a Python package under `src/som_core/` with the `som` entry
-point declared in `pyproject.toml`. Create the environment with `uv sync` run
-inside `models/som-core`; every command below runs from the repository root
-against that environment. The training loop needs Apple MLX, so the gates run
+point declared in `pyproject.toml`, with its tests under `tests/`. Create
+the environment with `uv sync` run inside `models/som-core`, which also
+installs the `dev` group that carries pytest; every command below runs from
+the repository root against that environment. The training loop needs Apple MLX, so the gates run
 on macOS with Apple silicon only.
 
 There is no `aw` phase ladder for `models/` yet, so a change here is verified
@@ -22,6 +23,7 @@ to what they observe. `runs/` is local output and never committed.
 | Gate | Command |
 |---|---|
 | CLI surface | `models/som-core/.venv/bin/som --help` |
+| Corpus loader | `models/som-core/.venv/bin/python -m pytest models/som-core/tests -q` |
 | MLX device | `models/som-core/.venv/bin/som verify` |
 | Smoke training run | `models/som-core/.venv/bin/som train --smoke --data-dir models/som-code-python/data/python-v2 --output-dir models/som-core/runs/smoke` |
 | Product document contract | `uv run --python 3.13 --no-project scripts/meta/project_docs_contract.py check models/som-core --format json` |
