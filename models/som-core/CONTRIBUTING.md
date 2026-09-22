@@ -1,0 +1,31 @@
+# Contributing to SOM core
+
+## Brief
+
+How to change `models/som-core`. What it promises lives in
+[README.md](README.md); the per-surface support state is in
+[STATUS.md](STATUS.md); repository-wide authoring and verification rules live
+in the root [CONTRIBUTING.md](../../CONTRIBUTING.md).
+
+The project is a Python package under `src/som_core/` with the `som` entry
+point declared in `pyproject.toml`. Create the environment with `uv sync` run
+inside `models/som-core`; every command below runs from the repository root
+against that environment. The training loop needs Apple MLX, so the gates run
+on macOS with Apple silicon only.
+
+There is no `aw` phase ladder for `models/` yet, so a change here is verified
+by hand: run the gates below before and after, and keep the STATUS matrix true
+to what they observe. `runs/` is local output and never committed.
+
+## Verification
+
+| Gate | Command |
+|---|---|
+| CLI surface | `models/som-core/.venv/bin/som --help` |
+| MLX device | `models/som-core/.venv/bin/som verify` |
+| Smoke training run | `models/som-core/.venv/bin/som train --smoke --data-dir models/som-code-python/data/python-v2 --output-dir models/som-core/runs/smoke` |
+| Product document contract | `uv run --python 3.13 --no-project scripts/meta/project_docs_contract.py check models/som-core --format json` |
+| META-doc contract | `uv run --project apps/aw aw metadoc check models/som-core` |
+
+Run the two document checks after editing `README.md`, `STATUS.md`,
+`ROADMAP.md`, or anything under `docs/product/`.
