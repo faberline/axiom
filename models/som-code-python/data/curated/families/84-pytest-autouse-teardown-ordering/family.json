@@ -6,6 +6,17 @@
   "requirement": "Implement a layered test environment manager managing three interdependent resources (LockManager -> DatabaseSession -> AuditRecorder) guaranteeing exact LIFO teardown under normal and exception conditions.",
   "skeleton": "ResourceLifecycleTracker class and layered_test_environment context manager with strict LIFO nesting.",
   "caption": "A standard-library layered test environment that sets up three dependent resources and always tears them down in exact reverse order, with no third-party imports. ResourceLifecycleTracker takes an optional event list and otherwise creates a fresh list for each instance, so trackers never share history. record appends an event string, and is_clean extracts the resource names from setup and teardown events and returns True only when there are exactly three setups and the setups equal the teardowns reversed. layered_test_environment is a contextlib context manager that records setup of the lock manager, then enters a try block to record setup of the database session, then a nested try to record setup of the audit recorder, then a third nested try that yields the tracker. Each try has its own finally clause, recording teardown of the audit recorder, then the database session, then the lock manager, so the order is last-in first-out and every teardown runs even when the body raises or an inner teardown fails. The fixture asserts that a normal run produces the six events setup lock_manager, db_session, audit_recorder followed by teardown audit_recorder, db_session, lock_manager and is clean, that a ZeroDivisionError raised inside the block propagates while the three teardowns still appear in that reverse order and the tracker is clean, and that a second tracker created afterwards starts with no events.",
+  "plan": {
+    "intent": "Set up dependent test resources and tear them down in reverse order",
+    "target": "layered_test_environment",
+    "constraints": [
+      "Resources are set up in the order lock manager, database session, audit recorder",
+      "Each resource has its own nested finally, so teardown is last-in first-out",
+      "Every teardown runs even when the body raises",
+      "Each tracker gets its own fresh event list",
+      "The tracker is clean only with three setups matching the reversed teardowns"
+    ]
+  },
   "rationale": {
     "teaches": "Three nested try/finally blocks so teardown always runs in exact reverse setup order, even when the test body raises, with a per-instance event list.",
     "why": "Teardown ordering passes on the happy path with plain sequential code; only an exception inside the body exposes skipped or misordered teardown. The fixture raises inside the context and compares the event list."
@@ -33,7 +44,65 @@
     ],
     "imports": [],
     "raises": [],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "ResourceLifecycleTracker",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "layered_test_environment",
+              "kind": "function",
+              "depends_on": [
+                "ResourceLifecycleTracker"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Record nested test-resource setup and verify teardown runs in reverse."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Iterator",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from contextlib import contextmanager",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ResourceLifecycleTracker",
+        "source": "class ResourceLifecycleTracker:\n    \"\"\"Ordered log of setup and teardown events.\"\"\"\n\n    def __init__(self, events: list[str] | None = None) -> None:\n        self.events: list[str] = [] if events is None else events\n\n    def record(self, event: str) -> None:\n        \"\"\"Append event to the log.\"\"\"\n        self.events.append(event)\n\n    def is_clean(self) -> bool:\n        \"\"\"Whether three resources were set up and torn down in reverse order.\"\"\"\n        setups = [e.split(\":\")[1] for e in self.events if e.startswith(\"setup:\")]\n        teardowns = [e.split(\":\")[1] for e in self.events if e.startswith(\"teardown:\")]\n        return len(setups) == 3 and setups == list(reversed(teardowns))",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "layered_test_environment",
+        "source": "@contextmanager\ndef layered_test_environment(\n    tracker: ResourceLifecycleTracker,\n) -> Iterator[ResourceLifecycleTracker]:\n    \"\"\"Set up three nested resources and tear them down innermost first.\"\"\"\n    tracker.record(\"setup:lock_manager\")\n    try:\n        tracker.record(\"setup:db_session\")\n        try:\n            tracker.record(\"setup:audit_recorder\")\n            try:\n                yield tracker\n            finally:\n                tracker.record(\"teardown:audit_recorder\")\n        finally:\n            tracker.record(\"teardown:db_session\")\n    finally:\n        tracker.record(\"teardown:lock_manager\")",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
   },
   "candidates": [
     {

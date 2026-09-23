@@ -6,6 +6,17 @@
   "requirement": "Extend PyYAML safely with custom tags using an isolated SafeLoader subclass, preventing global state pollution and handling missing environment variables.",
   "skeleton": "SafeAppConfigLoader subclass, ApplicationConfigParser class, create_secure_yaml_loader and load_custom_config helpers.",
   "caption": "A PyYAML configuration loader that adds an environment-variable tag without changing the process-wide parser. ConfigParseError subclasses Exception. SafeAppConfigLoader is an empty subclass of yaml.SafeLoader, and the constructor for the !env tag is registered on that subclass alone, so the global SafeLoader never learns the tag. The constructor raises ConfigParseError when the tagged node is not a scalar, then reads it, splits an optional default after the first colon, and raises ConfigParseError when the variable name is empty. It returns the environment value when the variable is set, otherwise the default when one was written, and otherwise raises ConfigParseError naming the variable that is not set and has no default. create_secure_yaml_loader returns the subclass. ApplicationConfigParser.parse_config raises TypeError when the content is not a string and ConfigParseError when it is empty, loads the text with the isolated safe subclass so object-constructing tags are still refused, wraps any yaml.YAMLError or tag failure into ConfigParseError chained from the original, and raises ConfigParseError when the root is not a mapping. load_custom_config delegates to a fresh parser. The fixture asserts that host and port are interpolated from the environment, that the returned loader class is a SafeLoader subclass, that arbitrary object tags are rejected, that the global SafeLoader has no !env constructor afterwards, that the fallback 60 is used for a missing variable, that UNDEFINED_SECRET_KEY without a default is reported, that an empty name is refused, and that a scalar root is rejected.",
+  "plan": {
+    "intent": "Interpolate environment variables in YAML without altering the global loader",
+    "target": "SafeAppConfigLoader",
+    "constraints": [
+      "The env tag constructor is registered on a SafeLoader subclass only",
+      "An unset variable uses the default written after a colon",
+      "An unset variable without a default, an empty name, or a non-scalar node raises ConfigParseError",
+      "Non-string content raises TypeError, and empty content or a non-mapping root raises ConfigParseError",
+      "Object-constructing tags stay rejected"
+    ]
+  },
   "rationale": {
     "teaches": "Extending YAML with a custom tag on an isolated SafeLoader subclass, so the global SafeLoader stays untouched, with a defined env-var default and a mapping root check.",
     "why": "Registering the constructor on yaml.SafeLoader itself works in the same process and silently changes every other caller's parser. The fixture asserts the global loader does not know the tag afterward."
@@ -65,7 +76,141 @@
       "ConfigParseError",
       "TypeError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "ConfigParseError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "SafeAppConfigLoader",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "_env_constructor",
+              "kind": "function",
+              "depends_on": [
+                "ConfigParseError"
+              ]
+            },
+            {
+              "name": "SafeAppConfigLoader.add_constructor",
+              "kind": "statement",
+              "depends_on": [
+                "SafeAppConfigLoader",
+                "_env_constructor"
+              ]
+            },
+            {
+              "name": "create_secure_yaml_loader",
+              "kind": "function",
+              "depends_on": [
+                "SafeAppConfigLoader"
+              ]
+            },
+            {
+              "name": "ApplicationConfigParser",
+              "kind": "class",
+              "depends_on": [
+                "ConfigParseError",
+                "SafeAppConfigLoader"
+              ]
+            },
+            {
+              "name": "load_custom_config",
+              "kind": "function",
+              "depends_on": [
+                "ApplicationConfigParser"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Resolve !env tags through a private SafeLoader subclass, never the global one."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import os",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import yaml",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ConfigParseError",
+        "source": "class ConfigParseError(Exception):\n    \"\"\"Raised when a configuration or one of its !env tags cannot be resolved.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SafeAppConfigLoader",
+        "source": "# The ancestor count is PyYAML's own Reader/Scanner/Parser/Composer hierarchy.\nclass SafeAppConfigLoader(yaml.SafeLoader):  # pylint: disable=too-many-ancestors\n    \"\"\"Isolated SafeLoader subclass to avoid mutating global yaml.SafeLoader.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_env_constructor",
+        "source": "def _env_constructor(loader: yaml.SafeLoader, node: yaml.Node) -> str:\n    if not isinstance(node, yaml.ScalarNode):\n        raise ConfigParseError(\"!env tag requires a string value\")\n    scalar_val = loader.construct_scalar(node)\n\n    if \":\" in scalar_val:\n        var_name, default_val = scalar_val.split(\":\", 1)\n    else:\n        var_name, default_val = scalar_val, None\n\n    if len(var_name) <= 0:\n        raise ConfigParseError(\"Variable name cannot be empty\")\n\n    val = os.environ.get(var_name)\n    if val is not None:\n        return val\n    if default_val is not None:\n        return default_val\n    raise ConfigParseError(\n        f\"Required environment variable '{var_name}' is not set and has no default\"\n    )",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SafeAppConfigLoader.add_constructor",
+        "source": "SafeAppConfigLoader.add_constructor(\"!env\", _env_constructor)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "create_secure_yaml_loader",
+        "source": "def create_secure_yaml_loader() -> type[yaml.SafeLoader]:\n    \"\"\"Return the loader class that understands the !env tag.\"\"\"\n    return SafeAppConfigLoader",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ApplicationConfigParser",
+        "source": "class ApplicationConfigParser:\n    \"\"\"Parse application configuration with the !env-aware safe loader.\"\"\"\n\n    def parse_config(self, yaml_content: str) -> dict[str, Any]:\n        \"\"\"Return the configuration mapping, wrapping every parse failure.\"\"\"\n        if not isinstance(yaml_content, str):\n            raise TypeError(\"yaml_content must be a string\")\n        if not yaml_content.strip():\n            raise ConfigParseError(\"yaml_content must not be empty\")\n        try:\n            data = yaml.load(yaml_content, Loader=SafeAppConfigLoader)\n        except (yaml.YAMLError, ConfigParseError) as exc:\n            raise ConfigParseError(f\"Failed to parse configuration: {exc}\") from exc\n\n        if not isinstance(data, dict):\n            raise ConfigParseError(\"Configuration root must be a mapping/dictionary\")\n        return data",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "load_custom_config",
+        "source": "def load_custom_config(yaml_text: str) -> dict[str, Any]:\n    \"\"\"Parse yaml_text with a fresh ApplicationConfigParser.\"\"\"\n    return ApplicationConfigParser().parse_config(yaml_text)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 7
+    }
   },
   "candidates": [
     {

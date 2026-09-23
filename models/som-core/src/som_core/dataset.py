@@ -1,8 +1,9 @@
-"""Dataset parser for Structured Outcome Models (SOM).
+"""Corpus loader for the Snippet-Oriented Model (SOM).
 
 Parses oracle-family corpora (``families/<family>/family.json`` plus one
-candidate file per entry) and compiled JSONL records for MLX training and
-evaluation.
+candidate file per entry) into rows the layer models train on. A row is not
+a multiple-choice question: the gold candidate is what the layers learn to
+rebuild, and the near misses ride along as negative examples.
 
 Rules this module owns:
 
@@ -32,12 +33,13 @@ Rules this module owns:
   ``why_wrong`` and ``caught_by``, ride on :class:`CandidateRecord` unchanged
   and reach the training row through :meth:`CandidateRecord.to_dict`; a gold
   candidate carries neither. The engine never rewrites them.
-- Family-level curation (``rationale``, ``oracle``, ``caption``,
+- Family-level curation (``rationale``, ``oracle``, ``caption``, ``plan``,
   ``decompiled``) reaches the row through ``metadata`` with every other
   ``family.json`` key that is not a candidate, the requirement, or the
-  skeleton. ``caption`` is the planner's long-form prompt and
-  ``decompiled.surface`` its component list; the corpus project measures
-  and checks both, and the engine passes them through untouched.
+  skeleton. ``caption`` is the planner's prompt, ``plan`` the L1 record, and
+  ``decompiled.topology`` / ``decompiled.ops`` the L2 and L3 records (see
+  ``docs/reference/layer-records.md``); the corpus project authors or
+  measures and checks them, and the engine passes them through untouched.
 """
 
 from __future__ import annotations
@@ -104,30 +106,18 @@ class ScenarioFamily:
     skeleton: str
     candidates: list[CandidateRecord]
     gold_candidate_id: str = "gold"
-    state: str = ""
-    question: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
 
-    def __post_init__(self) -> None:
-        if not self.state:
-            self.state = (
-                f"Domain: {self.domain} | Area: {self.area} | Capability: {self.capability}\n"
-                f"Requirement: {self.requirement}\n"
-                f"Fixed executable skeleton:\n{self.skeleton}"
-            )
-        if not self.question:
-            self.question = "Which candidate implementation correctly satisfies all specifications without defects?"
-
-    def to_decision_dict(self) -> dict[str, Any]:
-        """Convert to dictionary matching SOM training and DecisionRequest schema."""
+    def to_row(self) -> dict[str, Any]:
+        """The training row: family identity, the requirement, candidates, and curation."""
         return {
             "id": f"som:{self.domain}:{self.family_id}",
             "family": self.family_id,
             "domain": self.domain,
             "area": self.area,
             "capability": self.capability,
-            "state": self.state,
-            "question": self.question,
+            "requirement": self.requirement,
+            "skeleton": self.skeleton,
             "candidates": [c.to_dict() for c in self.candidates],
             "gold_candidate_id": self.gold_candidate_id,
             "metadata": {
@@ -289,53 +279,6 @@ def load_families(families_dir: Path | str) -> list[ScenarioFamily]:
     return scenarios
 
 
-def load_jsonl_dataset(jsonl_path: Path | str) -> list[dict[str, Any]]:
-    """Parse rows from a JSONL dataset file.
-
-    Parameters
-    ----------
-    jsonl_path : Path | str
-        Path to .jsonl file.
-
-    Returns
-    -------
-    list[dict[str, Any]]
-        List of parsed example dictionaries.
-    """
-    path = Path(jsonl_path).resolve()
-    if not path.is_file():
-        raise FileNotFoundError(f"JSONL file does not exist: {path}")
-
-    rows: list[dict[str, Any]] = []
-    with path.open("r", encoding="utf-8") as f:
-        for idx, line in enumerate(f, start=1):
-            line = line.strip()
-            if not line:
-                continue
-            row = json.loads(line)
-            if "candidates" not in row or "gold_candidate_id" not in row:
-                raise ValueError(f"Line {idx} in {path} is missing required SOM keys ('candidates', 'gold_candidate_id')")
-            rows.append(row)
-
-    return rows
-
-
-def export_dataset_to_jsonl(
-    dataset: list[ScenarioFamily] | list[dict[str, Any]],
-    output_path: Path | str,
-) -> Path:
-    """Export a dataset (either ScenarioFamily objects or dicts) to JSONL format."""
-    path = Path(output_path).resolve()
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-    with path.open("w", encoding="utf-8") as f:
-        for item in dataset:
-            row = item.to_decision_dict() if isinstance(item, ScenarioFamily) else item
-            f.write(json.dumps(row, ensure_ascii=False) + "\n")
-
-    return path
-
-
 def find_default_corpora(search_root: Path | str | None = None) -> list[Path]:
     """Locate som-code-python's corpora: ``data/curated``, then ``data/user``.
 
@@ -375,24 +318,19 @@ def load_corpus(
     data_dir: Path | str,
     as_dicts: bool = True,
 ) -> list[dict[str, Any]] | list[ScenarioFamily]:
-    """Load one corpus: a ``.jsonl`` file, or a directory whose ``families/`` holds the families."""
+    """Load one corpus: a directory whose ``families/`` holds the families."""
     base_path = Path(data_dir).resolve()
-
-    if base_path.is_file() and base_path.suffix == ".jsonl":
-        return load_jsonl_dataset(base_path)
 
     families_dir = base_path / FAMILIES
     scenarios = load_families(families_dir if families_dir.is_dir() else base_path)
     if as_dicts:
-        return [s.to_decision_dict() for s in scenarios]
+        return [s.to_row() for s in scenarios]
     return scenarios
 
 
 def corpus_layer(corpus: Path | str) -> str:
-    """``"user"`` for a corpus directory (or a ``.jsonl`` inside one) named ``user``, else ``"curated"``."""
-    path = Path(corpus)
-    name = path.parent.name if path.suffix == ".jsonl" else path.name
-    return USER if name == USER else CURATED
+    """``"user"`` for a corpus directory named ``user``, else ``"curated"``."""
+    return USER if Path(corpus).name == USER else CURATED
 
 
 def load_corpora(
@@ -420,7 +358,7 @@ def load_corpora(
             raise ValueError(f"Corpus yields no family: {corpus}")
         layer = corpus_layer(corpus)
         for item in loaded:
-            row = item if as_dicts else item.to_decision_dict()
+            row = item if as_dicts else item.to_row()
             row_id = row["id"]
             if row_id in seen:
                 raise ValueError(
@@ -453,7 +391,7 @@ def load_corpora(
     if overridden:
         rows = [
             r for r in rows
-            if (r["id"] if as_dicts else r.to_decision_dict()["id"]) not in overridden
+            if (r["id"] if as_dicts else r.to_row()["id"]) not in overridden
         ]
     return rows
 

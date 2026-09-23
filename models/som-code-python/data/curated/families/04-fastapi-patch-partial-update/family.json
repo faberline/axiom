@@ -6,6 +6,17 @@
   "requirement": "PATCH /items/{item_id} endpoint supporting partial updates with exclude_unset=True, preserving existing database fields when omitted in the request and properly updating nullable fields when explicit null is sent.",
   "skeleton": "FastAPI PATCH route with Pydantic ItemUpdate and SQLAlchemy session.",
   "caption": "A FastAPI item service with create, read, and partial-update routes over SQLAlchemy and in-memory SQLite. The module builds a StaticPool engine, a sessionmaker, a DeclarativeBase, and an Item table with integer id, non-null name, nullable description, and non-null float price; reset_db drops and recreates the schema, and get_db yields one session per request and closes it in finally. Three pydantic models frame the API: ItemCreate with required name and price and optional description, ItemUpdate in which name, description, and price all default to None, and ItemResponse exposing id, name, description, and price from ORM attributes. POST /items answers 201 after adding, committing, and refreshing a new row. GET /items/{item_id} loads by primary key with db.get and raises HTTPException 404 when the row is missing. PATCH /items/{item_id} loads the row the same way and raises the same 404 on absence; then it calls model_dump with exclude_unset=True, so only the fields the client actually included in the body are present in the update mapping. Each present key is applied with setattr, which means a field omitted from the request keeps its stored value while an explicit null for description is applied and clears the column. The session commits and refreshes, so a subsequent GET through a different session observes the updated values.",
+  "plan": {
+    "intent": "Update only the item fields a client sends",
+    "target": "Item",
+    "constraints": [
+      "POST /items creates an item and answers 201",
+      "GET and PATCH on /items/{item_id} raise HTTPException 404 for a missing row",
+      "Fields omitted from the PATCH body keep their stored values",
+      "An explicit null for description clears it",
+      "The update is committed and visible to a later read"
+    ]
+  },
   "rationale": {
     "teaches": "PATCH semantics with exclude_unset: omitted fields stay untouched, an explicit null clears a nullable column, the change is committed, and an unknown id is a 404.",
     "why": "The three model_dump variants differ by one keyword and produce three different behaviors that only a database round trip separates. The generator has to know which keyword encodes which semantics."
@@ -115,7 +126,260 @@
     "status_codes": [
       201,
       404
-    ]
+    ],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "engine",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "session_factory",
+              "kind": "constant",
+              "depends_on": [
+                "engine"
+              ]
+            },
+            {
+              "name": "Base",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Item",
+              "kind": "class",
+              "depends_on": [
+                "Base"
+              ]
+            },
+            {
+              "name": "Base.metadata.create_all",
+              "kind": "statement",
+              "depends_on": [
+                "Base",
+                "engine"
+              ]
+            },
+            {
+              "name": "reset_db",
+              "kind": "function",
+              "depends_on": [
+                "Base",
+                "engine"
+              ]
+            },
+            {
+              "name": "get_db",
+              "kind": "function",
+              "depends_on": [
+                "session_factory"
+              ]
+            },
+            {
+              "name": "ItemCreate",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "ItemUpdate",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "ItemResponse",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "create_item",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "ItemResponse",
+                "ItemCreate",
+                "get_db",
+                "Item"
+              ]
+            },
+            {
+              "name": "get_item",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "ItemResponse",
+                "get_db",
+                "Item"
+              ]
+            },
+            {
+              "name": "patch_item",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "ItemResponse",
+                "ItemUpdate",
+                "get_db",
+                "Item"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Item service whose PATCH route changes only the fields a client sends."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Generator",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import Depends, FastAPI, HTTPException",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel, ConfigDict",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy import create_engine",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.pool import StaticPool",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "engine",
+        "source": "engine = create_engine(\n    \"sqlite:///:memory:\",\n    connect_args={\"check_same_thread\": False},\n    poolclass=StaticPool,\n)",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "session_factory",
+        "source": "session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Base",
+        "source": "class Base(DeclarativeBase):\n    \"\"\"Declarative base shared by every table in this module.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Item",
+        "source": "class Item(Base):\n    \"\"\"A persisted catalog item.\"\"\"\n\n    __tablename__ = \"items\"\n\n    id: Mapped[int] = mapped_column(primary_key=True, index=True)\n    name: Mapped[str] = mapped_column(nullable=False)\n    description: Mapped[str | None] = mapped_column(nullable=True)\n    price: Mapped[float] = mapped_column(nullable=False)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Base.metadata.create_all",
+        "source": "Base.metadata.create_all(bind=engine)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db",
+        "source": "def reset_db() -> None:\n    \"\"\"Drop and recreate every table.\"\"\"\n    Base.metadata.drop_all(bind=engine)\n    Base.metadata.create_all(bind=engine)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_db",
+        "source": "def get_db() -> Generator[Session, None, None]:\n    \"\"\"Yield one database session per request and close it afterwards.\"\"\"\n    db = session_factory()\n    try:\n        yield db\n    finally:\n        db.close()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ItemCreate",
+        "source": "class ItemCreate(BaseModel):\n    \"\"\"Payload accepted when creating an item.\"\"\"\n\n    name: str\n    description: str | None = None\n    price: float",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ItemUpdate",
+        "source": "class ItemUpdate(BaseModel):\n    \"\"\"Partial payload: every field is optional and only sent fields apply.\"\"\"\n\n    name: str | None = None\n    description: str | None = None\n    price: float | None = None",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ItemResponse",
+        "source": "class ItemResponse(BaseModel):\n    \"\"\"Item representation returned to clients.\"\"\"\n\n    id: int\n    name: str\n    description: str | None\n    price: float\n\n    model_config = ConfigDict(from_attributes=True)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "app",
+        "source": "app = FastAPI()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "create_item",
+        "source": "@app.post(\"/items\", status_code=201, response_model=ItemResponse)\ndef create_item(payload: ItemCreate, db: Session = Depends(get_db)) -> Item:\n    \"\"\"Persist a new item and return it.\"\"\"\n    item = Item(\n        name=payload.name,\n        description=payload.description,\n        price=payload.price,\n    )\n    db.add(item)\n    db.commit()\n    db.refresh(item)\n    return item",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_item",
+        "source": "@app.get(\"/items/{item_id}\", response_model=ItemResponse)\ndef get_item(item_id: int, db: Session = Depends(get_db)) -> Item:\n    \"\"\"Return one item by id, or 404 when it does not exist.\"\"\"\n    item = db.get(Item, item_id)\n    if not item:\n        raise HTTPException(status_code=404, detail=\"Item not found\")\n    return item",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "patch_item",
+        "source": "@app.patch(\"/items/{item_id}\", response_model=ItemResponse)\ndef patch_item(\n    item_id: int, payload: ItemUpdate, db: Session = Depends(get_db)\n) -> Item:\n    \"\"\"Apply the fields the client sent to an existing item.\"\"\"\n    item = db.get(Item, item_id)\n    if not item:\n        raise HTTPException(status_code=404, detail=\"Item not found\")\n\n    update_data = payload.model_dump(exclude_unset=True)\n    for key, value in update_data.items():\n        setattr(item, key, value)\n\n    db.commit()\n    db.refresh(item)\n    return item",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 14
+    }
   },
   "candidates": [
     {

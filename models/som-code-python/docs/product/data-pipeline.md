@@ -1,7 +1,8 @@
 # Data pipeline
 
 What turns families into training records and keeps the project runnable:
-the test suite, the decompiler that emits the layer records, and packaging.
+the test suite, packaging, and the decompiled layer records with the round
+trip that proves them.
 
 ## Project test suite
 
@@ -28,31 +29,30 @@ the test suite, the decompiler that emits the layer records, and packaging.
   through the same entry.
 - Status rows: `uv-runnable-packaging`.
 
-## Decompiler DSL corpus
+## Decompiled layer records
 
-- Problem: A family is a gold program and five near misses. Each
-  `family.json` now carries a `caption` (the planner's prompt) and a
-  `decompiled.surface` measured from the gold AST (the component list), but
-  nothing records which files and blocks and which snippet operations
-  produced the gold, so the engine's topology and optimizer layers have no
-  rows to learn from.
-- Who: model trainers; generator authors.
-- Promise: A decompiler turns every family into its L1 intent, L2 component
-  topology, and L3 operation sequence records, distinguishes gold from near
-  miss with the failure mode, and reassembles the multi-file TODO fixture
-  from its records with no AST loss.
-- Non-goals: the engine's loader; a decompiler for another language.
-- Open: the test module and its TODO fixture sit at the repository root under
-  `tests/data_pipeline/` and `tests/fixtures/multi_file_todo/`, beside
-  `ORIGINAL_REQUEST.md`, the `extract_*payload*.py` scripts, `chunk`, and
-  `scripts/generator/`; which of these move into this project and which are
-  deleted is a release-plan decision, as is whether the records are one JSON
-  document per family or one JSONL line per layer, since the engine's loader
-  outcome consumes whichever is chosen.
-- Neighbours: [Project test suite](#project-test-suite) and [uv-runnable
-  packaging](#uv-runnable-packaging) above, which the moved tests join; the
-  corpus area, whose families are the input.
-- Outcome: `decompiler-dsl-corpus`. Tracking: Not assigned.
+- Problem: none open as shipped; the snippet share is limited, see below.
+- Who: model trainers, whose SFT pairs are caption to plan, plan to
+  topology, and topology to operation list; generator authors, who need to
+  know how much of each gold the ISA expresses.
+- Promise: Every family carries an authored L1 plan and the L2 topology, L3
+  operation list, and snippet coverage measured from its gold, and `som
+  assemble` rebuilds every gold, and the multi-file TODO fixture, from those
+  records to the same AST, with the family's fixture passing on the rebuilt
+  file. `scripts/decompile_gold.py --write` measures the records and the
+  curation check refuses drift, a plan whose constraints omit a raised
+  exception or declared status code, and a topology over the engine's scope
+  limit.
+- Limits today: the ISA expresses few blocks exactly, so most blocks are
+  `INSERT_BLOCK` literals; `decompiled.coverage` reports the share per
+  family, and ROADMAP `snippet-isa-v2` raises it.
+- Non-goals: decompiling near misses, which belongs to the engine's
+  preference-data outcome; a decompiler for another language.
+- Neighbours: [Project test suite](#project-test-suite) above, which holds
+  the multi-file TODO fixture; the corpus area, whose families are the
+  input; the engine's docs/reference/layer-records.md, which fixes the
+  schema.
+- Status rows: `decompiled-layer-records`.
 
 ## Non-goals in this area
 

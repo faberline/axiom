@@ -6,6 +6,17 @@
   "requirement": "Implement build_retry_strategy and create_retry_session configuring urllib3.util.Retry with exponential backoff on HTTPAdapter. It must configure total retries >= 0, backoff_factor >= 0.0, status_forcelist (429, 500, 502, 503, 504), restrict allowed_methods to safe/idempotent methods excluding POST by default, set raise_on_status=False, and mount the adapter to http:// and https://.",
   "skeleton": "build_retry_strategy helper returning urllib3.util.Retry and create_retry_session factory mounting retry-enabled HTTPAdapter.",
   "caption": "A requests session factory that retries transient failures through urllib3's Retry policy. DEFAULT_STATUS_FORCELIST names the status codes 429, 500, 502, 503, and 504, and SAFE_METHODS is a frozenset of HEAD, GET, PUT, DELETE, OPTIONS, and TRACE, deliberately leaving POST out because a non-idempotent request must not be replayed. build_retry_strategy takes total defaulting to 3, backoff_factor defaulting to 0.5, an optional status list and method set, and raise_on_status defaulting to False; it raises ValueError when total is negative, while zero is allowed and disables retries, and raises ValueError when backoff_factor is negative. It returns a Retry object carrying total, backoff_factor, the status list as a tuple, the allowed methods as a frozenset, and raise_on_status, so a final retryable status is returned as a response rather than raised. create_retry_session builds a requests.Session, wraps the Retry object in an HTTPAdapter through max_retries, and mounts that adapter on both the http:// and https:// prefixes. The fixture asserts the default status list, that POST is excluded from the retried methods, the validation boundaries on total and backoff, and that both schemes share the configured retry policy.",
+  "plan": {
+    "intent": "Retry transient HTTP failures only for idempotent methods",
+    "target": "Retry session",
+    "constraints": [
+      "Retries cover 429, 500, 502, 503, and 504",
+      "POST is excluded from the retried methods",
+      "A negative total or backoff raises ValueError, while a total of zero disables retries",
+      "A final retryable status is returned as a response rather than raised",
+      "The retry adapter is mounted on both http and https"
+    ]
+  },
   "rationale": {
     "teaches": "urllib3 Retry with exponential backoff: non-negative total and backoff, the 429 and 5xx forcelist, idempotent-only allowed methods, raise_on_status off, and mounted on both schemes.",
     "why": "A retry policy that includes POST or skips a scheme still makes successful requests. The fixture inspects the mounted Retry object, which is how the policy is observable without a flaky server."
@@ -50,7 +61,106 @@
     "raises": [
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "DEFAULT_STATUS_FORCELIST",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "SAFE_METHODS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "build_retry_strategy",
+              "kind": "function",
+              "depends_on": [
+                "DEFAULT_STATUS_FORCELIST",
+                "SAFE_METHODS"
+              ]
+            },
+            {
+              "name": "create_retry_session",
+              "kind": "function",
+              "depends_on": [
+                "DEFAULT_STATUS_FORCELIST",
+                "SAFE_METHODS",
+                "build_retry_strategy"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Requests retry adapter configuration and session factory."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Collection",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import requests",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from requests.adapters import HTTPAdapter",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from urllib3.util import Retry",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "DEFAULT_STATUS_FORCELIST",
+        "source": "DEFAULT_STATUS_FORCELIST = (429, 500, 502, 503, 504)",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SAFE_METHODS",
+        "source": "SAFE_METHODS = frozenset({\"HEAD\", \"GET\", \"PUT\", \"DELETE\", \"OPTIONS\", \"TRACE\"})",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "build_retry_strategy",
+        "source": "def build_retry_strategy(\n    total: int = 3,\n    backoff_factor: float = 0.5,\n    status_forcelist: Collection[int] = DEFAULT_STATUS_FORCELIST,\n    allowed_methods: Collection[str] = SAFE_METHODS,\n    raise_on_status: bool = False,\n) -> Retry:\n    \"\"\"Build a urllib3 Retry configuration with validation.\"\"\"\n    if total < 0:\n        raise ValueError(\"total retries must be non-negative\")\n    if backoff_factor < 0.0:\n        raise ValueError(\"backoff_factor must be non-negative\")\n\n    return Retry(\n        total=total,\n        backoff_factor=backoff_factor,\n        status_forcelist=tuple(status_forcelist),\n        allowed_methods=frozenset(allowed_methods),\n        raise_on_status=raise_on_status,\n    )",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "create_retry_session",
+        "source": "def create_retry_session(\n    total: int = 3,\n    backoff_factor: float = 0.5,\n    status_forcelist: Collection[int] = DEFAULT_STATUS_FORCELIST,\n    allowed_methods: Collection[str] = SAFE_METHODS,\n) -> requests.Session:\n    \"\"\"Return a session that retries through an HTTPAdapter on http and https.\"\"\"\n    retry_strategy = build_retry_strategy(\n        total=total,\n        backoff_factor=backoff_factor,\n        status_forcelist=status_forcelist,\n        allowed_methods=allowed_methods,\n    )\n    adapter = HTTPAdapter(max_retries=retry_strategy)\n    session = requests.Session()\n    session.mount(\"http://\", adapter)\n    session.mount(\"https://\", adapter)\n    return session",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 4
+    }
   },
   "candidates": [
     {

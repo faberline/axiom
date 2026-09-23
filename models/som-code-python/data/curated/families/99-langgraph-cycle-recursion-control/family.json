@@ -6,6 +6,16 @@
   "requirement": "Implement ResilientGraphRunner representing a cyclic agent loop (agent -> tool -> evaluator). The conditional edge router route_next_step(state) must evaluate completion and terminate at 'END' when is_complete == True OR when iteration >= max_iterations. It must prevent infinite recursion loops and enforce a strict recursion_limit safeguard.",
   "skeleton": "Cyclic state graph runner with termination router and recursion limit guard.",
   "caption": "A LangGraph-style cyclic agent loop written in the standard library with no third-party imports, whose router always reaches an end and whose runner refuses to spin forever. GraphRecursionLimitError subclasses RuntimeError. ResilientGraphRunner takes max_iterations defaulting to 5 and recursion_limit defaulting to 25. The agent node increments the iteration, asks for a tool only during the first two iterations of a task containing solve, and appends an agent step to a copied history. The tool node records that a tool ran and clears the tool request. The evaluator node marks the state complete once two iterations have passed or no tool is needed, and records the verdict in the history. route_next_step returns END when the state is complete, also returns END when the iteration count has reached max_iterations even if the task never completes, and otherwise routes to the tool when one is requested or back to the agent. run starts from an empty state at the agent node and loops until the current node is END, moving from agent to tool or evaluator, from tool to evaluator, and from evaluator to whatever the router returns; before every step it counts the steps taken and raises GraphRecursionLimitError naming the limit once the count exceeds recursion_limit, so a router that never ends still stops. The fixture asserts that a solvable task completes within five iterations with evaluated_complete_True in its history, that a task that can never complete stops by iteration 3 when the cap is 3, that the router returns END for a complete state and for a state at the cap, that a tiny recursion limit raises GraphRecursionLimitError, and that the defaults stay within 10 iterations and a limit of 30.",
+  "plan": {
+    "intent": "Run a cyclic agent graph that always terminates",
+    "target": "ResilientGraphRunner",
+    "constraints": [
+      "The router returns END for a complete state or at the iteration cap",
+      "The tool node clears the tool request after running",
+      "The runner counts steps and raises GraphRecursionLimitError past the recursion limit",
+      "Node history is appended on copies"
+    ]
+  },
   "rationale": {
     "teaches": "A cyclic graph runner whose router returns END on completion or when the iteration count reaches max_iterations, with a recursion limit guard and a default of 5 iterations.",
     "why": "A loop without a termination guard runs forever on a state that never completes. The fixture runs with is_complete never set and expects END after max_iterations and GraphRecursionLimitError past the limit."
@@ -39,7 +49,65 @@
     "raises": [
       "GraphRecursionLimitError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "GraphRecursionLimitError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "ResilientGraphRunner",
+              "kind": "class",
+              "depends_on": [
+                "GraphRecursionLimitError"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Run a cyclic agent graph that always terminates within its recursion limit."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "GraphRecursionLimitError",
+        "source": "class GraphRecursionLimitError(RuntimeError):\n    \"\"\"Raised when graph execution exceeds safe recursion limits.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ResilientGraphRunner",
+        "source": "class ResilientGraphRunner:\n    \"\"\"Cyclic graph workflow with deterministic termination and recursion safety.\"\"\"\n\n    def __init__(self, max_iterations: int = 5, recursion_limit: int = 25) -> None:\n        self.max_iterations = max_iterations\n        self.recursion_limit = recursion_limit\n\n    def agent_node(self, state: dict[str, Any]) -> dict[str, Any]:\n        \"\"\"Advance one iteration and decide whether a tool call is needed.\"\"\"\n        task = state.get(\"task\", \"\")\n        iteration = state.get(\"iteration\", 0)\n        tool_needed = iteration < 2 and \"solve\" in task\n        return {\n            \"task\": task,\n            \"iteration\": iteration + 1,\n            \"tool_needed\": tool_needed,\n            \"history\": [*state.get(\"history\", []), f\"agent_step_{iteration}\"],\n            \"is_complete\": state.get(\"is_complete\", False),\n        }\n\n    def tool_node(self, state: dict[str, Any]) -> dict[str, Any]:\n        \"\"\"Record a tool execution and clear the tool request.\"\"\"\n        history = [*state.get(\"history\", []), \"tool_executed\"]\n        return {\n            **state,\n            \"history\": history,\n            \"tool_needed\": False,\n        }\n\n    def evaluator_node(self, state: dict[str, Any]) -> dict[str, Any]:\n        \"\"\"Mark the state complete after two iterations or when no tool is needed.\"\"\"\n        iteration = state.get(\"iteration\", 0)\n        is_complete = iteration >= 2 or not state.get(\"tool_needed\", False)\n        return {\n            **state,\n            \"is_complete\": is_complete,\n            \"history\": [*state.get(\"history\", []), f\"evaluated_complete_{is_complete}\"],\n        }\n\n    def route_next_step(self, state: dict[str, Any]) -> str:\n        \"\"\"Return the next node name, or END when complete or out of iterations.\"\"\"\n        if state.get(\"is_complete\", False):\n            return \"END\"\n        if state.get(\"iteration\", 0) >= self.max_iterations:\n            return \"END\"\n        if state.get(\"tool_needed\", False):\n            return \"tool\"\n        return \"agent\"\n\n    def run(self, initial_task: str) -> dict[str, Any]:\n        \"\"\"Run the graph from initial_task, raising once the step limit is exceeded.\"\"\"\n        state: dict[str, Any] = {\n            \"task\": initial_task,\n            \"iteration\": 0,\n            \"tool_needed\": False,\n            \"is_complete\": False,\n            \"history\": [],\n        }\n\n        current_node = \"agent\"\n        steps_taken = 0\n\n        while current_node != \"END\":\n            steps_taken += 1\n            if steps_taken > self.recursion_limit:\n                raise GraphRecursionLimitError(\n                    f\"Recursion limit {self.recursion_limit} exceeded\"\n                )\n\n            if current_node == \"agent\":\n                state = self.agent_node(state)\n                current_node = \"tool\" if state.get(\"tool_needed\") else \"evaluator\"\n            elif current_node == \"tool\":\n                state = self.tool_node(state)\n                current_node = \"evaluator\"\n            elif current_node == \"evaluator\":\n                state = self.evaluator_node(state)\n                current_node = self.route_next_step(state)\n\n        return state",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
   },
   "candidates": [
     {

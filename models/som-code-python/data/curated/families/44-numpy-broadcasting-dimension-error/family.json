@@ -6,6 +6,17 @@
   "requirement": "Implement SampleMatrixNormalizer class providing per-sample (per-row) mean centering and standard deviation scaling on 2D numerical arrays. It must use explicit dimension preservation (keepdims=True) to prevent silent broadcasting errors, validate 2D shape, enforce strictly positive epsilon, and support optional feature centering.",
   "skeleton": "SampleMatrixNormalizer class with __init__ and normalize_samples methods ensuring 2D keepdims broadcasting.",
   "caption": "A numpy module that normalizes each sample of a two-dimensional matrix to zero mean and unit spread along its own row. SampleMatrixNormalizer takes epsilon defaulting to 1e-8, raising ValueError unless it is strictly positive, and a center_features flag defaulting to False. normalize_samples(X) raises TypeError when X is not a numpy ndarray, ValueError when it is not a 2D array, and ValueError when it has fewer than two feature columns, so a two-column matrix is the smallest accepted shape. It converts the data to float64; when feature centering is enabled it first subtracts each column's mean computed along axis 0 with keepdims=True. It then computes the per-row mean and standard deviation along axis 1 with keepdims=True, so both statistics keep shape (n, 1) and broadcast correctly against the (n, m) matrix whether or not it is square, and returns the matrix minus the row mean divided by the row standard deviation plus epsilon. The fixture checks a 4 by 5 matrix whose rows come out with mean near 0 and standard deviation near 1, that the default epsilon keeps the scale faithful, that columns are not the normalized axis, that 4 by 7 and 4 by 4 inputs both work, that optional centering still yields normalized rows, and each validation message.",
+  "plan": {
+    "intent": "Normalize each sample row of a matrix to zero mean and unit spread",
+    "target": "SampleMatrixNormalizer",
+    "constraints": [
+      "A non-positive epsilon raises ValueError",
+      "A non-ndarray input raises TypeError; a non-2D array or fewer than two columns raises ValueError",
+      "Row statistics are taken along axis 1 with keepdims so they broadcast for any shape",
+      "Optional feature centering subtracts column means first",
+      "Epsilon is added to the standard deviation to avoid division by zero"
+    ]
+  },
   "rationale": {
     "teaches": "Per-row normalization with keepdims=True so the (n,1) statistics broadcast against (n,m), a 2D shape check, a minimum of two features, and a small epsilon.",
     "why": "Dropping keepdims makes the statistics (n,) and NumPy raises only when n != m; on square inputs it silently normalizes along the wrong axis. The fixture uses a non-square matrix."
@@ -30,7 +41,45 @@
       "TypeError",
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "SampleMatrixNormalizer",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Standardize each sample row of a 2D feature matrix with axis-aware NumPy."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import numpy as np",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SampleMatrixNormalizer",
+        "source": "class SampleMatrixNormalizer:\n    \"\"\"Z-score every row of X, optionally centering each feature first.\"\"\"\n\n    def __init__(self, epsilon: float = 1e-8, center_features: bool = False) -> None:\n        if epsilon <= 0.0:\n            raise ValueError(\"epsilon must be strictly positive\")\n        self.epsilon = float(epsilon)\n        self.center_features = bool(center_features)\n\n    def normalize_samples(self, X: np.ndarray) -> np.ndarray:\n        \"\"\"Return X with each row scaled to zero mean and unit spread.\"\"\"\n        if not isinstance(X, np.ndarray):\n            raise TypeError(\"X must be a numpy ndarray\")\n        if X.ndim != 2:\n            raise ValueError(\"X must be a 2D array\")\n        if X.shape[1] < 2:\n            raise ValueError(\"X must have at least 2 feature columns\")\n\n        work = X.astype(np.float64)\n        if self.center_features:\n            work = work - np.mean(work, axis=0, keepdims=True)\n\n        mean = np.mean(work, axis=1, keepdims=True)\n        std = np.std(work, axis=1, keepdims=True)\n        return (work - mean) / (std + self.epsilon)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
   },
   "candidates": [
     {

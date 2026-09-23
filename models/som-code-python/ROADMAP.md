@@ -4,8 +4,8 @@
 
 This roadmap orders the work that turns the Python corpus into the training
 material the four-layer generator in `models/som-core` needs. The order is
-data first: finish the oracle fixtures, emit the decompiled layer records,
-then harden the near misses and widen the ISA. The subject stays the Python
+data first: finish the oracle fixtures, then harden the near misses and
+widen the ISA so more of each gold is expressed as snippets. The subject stays the Python
 ecosystem written as code its community accepts. The current
 support state is in [STATUS.md](STATUS.md).
 
@@ -28,30 +28,14 @@ support state is in [STATUS.md](STATUS.md).
   renamed away exits non-zero.
 - Tracking: Not assigned.
 
-### Decompiler DSL corpus
-
-- ID: `decompiler-dsl-corpus`
-- Outcome: A decompiler turns every family into its L1 intent, L2 component
-  topology, and L3 operation sequence records, distinguishes gold from near
-  miss with the failure mode, and reassembles the multi-file TODO fixture
-  from its records with no AST loss.
-- Boundary: The decompiler script, its output files, and the tests that
-  today sit at the repository root under `tests/data_pipeline/` and
-  `tests/fixtures/multi_file_todo/`, which move into this project; the
-  engine's loader is the engine's outcome.
-- Completion evidence: The decompiler test module passes, including the
-  case that processes every family with exit 0 and the AST-equivalence case
-  over the TODO fixture.
-- Tracking: Not assigned.
-
 ## Later outcomes
 
 ### Non-minimal near misses
 
 - ID: `non-minimal-near-misses`
 - Outcome: Families gain near misses that are not a one-line edit of the
-  gold candidate, refactored or carrying two defects, so a discriminator that
-  scores edit distance instead of behaviour stops scoring well on the corpus.
+  gold candidate, refactored or carrying two defects, so preference data
+  built from them cannot be separated from the gold by edit distance alone.
 - Boundary: New near-miss candidates and their `family.json` entries under
   `data/curated/families`, each still failing its fixture on an assertion
   with a measured `caught_by`; not new families and not the harness.

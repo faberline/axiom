@@ -6,6 +6,17 @@
   "requirement": "Implement PooledSessionManager with custom requests HTTPAdapter connection pooling, validating pool_connections > 0, pool_maxsize > 0, and pool_maxsize >= pool_connections. It must configure pool_block, mount adapters to both http:// and https:// schemes, and provide explicit close() and context manager cleanup to prevent connection pool leaks.",
   "skeleton": "PooledSessionManager class with pool size validation, HTTPAdapter mounting, and session lifecycle cleanup.",
   "caption": "A requests-based session manager that reuses one connection pool instead of opening a fresh connection per call. PooledSessionManager takes pool_connections defaulting to 10, pool_maxsize defaulting to 20, and pool_block defaulting to True; the constructor raises ValueError when either size is zero or negative and when pool_maxsize is smaller than pool_connections. get_session creates the requests.Session lazily on first use and returns the same object on every later call. At creation it builds exactly one HTTPAdapter configured with the three pool parameters and mounts that single adapter on both the http:// and https:// prefixes, so both schemes share the same pool settings. close closes the session when one exists and resets the stored reference to None, so the next get_session builds a new one. The class is also a context manager: __enter__ returns the live session and __exit__ closes it, releasing pooled sockets even when the body raises. The fixture asserts the constructor validation, the lazy and memoized session, the adapter's pool configuration on both prefixes, and that leaving the with block closes and forgets the session.",
+  "plan": {
+    "intent": "Reuse one pooled HTTP session for every request",
+    "target": "PooledSessionManager",
+    "constraints": [
+      "Non-positive pool sizes, or a max size below the connection count, raise ValueError",
+      "The session is created lazily and the same object is returned afterwards",
+      "One adapter with the pool settings is mounted on both http and https",
+      "Closing drops the session so the next call builds a new one",
+      "Leaving the context manager closes the session"
+    ]
+  },
   "rationale": {
     "teaches": "A pooled requests Session: pool_block defaults to True, pool sizes validated with pool_maxsize at least pool_connections, both schemes mounted, and close on exit.",
     "why": "Connection-pool misconfiguration only shows as leaked sockets or an unbounded pool under load. The fixture reads the adapter's configuration and checks close is called, since the leak itself is not deterministic."
@@ -32,7 +43,57 @@
     "raises": [
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "PooledSessionManager",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Requests connection pooling manager."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from types import TracebackType",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import requests",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from requests.adapters import HTTPAdapter",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "PooledSessionManager",
+        "source": "class PooledSessionManager:\n    \"\"\"Manages requests.Session with configured HTTP connection pooling.\"\"\"\n\n    def __init__(\n        self,\n        pool_connections: int = 10,\n        pool_maxsize: int = 20,\n        pool_block: bool = True,\n    ) -> None:\n        if pool_connections <= 0:\n            raise ValueError(\"pool_connections must be positive\")\n        if pool_maxsize <= 0:\n            raise ValueError(\"pool_maxsize must be positive\")\n        if pool_maxsize < pool_connections:\n            raise ValueError(\n                \"pool_maxsize must be greater than or equal to pool_connections\"\n            )\n\n        self.pool_connections = pool_connections\n        self.pool_maxsize = pool_maxsize\n        self.pool_block = pool_block\n        self._session: requests.Session | None = None\n\n    def get_session(self) -> requests.Session:\n        \"\"\"Return the shared session, mounting pooled adapters on first use.\"\"\"\n        if self._session is None:\n            session = requests.Session()\n            adapter = HTTPAdapter(\n                pool_connections=self.pool_connections,\n                pool_maxsize=self.pool_maxsize,\n                pool_block=self.pool_block,\n            )\n            session.mount(\"http://\", adapter)\n            session.mount(\"https://\", adapter)\n            self._session = session\n        return self._session\n\n    def close(self) -> None:\n        \"\"\"Close the active session and release pool resources.\"\"\"\n        if self._session is not None:\n            self._session.close()\n            self._session = None\n\n    def __enter__(self) -> requests.Session:\n        return self.get_session()\n\n    def __exit__(\n        self,\n        exc_type: type[BaseException] | None,\n        exc_val: BaseException | None,\n        exc_tb: TracebackType | None,\n    ) -> None:\n        self.close()",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
   },
   "candidates": [
     {

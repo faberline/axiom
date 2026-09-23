@@ -6,6 +6,17 @@
   "requirement": "Cryptographic entropy sampler ensuring complete isolation from mutable PRNG seeding (random.seed), enforcing SystemRandom CSPRNG usage, disallowing seed() injection methods, and enforcing valid population and PIN boundaries.",
   "skeleton": "IsolatedEntropySampler class with generate_pin, sample_population, and seed methods using secrets.SystemRandom.",
   "caption": "A standard-library entropy sampler built on secrets.SystemRandom that no caller can make deterministic by seeding, with no third-party imports. MIN_PIN_DIGITS is 4 and MAX_PIN_DIGITS is 12. IsolatedEntropySampler creates its own SystemRandom instance in the constructor and never reads from or seeds the global random module, so a call to random.seed elsewhere in the process has no effect on its output. generate_pin(length) takes a length defaulting to 6, raises ValueError reporting the allowed range when the length is below 4 or above 12, and joins that many digits each chosen independently by the system generator. sample_population(population, k) raises ValueError for an empty population and when k is zero, negative, or larger than the population, reporting the valid range, and otherwise returns a sample of k distinct items drawn by the system generator. seed(val) exists only to refuse: it raises NotImplementedError stating that seeding is forbidden, so code that tries to reproduce a sequence fails loudly instead of silently weakening it. The fixture seeds the global generator to the same value before two runs and asserts that the pair of PIN and sample differs between them, asserts that seed raises NotImplementedError with its message, that lengths of 3 and 13 raise ValueError reporting PIN length must be between 4 and 12 while a length of 8 returns eight digits, and that k of zero and k above the population size raise ValueError reporting the sample size range.",
+  "plan": {
+    "intent": "Draw PINs and samples from an entropy source no caller can seed",
+    "target": "IsolatedEntropySampler",
+    "constraints": [
+      "Each sampler owns a SystemRandom instance and never touches the global random module",
+      "A PIN length outside 4 to 12 raises ValueError",
+      "An empty population or a sample size outside 1 to the population size raises ValueError",
+      "Sample items are distinct",
+      "Seeding raises NotImplementedError"
+    ]
+  },
   "rationale": {
     "teaches": "An entropy sampler backed by secrets.SystemRandom that refuses seeding, requires at least 4 PIN digits, and validates sample size against the population.",
     "why": "SystemRandom and the global random module expose the same sample and randint API, so the difference is invisible to a shape test. The fixture seeds the global PRNG and checks the sampler's output is not reproducible."
@@ -38,7 +49,78 @@
       "NotImplementedError",
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "MIN_PIN_DIGITS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "MAX_PIN_DIGITS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "IsolatedEntropySampler",
+              "kind": "class",
+              "depends_on": [
+                "MIN_PIN_DIGITS",
+                "MAX_PIN_DIGITS"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Sample PINs and populations from an unseedable SystemRandom instance."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import secrets",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Sequence",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MIN_PIN_DIGITS",
+        "source": "MIN_PIN_DIGITS = 4",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MAX_PIN_DIGITS",
+        "source": "MAX_PIN_DIGITS = 12",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "IsolatedEntropySampler",
+        "source": "class IsolatedEntropySampler:\n    \"\"\"Entropy sampler immune to deterministic PRNG seed injection.\"\"\"\n\n    def __init__(self) -> None:\n        self._rng = secrets.SystemRandom()\n\n    def generate_pin(self, length: int = 6) -> str:\n        \"\"\"Return a random numeric PIN of length digits.\"\"\"\n        if length < MIN_PIN_DIGITS or length > MAX_PIN_DIGITS:\n            raise ValueError(\n                f\"PIN length must be between {MIN_PIN_DIGITS} and {MAX_PIN_DIGITS}\"\n            )\n        digits = \"0123456789\"\n        return \"\".join(self._rng.choice(digits) for _ in range(length))\n\n    def sample_population(self, population: Sequence[str], k: int) -> list[str]:\n        \"\"\"Return k distinct elements drawn from population.\"\"\"\n        if not population:\n            raise ValueError(\"Population cannot be empty\")\n        if k <= 0 or k > len(population):\n            raise ValueError(f\"Sample size k must be between 1 and {len(population)}\")\n        return self._rng.sample(list(population), k)\n\n    def seed(self, val: int) -> None:\n        \"\"\"Refuse to seed, since a seeded generator would be predictable.\"\"\"\n        raise NotImplementedError(\n            \"Seeding is strictly forbidden on cryptographic SystemRandom\"\n        )",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
   },
   "candidates": [
     {

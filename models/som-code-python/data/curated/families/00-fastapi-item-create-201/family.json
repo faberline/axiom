@@ -6,6 +6,16 @@
   "requirement": "Create a POST /items endpoint that accepts JSON payload with name, price (>0.0), and optional description, validates input, persists to SQLite DB, and returns HTTP 201 Created with the created item.",
   "skeleton": "FastAPI route with Pydantic payload validation and SQLAlchemy in-memory persistence.",
   "caption": "A single-module FastAPI service that persists items in an in-memory SQLite database through SQLAlchemy. The module builds one engine with StaticPool and check_same_thread disabled so every request shares the same connection, a sessionmaker with autocommit and autoflush off, a DeclarativeBase subclass, and an Item table with an autoincrementing integer id, a non-null name, a non-null float price, and a nullable description. A reset_db helper drops and recreates the tables, and a get_db generator dependency yields one session per request and closes it in a finally block. Two pydantic models frame the contract: ItemCreate requires a name of at least one character, a price strictly greater than zero, and an optional description; ItemOut exposes id, name, price, and description and reads from ORM attributes. The POST /items route declares status code 201, validates the payload, builds an Item from every field the client sent, adds it, commits, refreshes, and returns it. The companion GET /items/{item_id} route selects by primary key and raises HTTPException with 404 when no row exists. Persistence is real: a later read through a fresh session sees the committed row, including the description exactly as the client sent it, and a price such as 0.5 is accepted because only non-positive prices are refused.",
+  "plan": {
+    "intent": "Accept a new item over HTTP and persist it in the database",
+    "target": "Item",
+    "constraints": [
+      "POST /items validates a non-empty name, a price above zero, and an optional description",
+      "A created item answers 201 with its id and every stored field",
+      "The row is committed, so a later read through another session sees it",
+      "GET /items/{item_id} raises HTTPException 404 for an id with no row"
+    ]
+  },
   "rationale": {
     "teaches": "A create endpoint that gets every contract detail right at once: 201 on success, a gt=0 price constraint, a real commit, and faithful passthrough of the client's payload.",
     "why": "A generator assembling a route from snippets usually gets the shape right and the details wrong: the status code, the constraint boundary, flush versus commit. Each detail is observable through one HTTP round trip plus one database read, so the oracle separates code that looks right from code that is right."
@@ -97,7 +107,230 @@
     "status_codes": [
       201,
       404
-    ]
+    ],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "engine",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "session_factory",
+              "kind": "constant",
+              "depends_on": [
+                "engine"
+              ]
+            },
+            {
+              "name": "Base",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Item",
+              "kind": "class",
+              "depends_on": [
+                "Base"
+              ]
+            },
+            {
+              "name": "Base.metadata.create_all",
+              "kind": "statement",
+              "depends_on": [
+                "Base",
+                "engine"
+              ]
+            },
+            {
+              "name": "reset_db",
+              "kind": "function",
+              "depends_on": [
+                "Base",
+                "engine"
+              ]
+            },
+            {
+              "name": "get_db",
+              "kind": "function",
+              "depends_on": [
+                "session_factory"
+              ]
+            },
+            {
+              "name": "ItemCreate",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "ItemOut",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "create_item",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "ItemOut",
+                "ItemCreate",
+                "get_db",
+                "Item"
+              ]
+            },
+            {
+              "name": "get_item",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "ItemOut",
+                "get_db",
+                "Item"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Item service: create and read items persisted in SQLite through SQLAlchemy."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Generator",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import Depends, FastAPI, HTTPException, status",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel, ConfigDict, Field",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy import create_engine, select",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.pool import StaticPool",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "engine",
+        "source": "engine = create_engine(\n    \"sqlite:///:memory:\",\n    connect_args={\"check_same_thread\": False},\n    poolclass=StaticPool,\n)",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "session_factory",
+        "source": "session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Base",
+        "source": "class Base(DeclarativeBase):\n    \"\"\"Declarative base shared by every table in this module.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Item",
+        "source": "class Item(Base):\n    \"\"\"A persisted catalog item.\"\"\"\n\n    __tablename__ = \"items\"\n\n    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)\n    name: Mapped[str] = mapped_column(nullable=False)\n    price: Mapped[float] = mapped_column(nullable=False)\n    description: Mapped[str | None] = mapped_column(nullable=True)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Base.metadata.create_all",
+        "source": "Base.metadata.create_all(bind=engine)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db",
+        "source": "def reset_db() -> None:\n    \"\"\"Drop and recreate every table.\"\"\"\n    Base.metadata.drop_all(bind=engine)\n    Base.metadata.create_all(bind=engine)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_db",
+        "source": "def get_db() -> Generator[Session, None, None]:\n    \"\"\"Yield one database session per request and close it afterwards.\"\"\"\n    db = session_factory()\n    try:\n        yield db\n    finally:\n        db.close()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ItemCreate",
+        "source": "class ItemCreate(BaseModel):\n    \"\"\"Payload accepted when creating an item.\"\"\"\n\n    name: str = Field(..., min_length=1)\n    price: float = Field(..., gt=0.0)\n    description: str | None = None",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ItemOut",
+        "source": "class ItemOut(BaseModel):\n    \"\"\"Item representation returned to clients.\"\"\"\n\n    model_config = ConfigDict(from_attributes=True)\n\n    id: int\n    name: str\n    price: float\n    description: str | None = None",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "app",
+        "source": "app = FastAPI(title=\"Item Service\")",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "create_item",
+        "source": "@app.post(\"/items\", response_model=ItemOut, status_code=status.HTTP_201_CREATED)\ndef create_item(payload: ItemCreate, db: Session = Depends(get_db)) -> Item:\n    \"\"\"Persist a new item and return it.\"\"\"\n    item = Item(\n        name=payload.name,\n        price=payload.price,\n        description=payload.description,\n    )\n    db.add(item)\n    db.commit()\n    db.refresh(item)\n    return item",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_item",
+        "source": "@app.get(\"/items/{item_id}\", response_model=ItemOut)\ndef get_item(item_id: int, db: Session = Depends(get_db)) -> Item:\n    \"\"\"Return one item by id, or 404 when it does not exist.\"\"\"\n    stmt = select(Item).where(Item.id == item_id)\n    item = db.scalar(stmt)\n    if item is None:\n        raise HTTPException(status_code=404, detail=\"Item not found\")\n    return item",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 12
+    }
   },
   "candidates": [
     {

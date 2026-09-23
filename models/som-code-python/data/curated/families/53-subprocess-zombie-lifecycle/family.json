@@ -6,6 +6,17 @@
   "requirement": "Supervise background subprocesses, managing lifecycle through termination, signal escalation, exit status reaping, and context manager cleanup.",
   "skeleton": "ManagedProcess class with start, is_running, wait, terminate, stop methods and context manager.",
   "caption": "A standard-library supervisor for one background child process that always reaps what it starts, with no third-party imports. ManagedProcess takes cmd and an optional environment, raising ValueError unless cmd is a non-empty list of strings. start raises RuntimeError when a previous child is still running and otherwise launches the command through subprocess.Popen with piped stdout and stderr in text mode. is_running returns False before start and otherwise calls poll, which both refreshes and reaps the exit status, returning True only while poll reports no exit code. wait raises RuntimeError before start and otherwise waits with the optional timeout. stop(timeout=1.0) raises RuntimeError before start and ValueError unless the timeout is positive; if the child has already exited it returns the recorded return code, otherwise it sends terminate, waits up to the timeout, and escalates to kill followed by another wait when the child ignores the signal, and in a finally block closes both output pipes. terminate(grace_period=1.0) delegates to stop. The class is a context manager: __enter__ starts the child and __exit__ stops it when it is still running, even after an exception inside the block. The fixture asserts that a normal stop leaves a return code and a non-running child, that a child ignoring the terminate signal after printing READY is killed and reaped, that the context manager cleans up on an exception, that is_running reaps a finished child with code 0, that pipes are closed after stop, and the timeout and command validation.",
+  "plan": {
+    "intent": "Supervise one background child process and always reap it",
+    "target": "ManagedProcess",
+    "constraints": [
+      "An invalid command or a non-positive stop timeout raises ValueError",
+      "Starting while a child runs, or waiting or stopping before start, raises RuntimeError",
+      "is_running polls, which also reaps an exited child",
+      "Stop terminates, waits, and escalates to kill, closing both pipes in every case",
+      "The context manager stops the child even when its body raises"
+    ]
+  },
   "rationale": {
     "teaches": "Supervising a child process: poll for liveness, wait with a kill escalation on timeout, terminate only a running process, validate the command vector, and reap on context exit.",
     "why": "A process that is never waited for stays a zombie and returncode stays None, but nothing raises. The fixture checks returncode and whether the pid still exists after stop."
@@ -34,7 +45,57 @@
       "RuntimeError",
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "ManagedProcess",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Supervise one background child process and always reap what it starts."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import subprocess",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from types import TracebackType",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Self",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ManagedProcess",
+        "source": "class ManagedProcess:\n    \"\"\"Start, poll, stop, and reap a single child process.\"\"\"\n\n    def __init__(self, cmd: list[str], env: dict[str, str] | None = None) -> None:\n        if (\n            not isinstance(cmd, list)\n            or not cmd\n            or not all(isinstance(c, str) for c in cmd)\n        ):\n            raise ValueError(\"cmd must be a non-empty list of strings\")\n        self.cmd = cmd\n        self.args = cmd\n        self.env = env\n        self.proc: subprocess.Popen[str] | None = None\n\n    def start(self) -> None:\n        \"\"\"Launch the command, refusing while a previous child still runs.\"\"\"\n        if self.proc is not None and self.proc.poll() is None:\n            raise RuntimeError(\"Process is already running\")\n        # The child outlives start(); stop() and __exit__ reap it.\n        self.proc = subprocess.Popen(  # pylint: disable=consider-using-with\n            self.cmd,\n            stdout=subprocess.PIPE,\n            stderr=subprocess.PIPE,\n            text=True,\n            env=self.env,\n        )\n\n    def is_running(self) -> bool:\n        \"\"\"Return whether the child has started and not yet exited.\"\"\"\n        if self.proc is None:\n            return False\n        return self.proc.poll() is None\n\n    def wait(self, timeout: float | None = None) -> int:\n        \"\"\"Block until the child exits and return its exit code.\"\"\"\n        if self.proc is None:\n            raise RuntimeError(\"Process not started\")\n        return self.proc.wait(timeout=timeout)\n\n    def stop(self, timeout: float = 1.0) -> int:\n        \"\"\"Terminate the child, kill it after timeout, and return its exit code.\"\"\"\n        if self.proc is None:\n            raise RuntimeError(\"Process not started\")\n        if timeout <= 0:\n            raise ValueError(\"timeout must be positive\")\n        if self.proc.poll() is not None:\n            return self.proc.returncode\n\n        try:\n            self.proc.terminate()\n            try:\n                return self.proc.wait(timeout=timeout)\n            except subprocess.TimeoutExpired:\n                self.proc.kill()\n                return self.proc.wait(timeout=timeout)\n        finally:\n            if self.proc.stdout and not self.proc.stdout.closed:\n                self.proc.stdout.close()\n            if self.proc.stderr and not self.proc.stderr.closed:\n                self.proc.stderr.close()\n\n    def terminate(self, grace_period: float = 1.0) -> int:\n        \"\"\"Stop the child with grace_period seconds before a kill.\"\"\"\n        return self.stop(timeout=grace_period)\n\n    def __enter__(self) -> Self:\n        self.start()\n        return self\n\n    def __exit__(\n        self,\n        exc_type: type[BaseException] | None,\n        exc_val: BaseException | None,\n        exc_tb: TracebackType | None,\n    ) -> None:\n        if self.is_running():\n            self.stop()",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
   },
   "candidates": [
     {

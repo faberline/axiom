@@ -2,9 +2,29 @@
 
 What a generator user gets once the four layers exist: an intent becomes a
 plan, the plan becomes a topology, the topology becomes an operation list,
-and the operation list becomes files. None of it is shipped; every section
-here is a future promise ordered top down. The layer design is
+and the operation list becomes files. Each layer generates its record; none
+chooses from candidates. The Python reference assembler is shipped; the
+layer models are future promises ordered top down, and their record schema
+ships in the training area. The layer design is
 [docs/reference/architecture.md](../reference/architecture.md).
+
+## Reference assembler
+
+- Problem: none open as shipped.
+- Who: corpus authors proving a decompiled family reassembles; the fixture
+  pass rate evaluation, which assembles every generated operation list.
+- Promise: `som assemble` executes an L3 operation list, read from a JSON
+  file or from a `family.json`'s `decompiled.ops`, and writes each file it
+  creates under `--out`: the module docstring, then the imports in order,
+  then each block, blocks separated by two blank lines. `INSERT_SNIPPET`
+  renders the snippet's template from the ISA directory with the operation's
+  parameters and refuses a missing snippet or parameter; `INSERT_BLOCK`
+  writes its literal source. The list is validated against the layer
+  records schema before anything is written.
+- Non-goals: formatting or linting the output; executing it.
+- Neighbours: none; first section of the area. The corpus project's
+  round-trip gate calls it for every family.
+- Status rows: `reference-assembler`.
 
 ## L1 Planner
 
@@ -16,10 +36,12 @@ here is a future promise ordered top down. The layer design is
   blocks with `SCOPE_TOO_LARGE` before any lower layer runs.
 - Non-goals: choosing files or snippets; the planner names what must exist,
   not how.
-- Open: whether the planner is a trained model over decompiled L1 records or
-  a rule set with the trained part below it.
-- Neighbours: none; first section of the area. The record schema is the one
-  the decompiler emits, owned by the discriminator area's first outcome.
+- Open: whether the planner is a model trained on the corpus's authored
+  `plan` records or a rule set with the trained part below it.
+- Neighbours: [Reference assembler](#reference-assembler) above, which
+  runs last. The record schema is
+  [layer-records.md](../reference/layer-records.md), which the training
+  area's `layer-records` row enforces.
 - Outcome: `l1-planner`. Tracking: Not assigned.
 
 ## L2 Component Topology
@@ -39,32 +61,34 @@ here is a future promise ordered top down. The layer design is
 
 ## L3 Query Optimizer
 
-- Problem: Nothing selects which snippet operation, with which parameters,
-  fills a block, and the discriminator that would rank the choices is not
-  wired to any layer.
-- Who: the L4 assembler; model trainers judging the discriminator's ranking.
-- Promise: Given an L2 record, the optimizer emits the ordered snippet
-  operations with parameters, and the discriminator ranks the gold operation
-  list above every near miss for a held-out family.
+- Problem: Nothing emits which snippet operation, with which parameters,
+  fills a block, so no topology becomes an operation list.
+- Who: the L4 assembler; model trainers judging generated operation lists by
+  the fixture pass rate.
+- Promise: Given an L2 record, the optimizer generates the ordered operation
+  list with parameters, and for a held-out family the list assembles into
+  files that pass its oracle fixture.
 - Non-goals: writing files; the ISA content, which stays in the corpus
-  project.
-- Open: whether near-miss operation lists come from the decompiled near-miss
-  candidates or from perturbing the gold list.
+  project; choosing among operation lists a caller supplies.
+- Open: how far the optimizer may fall back to `INSERT_BLOCK` literal source
+  when the ISA lacks a snippet, before the corpus project's ISA v2 closes the
+  gap.
 - Neighbours: [L2 Component Topology](#l2-component-topology) above; the
-  discriminator area, whose backbone outcome this ranking depends on.
+  training area, whose SFT and preference outcomes train this layer.
 - Outcome: `l3-query-optimizer`. Tracking: Not assigned.
 
 ## L4 Rust Assembler
 
-- Problem: The snippet ISA has a verifier in the corpus project but no
-  executor; an operation list cannot become files.
+- Problem: The reference assembler is Python, and the design names a Rust
+  executor for production speed; nothing holds a second implementation to
+  the first.
 - Who: generator users; corpus authors, whose ISA the assembler loads.
-- Promise: An assembler executes an L3 operation list against the snippet ISA
-  and writes files that compile and pass the family's oracle fixture.
+- Promise: A Rust assembler executes an L3 operation list against the
+  snippet ISA and writes files byte-identical to what `som assemble` writes
+  for the same list, for every family in the corpus.
 - Non-goals: ISA content; running the produced program outside the fixture.
-- Open: whether the assembler ships as a Rust binary under this project or as
-  a library the CLI calls; the reference document names Rust, the roadmap
-  keeps the choice open until the ISA loader is written.
+- Open: whether the Rust assembler ships as a binary the CLI shells out to
+  or as a Python extension.
 - Neighbours: [L3 Query Optimizer](#l3-query-optimizer) above, whose
   operation list this executes.
 - Outcome: `l4-rust-assembler`. Tracking: Not assigned.

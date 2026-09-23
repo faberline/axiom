@@ -6,6 +6,17 @@
   "requirement": "Create a POST /transfers endpoint with TransferRequest, DomainError hierarchy (InsufficientFundsError 402, AccountNotFoundError 404), RFC error envelope with details and request_id, X-Request-ID header tracing, and balance check.",
   "skeleton": "FastAPI route with custom exception handlers, RFC error envelope, X-Request-ID propagation, and account balance validation.",
   "caption": "A FastAPI transfer service with an in-memory account ledger and a domain exception hierarchy translated into a uniform JSON error envelope. TransferRequest is a pydantic model with from_account and to_account of at least one character and an amount strictly greater than zero, so a zero or negative amount fails validation with 422. DomainError extends Exception and stores message, a code defaulting to DOMAIN_ERROR, and a details dict defaulting to empty; InsufficientFundsError fixes the code INSUFFICIENT_FUNDS, and AccountNotFoundError fixes ACCOUNT_NOT_FOUND. ACCOUNTS_DB maps acc_1, acc_2, and acc_3 to balances of 100.0, 50.0, and 0.0, and reset_db restores that mapping. Two handlers registered with app.exception_handler build the envelope: each reads the incoming X-Request-ID header, or generates a uuid4 string when absent, and returns a JSONResponse whose body is an error object with code, message, details, and request_id, with the same id echoed in an X-Request-ID response header. The InsufficientFundsError handler answers 402 and the AccountNotFoundError handler answers 404. POST /transfers declares status 200; it raises AccountNotFoundError with the account id in details when either account is unknown, and raises InsufficientFundsError with available, requested, and shortfall in details when the current balance is less than the amount, so a transfer that drains the balance to exactly zero is allowed. On success it debits the sender, credits the receiver, and returns a completed status with the amount, the remaining balance, and the request id. GET /accounts/{account_id} returns the balance or raises AccountNotFoundError.",
+  "plan": {
+    "intent": "Transfer money between accounts with domain errors mapped to a uniform error envelope",
+    "target": "Transfer",
+    "constraints": [
+      "A non-positive amount is refused by validation",
+      "An unknown account raises AccountNotFoundError, answered as 404",
+      "A balance below the amount raises InsufficientFundsError, answered as 402 with the shortfall",
+      "Every error body carries code, message, details, and a request id echoed in X-Request-ID",
+      "A successful transfer answers 200, and draining a balance to exactly zero is allowed"
+    ]
+  },
   "rationale": {
     "teaches": "Domain exceptions mapped to a JSONResponse with the right status, a stable error envelope including details and request_id, and X-Request-ID propagated from the request to the response header.",
     "why": "A handler that returns a plain dict or a 200 still produces valid JSON, so a body-only check passes. The oracle reads status, body shape, and response headers together, which is what the generator must assemble."
@@ -114,7 +125,226 @@
       200,
       402,
       404
-    ]
+    ],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "TransferRequest",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "DomainError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "InsufficientFundsError",
+              "kind": "class",
+              "depends_on": [
+                "DomainError"
+              ]
+            },
+            {
+              "name": "AccountNotFoundError",
+              "kind": "class",
+              "depends_on": [
+                "DomainError"
+              ]
+            },
+            {
+              "name": "SEED_BALANCES",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "ACCOUNTS_DB",
+              "kind": "constant",
+              "depends_on": [
+                "SEED_BALANCES"
+              ]
+            },
+            {
+              "name": "reset_db",
+              "kind": "function",
+              "depends_on": [
+                "ACCOUNTS_DB",
+                "SEED_BALANCES"
+              ]
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "insufficient_funds_handler",
+              "kind": "function",
+              "depends_on": [
+                "app",
+                "InsufficientFundsError"
+              ]
+            },
+            {
+              "name": "account_not_found_handler",
+              "kind": "function",
+              "depends_on": [
+                "app",
+                "AccountNotFoundError"
+              ]
+            },
+            {
+              "name": "create_transfer",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "TransferRequest",
+                "ACCOUNTS_DB",
+                "AccountNotFoundError",
+                "InsufficientFundsError"
+              ]
+            },
+            {
+              "name": "get_account",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "ACCOUNTS_DB",
+                "AccountNotFoundError"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Transfer service whose domain errors become one JSON error envelope."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import uuid",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import FastAPI, Request, status",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi.responses import JSONResponse",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel, Field",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "TransferRequest",
+        "source": "class TransferRequest(BaseModel):\n    \"\"\"Payload accepted when moving money between two accounts.\"\"\"\n\n    from_account: str = Field(min_length=1)\n    to_account: str = Field(min_length=1)\n    amount: float = Field(gt=0.0)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "DomainError",
+        "source": "class DomainError(Exception):\n    \"\"\"Base of every business-rule failure, with a code and details.\"\"\"\n\n    def __init__(\n        self,\n        message: str,\n        code: str = \"DOMAIN_ERROR\",\n        details: dict[str, Any] | None = None,\n    ) -> None:\n        super().__init__(message)\n        self.message = message\n        self.code = code\n        self.details = details if details is not None else {}",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "InsufficientFundsError",
+        "source": "class InsufficientFundsError(DomainError):\n    \"\"\"The sender's balance is below the requested amount.\"\"\"\n\n    def __init__(\n        self,\n        message: str = \"Insufficient funds for transfer\",\n        details: dict[str, Any] | None = None,\n    ) -> None:\n        super().__init__(message=message, code=\"INSUFFICIENT_FUNDS\", details=details)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "AccountNotFoundError",
+        "source": "class AccountNotFoundError(DomainError):\n    \"\"\"A referenced account does not exist.\"\"\"\n\n    def __init__(\n        self, message: str = \"Account not found\", details: dict[str, Any] | None = None\n    ) -> None:\n        super().__init__(message=message, code=\"ACCOUNT_NOT_FOUND\", details=details)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SEED_BALANCES",
+        "source": "SEED_BALANCES: dict[str, float] = {\n    \"acc_1\": 100.0,\n    \"acc_2\": 50.0,\n    \"acc_3\": 0.0,\n}",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ACCOUNTS_DB",
+        "source": "ACCOUNTS_DB: dict[str, float] = dict(SEED_BALANCES)",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db",
+        "source": "def reset_db() -> None:\n    \"\"\"Restore every account to its seed balance.\"\"\"\n    ACCOUNTS_DB.clear()\n    ACCOUNTS_DB.update(SEED_BALANCES)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "app",
+        "source": "app = FastAPI(title=\"Transfer Service\")",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "insufficient_funds_handler",
+        "source": "@app.exception_handler(InsufficientFundsError)\nasync def insufficient_funds_handler(\n    request: Request, exc: InsufficientFundsError\n) -> JSONResponse:\n    \"\"\"Answer 402 with the error envelope.\"\"\"\n    req_id = request.headers.get(\"X-Request-ID\") or str(uuid.uuid4())\n    return JSONResponse(\n        status_code=status.HTTP_402_PAYMENT_REQUIRED,\n        content={\n            \"error\": {\n                \"code\": exc.code,\n                \"message\": exc.message,\n                \"details\": exc.details,\n                \"request_id\": req_id,\n            }\n        },\n        headers={\"X-Request-ID\": req_id},\n    )",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "account_not_found_handler",
+        "source": "@app.exception_handler(AccountNotFoundError)\nasync def account_not_found_handler(\n    request: Request, exc: AccountNotFoundError\n) -> JSONResponse:\n    \"\"\"Answer 404 with the error envelope.\"\"\"\n    req_id = request.headers.get(\"X-Request-ID\") or str(uuid.uuid4())\n    return JSONResponse(\n        status_code=status.HTTP_404_NOT_FOUND,\n        content={\n            \"error\": {\n                \"code\": exc.code,\n                \"message\": exc.message,\n                \"details\": exc.details,\n                \"request_id\": req_id,\n            }\n        },\n        headers={\"X-Request-ID\": req_id},\n    )",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "create_transfer",
+        "source": "@app.post(\"/transfers\", status_code=status.HTTP_200_OK)\nasync def create_transfer(payload: TransferRequest, request: Request) -> dict[str, Any]:\n    \"\"\"Move money between two accounts, or raise a domain error.\"\"\"\n    if payload.from_account not in ACCOUNTS_DB:\n        raise AccountNotFoundError(\n            message=f\"Account '{payload.from_account}' not found\",\n            details={\"account_id\": payload.from_account},\n        )\n    if payload.to_account not in ACCOUNTS_DB:\n        raise AccountNotFoundError(\n            message=f\"Account '{payload.to_account}' not found\",\n            details={\"account_id\": payload.to_account},\n        )\n\n    current_balance = ACCOUNTS_DB[payload.from_account]\n    if current_balance < payload.amount:\n        raise InsufficientFundsError(\n            message=f\"Account '{payload.from_account}' has insufficient balance\",\n            details={\n                \"available\": current_balance,\n                \"requested\": payload.amount,\n                \"shortfall\": payload.amount - current_balance,\n            },\n        )\n\n    ACCOUNTS_DB[payload.from_account] -= payload.amount\n    ACCOUNTS_DB[payload.to_account] += payload.amount\n\n    req_id = request.headers.get(\"X-Request-ID\") or str(uuid.uuid4())\n    return {\n        \"status\": \"completed\",\n        \"from_account\": payload.from_account,\n        \"to_account\": payload.to_account,\n        \"amount\": payload.amount,\n        \"remaining_balance\": ACCOUNTS_DB[payload.from_account],\n        \"request_id\": req_id,\n    }",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_account",
+        "source": "@app.get(\"/accounts/{account_id}\")\nasync def get_account(account_id: str) -> dict[str, str | float]:\n    \"\"\"Return one account's balance.\"\"\"\n    if account_id not in ACCOUNTS_DB:\n        raise AccountNotFoundError(\n            message=f\"Account '{account_id}' not found\",\n            details={\"account_id\": account_id},\n        )\n    return {\"account_id\": account_id, \"balance\": ACCOUNTS_DB[account_id]}",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 12
+    }
   },
   "candidates": [
     {

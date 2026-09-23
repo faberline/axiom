@@ -6,6 +6,17 @@
   "requirement": "OpenAPI 3.1 schema customization via callable ConfigDict(json_schema_extra=augment_schema) injecting examples, x-metadata tags, and x-pii annotations.",
   "skeleton": "Pydantic v2 BaseModel with ConfigDict callable json_schema_extra augmenting OpenAPI schema.",
   "caption": "A pydantic v2 model whose JSON schema is customized through a callable passed as json_schema_extra in ConfigDict. augment_schema takes the generated schema dictionary and mutates it in place: it assigns an examples list holding one full example with transaction_id txn_123456, amount 99.95, and account_number ACC-987654, so the example satisfies the model's own constraints; it assigns an x-metadata object with classification restricted and owner billing-core; and it looks up properties with get, checks that it is a dict containing account_number, and sets x-pii to True on that property. It never removes or replaces the properties block, so every declared field remains visible to schema consumers, and it assigns the examples list outright instead of appending to a key that does not exist yet. PaymentTransaction sets extra to forbid and json_schema_extra to that function in model_config, and declares transaction_id as a string, amount as a float constrained with gt=0.0 and a description, and account_number as a string. Calling model_json_schema on the class therefore returns the ordinary schema for the three properties augmented with the examples list, the x-metadata tags, and the x-pii annotation on account_number, and the same augmented schema is what an OpenAPI 3.1 document built from the model carries.",
+  "plan": {
+    "intent": "Augment a payment model's JSON schema with examples and metadata",
+    "target": "PaymentTransaction",
+    "constraints": [
+      "The schema gains one example that satisfies the model's own constraints",
+      "The schema carries x-metadata with its classification and owner",
+      "The account number property is marked x-pii",
+      "Every declared property stays in the schema",
+      "Amount must be above zero and unknown keys are rejected"
+    ]
+  },
   "rationale": {
     "teaches": "Pydantic v2 ConfigDict with a callable json_schema_extra that sets examples, x-metadata, and x-pii on the generated schema without removing properties.",
     "why": "Schema customization is only visible in the JSON schema output. The v1 Config class, appending to a missing list, and popping properties all import fine and fail only when model_json_schema is called."
@@ -33,7 +44,71 @@
       "pydantic"
     ],
     "raises": [],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "augment_schema",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "PaymentTransaction",
+              "kind": "class",
+              "depends_on": [
+                "augment_schema"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Payment model whose JSON Schema carries examples and PII markers."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel, ConfigDict, Field",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "augment_schema",
+        "source": "def augment_schema(schema: dict[str, Any]) -> None:\n    \"\"\"Add examples and ownership metadata, and mark the account number as PII.\"\"\"\n    schema[\"examples\"] = [\n        {\n            \"transaction_id\": \"txn_123456\",\n            \"amount\": 99.95,\n            \"account_number\": \"ACC-987654\",\n        }\n    ]\n    schema[\"x-metadata\"] = {\n        \"classification\": \"restricted\",\n        \"owner\": \"billing-core\",\n    }\n    properties = schema.get(\"properties\")\n    if isinstance(properties, dict) and \"account_number\" in properties:\n        properties[\"account_number\"][\"x-pii\"] = True",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "PaymentTransaction",
+        "source": "class PaymentTransaction(BaseModel):\n    \"\"\"A payment whose schema is extended by ``augment_schema``.\"\"\"\n\n    model_config = ConfigDict(\n        extra=\"forbid\",\n        json_schema_extra=augment_schema,\n    )\n\n    transaction_id: str\n    amount: float = Field(\n        ..., gt=0.0, description=\"Transaction amount in USD, strictly positive\"\n    )\n    account_number: str",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
   },
   "candidates": [
     {

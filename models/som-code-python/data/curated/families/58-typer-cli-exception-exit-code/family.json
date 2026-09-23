@@ -6,6 +6,17 @@
   "requirement": "Typer CLI pipeline command with strict exception handling and distinct process exit codes (0 for success, 1 for missing artifact, 2 for validation error, 3 for runtime failure), logging errors to stderr.",
   "skeleton": "Typer app with deploy command executing deployment and mapping exceptions to typer.Exit codes and stderr logs.",
   "caption": "A Typer command-line application that turns each failure class into its own process exit code and writes every error to stderr. The module creates app as a typer.Typer with a no-op callback so it behaves as a multi-command CLI. execute_deployment(artifact_path, target_env) raises FileNotFoundError when the artifact does not exist, ValueError when the environment is neither staging nor production, and RuntimeError when the artifact's text content is empty, and otherwise returns a dictionary with status deployed, the environment, and the artifact file name. The deploy command declares its options with Annotated and typer.Option: a required --artifact option, short form -a, and an --env option, short form -e, defaulting to staging. It calls execute_deployment and echoes a SUCCESS line naming the artifact and environment, leaving the default exit code 0. A FileNotFoundError is printed as an Error line to stderr in red and converted into typer.Exit with code 1, a ValueError into a Validation Error line and code 2, and a RuntimeError into a Deployment Failed line and code 3, each Exit chained from the original exception, so no raw traceback reaches the user. The fixture drives the command through Typer's CliRunner and asserts exit 0 with SUCCESS: app.tar.gz deployed to staging on stdout, exit 1 with the not-found message on stderr and not on stdout, exit 2 with a Validation Error on stderr, and exit 3 with the empty-payload message on stderr and no Traceback text.",
+  "plan": {
+    "intent": "Map each deployment failure to its own CLI exit code",
+    "target": "deploy command",
+    "constraints": [
+      "A missing artifact raises FileNotFoundError, an unknown environment ValueError, and an empty artifact RuntimeError",
+      "Those become typer.Exit with codes 1, 2, and 3",
+      "Every error message goes to stderr and no traceback reaches the user",
+      "Success echoes the artifact and environment and exits 0",
+      "Options are declared with Annotated, and the environment defaults to staging"
+    ]
+  },
   "rationale": {
     "teaches": "A Typer command that maps each failure class to a distinct exit code through typer.Exit and writes errors to stderr.",
     "why": "A CLI that prints the error and exits 0 looks fine in a terminal and breaks every script that checks the exit code. The fixture runs the command through CliRunner and asserts the code and the stream."
@@ -50,7 +61,98 @@
       "RuntimeError",
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "main",
+              "kind": "command",
+              "depends_on": [
+                "app"
+              ]
+            },
+            {
+              "name": "execute_deployment",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "deploy",
+              "kind": "command",
+              "depends_on": [
+                "app",
+                "execute_deployment"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Map each deployment failure to its own Typer exit code and a stderr message."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pathlib import Path",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Annotated",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import typer",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "app",
+        "source": "app = typer.Typer(help=\"Artifact deployment and verification CLI.\")",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "main",
+        "source": "@app.callback()\ndef main() -> None:\n    \"\"\"Main callback for multi-command CLI support.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "execute_deployment",
+        "source": "def execute_deployment(artifact_path: Path, target_env: str) -> dict[str, str]:\n    \"\"\"Execute deployment logic, raising specific domain errors.\"\"\"\n    if not artifact_path.exists():\n        raise FileNotFoundError(f\"Artifact not found: {artifact_path}\")\n    if target_env not in (\"staging\", \"production\"):\n        raise ValueError(f\"Invalid target environment: '{target_env}'\")\n    content = artifact_path.read_text(encoding=\"utf-8\").strip()\n    if not content:\n        raise RuntimeError(\"Artifact payload is empty\")\n    return {\"status\": \"deployed\", \"env\": target_env, \"artifact\": artifact_path.name}",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "deploy",
+        "source": "@app.command()\ndef deploy(\n    artifact: Annotated[\n        Path, typer.Option(\"--artifact\", \"-a\", help=\"Path to artifact\")\n    ],\n    env: Annotated[\n        str, typer.Option(\"--env\", \"-e\", help=\"Target environment\")\n    ] = \"staging\",\n) -> None:\n    \"\"\"Deploy build artifact to target environment with strict exit code contracts.\"\"\"\n    try:\n        result = execute_deployment(artifact, env)\n        typer.echo(f\"SUCCESS: {result['artifact']} deployed to {result['env']}\")\n    except FileNotFoundError as exc:\n        typer.secho(f\"Error: {exc}\", fg=typer.colors.RED, err=True)\n        raise typer.Exit(code=1) from exc\n    except ValueError as exc:\n        typer.secho(f\"Validation Error: {exc}\", fg=typer.colors.RED, err=True)\n        raise typer.Exit(code=2) from exc\n    except RuntimeError as exc:\n        typer.secho(f\"Deployment Failed: {exc}\", fg=typer.colors.RED, err=True)\n        raise typer.Exit(code=3) from exc",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 4
+    }
   },
   "candidates": [
     {

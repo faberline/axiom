@@ -6,6 +6,17 @@
   "requirement": "Cryptographic token and random value generation service enforcing use of the secrets module (CSPRNG) rather than predictable pseudo-random generators (random module), enforcing minimum token entropy boundaries (>= 16 bytes), and validating positive bounds.",
   "skeleton": "SecureTokenService class with generate_hex_token, generate_url_safe_token, generate_bounded_int, and choose_securely methods using secrets.",
   "caption": "A standard-library token service built on the secrets module that draws every token, bounded integer, and choice from the operating system's cryptographic generator, with no third-party imports. MIN_TOKEN_BYTES is 16. SecureTokenService takes min_bytes defaulting to 16 and raises ValueError when a smaller floor is requested. generate_hex_token(nbytes) uses the floor when no size is given, raises ValueError when the requested size is below the floor, and returns secrets.token_hex for that many bytes, so the default token is 64 hexadecimal characters. generate_url_safe_token applies the same size rule and returns secrets.token_urlsafe. generate_bounded_int(upper_bound) raises ValueError unless the bound is positive and returns secrets.randbelow of it, a value from zero up to but excluding the bound. choose_securely raises ValueError for an empty sequence and returns secrets.choice from it. None of these paths touches the random module, whose Mersenne Twister output can be predicted after observing enough values even though it looks identical in shape. The fixture asserts that the default hex token is 64 characters and the URL-safe token at least 32, that with the random module's getrandbits, choices, and randint patched to fail a 20-byte hex token of 40 characters, a URL-safe token, and a value between 0 and 100 are still produced, that the constant is at least 16 and undersized requests raise ValueError reporting nbytes must be at least the floor, that zero and negative bounds raise ValueError reporting upper_bound must be positive, and that fifty generated tokens are all distinct.",
+  "plan": {
+    "intent": "Generate tokens and random choices only from the cryptographic generator",
+    "target": "SecureTokenService",
+    "constraints": [
+      "A floor below 16 bytes, or a request below the floor, raises ValueError",
+      "Hex and URL-safe tokens come from the secrets module",
+      "A non-positive bound or an empty sequence raises ValueError",
+      "Bounded integers use randbelow and choices use secrets.choice",
+      "The random module is never used"
+    ]
+  },
   "rationale": {
     "teaches": "Token generation through the secrets module only, a 16-byte minimum, and a positive-bound check for bounded integers.",
     "why": "random and secrets produce the same shape of output; only the module matters. The fixture patches the random module and asserts it is never called, and checks the boundaries."
@@ -34,7 +45,65 @@
     "raises": [
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "MIN_TOKEN_BYTES",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "SecureTokenService",
+              "kind": "class",
+              "depends_on": [
+                "MIN_TOKEN_BYTES"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Generate tokens and random choices from the secrets module's CSPRNG."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import secrets",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Sequence",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MIN_TOKEN_BYTES",
+        "source": "MIN_TOKEN_BYTES = 16",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SecureTokenService",
+        "source": "class SecureTokenService:\n    \"\"\"Generate tokens and random identifiers with the secrets module.\"\"\"\n\n    def __init__(self, min_bytes: int = MIN_TOKEN_BYTES) -> None:\n        if min_bytes < MIN_TOKEN_BYTES:\n            raise ValueError(f\"min_bytes must be at least {MIN_TOKEN_BYTES}\")\n        self._min_bytes = min_bytes\n\n    def generate_hex_token(self, nbytes: int | None = None) -> str:\n        \"\"\"Return a hex token of at least the configured number of bytes.\"\"\"\n        count = self._min_bytes if nbytes is None else nbytes\n        if count < self._min_bytes:\n            raise ValueError(f\"nbytes must be at least {self._min_bytes}\")\n        return secrets.token_hex(count)\n\n    def generate_url_safe_token(self, nbytes: int | None = None) -> str:\n        \"\"\"Return a URL-safe token of at least the configured number of bytes.\"\"\"\n        count = self._min_bytes if nbytes is None else nbytes\n        if count < self._min_bytes:\n            raise ValueError(f\"nbytes must be at least {self._min_bytes}\")\n        return secrets.token_urlsafe(count)\n\n    def generate_bounded_int(self, upper_bound: int) -> int:\n        \"\"\"Return a secure random integer in [0, upper_bound).\"\"\"\n        if upper_bound <= 0:\n            raise ValueError(\"upper_bound must be positive\")\n        return secrets.randbelow(upper_bound)\n\n    def choose_securely(self, sequence: Sequence[str]) -> str:\n        \"\"\"Return a secure random element of a non-empty sequence.\"\"\"\n        if not sequence:\n            raise ValueError(\"Sequence cannot be empty\")\n        return secrets.choice(sequence)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
   },
   "candidates": [
     {

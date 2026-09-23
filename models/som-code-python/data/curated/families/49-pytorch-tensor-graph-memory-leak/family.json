@@ -6,6 +6,17 @@
   "requirement": "Implement EpochLossAccumulator class for tracking batch loss history across deep learning epochs, detaching tensors via .item() to eliminate autograd graph memory leaks, validating non-negative losses and positive batch sizes, and computing sample-weighted averages.",
   "skeleton": "EpochLossAccumulator class with record_batch, compute_epoch_average, get_history, and reset methods.",
   "caption": "A standard-library loss bookkeeper for deep learning training loops that never holds on to tensors, with no third-party imports. EpochLossAccumulator takes record_history defaulting to True and resets on construction; reset zeroes the total weighted loss and total sample count and empties the history list. record_batch(loss, batch_size=1) raises ValueError unless batch_size is a positive integer. When the loss object has an item method it calls item() and converts the result to a plain float, detaching it from any autograd graph; otherwise it converts the value with float directly. It raises ValueError for a negative loss while accepting exactly zero, adds the loss multiplied by batch_size to the weighted total, adds batch_size to the sample count, appends the float to the history when history is enabled, and returns the float. compute_epoch_average raises ValueError when no batches have been recorded and otherwise returns the weighted total divided by the sample count, so uneven batches are weighted by how many samples they carried. get_history returns a copy of the recorded floats. The fixture asserts that losses 1.5 and 2.5 are returned and averaged to 2.1 by sample weight, that reset clears everything, that the default batch size is one, the batch-size validation, that a zero loss is accepted, and that each stored history entry is a plain float with no grad_fn attribute.",
+  "plan": {
+    "intent": "Accumulate training loss without holding on to tensors",
+    "target": "EpochLossAccumulator",
+    "constraints": [
+      "A non-positive batch size or a negative loss raises ValueError",
+      "A loss exposing item() is converted to a plain float",
+      "The epoch average is weighted by batch size",
+      "Averaging before any batch raises ValueError",
+      "History stores plain floats and is returned as a copy"
+    ]
+  },
   "rationale": {
     "teaches": "Loss bookkeeping that calls .item() before storing, validates batch_size and non-negative loss, and weights the epoch average by samples.",
     "why": "Appending a loss tensor keeps its whole autograd graph alive; memory grows per batch but nothing raises. The fixture checks that the stored history contains plain floats, which is the observable that rules out the leak."
@@ -30,7 +41,51 @@
     "raises": [
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "EpochLossAccumulator",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Accumulate epoch losses as floats so no autograd graph outlives its batch."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "EpochLossAccumulator",
+        "source": "class EpochLossAccumulator:\n    \"\"\"Accumulates batch losses and computes sample-weighted epoch averages.\n\n    Safely detaches loss tensors using .item() to ensure computation graph\n    nodes (such as autograd DAG references) are not retained in memory.\n    \"\"\"\n\n    def __init__(self, record_history: bool = True) -> None:\n        self.record_history = record_history\n        self.reset()\n\n    def reset(self) -> None:\n        \"\"\"Reset internal accumulator state for a new epoch.\"\"\"\n        self.total_weighted_loss: float = 0.0\n        self.total_samples: int = 0\n        self._history: list[float] = []\n\n    def record_batch(self, loss: Any, batch_size: int = 1) -> float:\n        \"\"\"Record one batch loss, validating inputs and detaching tensor references.\"\"\"\n        if not isinstance(batch_size, int) or batch_size <= 0:\n            raise ValueError(f\"batch_size must be a positive integer, got {batch_size}\")\n\n        val = float(loss.item()) if hasattr(loss, \"item\") else float(loss)\n\n        if val < 0.0:\n            raise ValueError(f\"Loss value must be non-negative, got {val}\")\n\n        self.total_weighted_loss += val * batch_size\n        self.total_samples += batch_size\n\n        if self.record_history:\n            self._history.append(val)\n\n        return val\n\n    def compute_epoch_average(self) -> float:\n        \"\"\"Return the sample-weighted average loss for the recorded epoch.\"\"\"\n        if self.total_samples == 0:\n            raise ValueError(\"No batches recorded to compute epoch average\")\n        return self.total_weighted_loss / self.total_samples\n\n    def get_history(self) -> list[float]:\n        \"\"\"Return a copy of the recorded scalar loss history.\"\"\"\n        return list(self._history)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
   },
   "candidates": [
     {

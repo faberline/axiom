@@ -6,6 +6,17 @@
   "requirement": "Implement SecureAsyncLCELPipeline that prevents PromptTemplate injection and executes async LCEL chains without blocking the asyncio event loop. User inputs must be safely encapsulated as human messages without evaluating curly braces {} as template formatting keys. Sync heavy preprocessing must be offloaded via asyncio.to_thread. The pipeline's astream() method must yield token chunks incrementally.",
   "skeleton": "Secure prompt formatter and async LCEL pipeline with non-blocking offload and streaming.",
   "caption": "A LangChain-style asynchronous prompt pipeline written in the standard library with asyncio and no third-party imports, which keeps user text in its own message role and never blocks the event loop. SecureAsyncLCELPipeline takes a system instruction, a model callable that may return a value or a coroutine, and strict_sanitization defaulting to True. compose_prompt, in strict mode, replaces any newline-prefixed System, system, Human, or Assistant role label inside the user text with a space, and returns exactly two messages: the system instruction in the system role and the user text in a separate human role, so user text is never concatenated into the instruction and braces in it are never treated as template keys. sync_compute_digest is a deliberately slow synchronous step that sleeps briefly and appends the sum of the text's character codes. ainvoke runs that digest through asyncio.to_thread so other coroutines keep running, composes the prompt from the result, calls the model, awaits the result when it is a coroutine, and returns it as text. astream does the same preparation, then splits the model's text on spaces and yields each token followed by a space, awaiting a zero sleep before each so the caller receives tokens one at a time instead of all at the end. The fixture asserts that the prompt has two messages with system content System instructions and a human message containing Hello user, that an injected newline System line is removed from the human message both explicitly and under the default setting, that ainvoke returns a result containing model_done while to_thread was called at least once, and that astream yields four chunks joining to one two three four.",
+  "plan": {
+    "intent": "Compose prompts safely and run an async pipeline without blocking",
+    "target": "SecureAsyncLCELPipeline",
+    "constraints": [
+      "User text goes in its own human message, never concatenated into the instruction",
+      "Strict sanitization strips injected role labels at the start of a line",
+      "The slow synchronous step runs through asyncio.to_thread",
+      "A coroutine result from the model is awaited",
+      "Streaming yields one token at a time"
+    ]
+  },
   "rationale": {
     "teaches": "A pipeline that keeps user input in its own human message, strips role delimiters in strict mode, offloads sync work with asyncio.to_thread, and streams tokens incrementally.",
     "why": "Injection succeeds only when user text is concatenated into the system role, and blocking shows only under a concurrent task. The fixture injects a fake System: line and times a concurrent coroutine during the sync step."
@@ -28,7 +39,69 @@
     ],
     "imports": [],
     "raises": [],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "SecureAsyncLCELPipeline",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Run an LCEL-style chain that sanitizes prompts and offloads blocking work."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import asyncio",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import time",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import AsyncIterator, Callable",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SecureAsyncLCELPipeline",
+        "source": "class SecureAsyncLCELPipeline:\n    \"\"\"LCEL-style chain that keeps roles separate and never blocks the event loop.\"\"\"\n\n    def __init__(\n        self,\n        system_instruction: str,\n        model_callable: Callable[[list[dict[str, str]]], Any],\n        strict_sanitization: bool = True,\n    ) -> None:\n        self.system_instruction = system_instruction\n        self.model_callable = model_callable\n        self.strict_sanitization = strict_sanitization\n\n    def compose_prompt(self, user_input: str) -> list[dict[str, str]]:\n        \"\"\"Build system and human messages, stripping role delimiters from input.\"\"\"\n        if self.strict_sanitization:\n            for delimiter in (\"\\nSystem:\", \"\\nsystem:\", \"\\nHuman:\", \"\\nAssistant:\"):\n                if delimiter in user_input:\n                    user_input = user_input.replace(delimiter, \" \")\n\n        return [\n            {\"role\": \"system\", \"content\": self.system_instruction},\n            {\"role\": \"human\", \"content\": str(user_input)},\n        ]\n\n    def sync_compute_digest(self, text: str) -> str:\n        \"\"\"Return text tagged with its character sum; blocks, so run it in a thread.\"\"\"\n        time.sleep(0.05)\n        total = sum(ord(c) for c in text)\n        return f\"{text}:{total}\"\n\n    async def ainvoke(self, user_input: str) -> str:\n        \"\"\"Digest input off the event loop, call the model, and return its reply.\"\"\"\n        processed = await asyncio.to_thread(self.sync_compute_digest, user_input)\n        messages = self.compose_prompt(processed)\n\n        res = self.model_callable(messages)\n        if asyncio.iscoroutine(res):\n            res = await res\n        return str(res)\n\n    async def astream(self, user_input: str) -> AsyncIterator[str]:\n        \"\"\"Yield the model's reply token by token, yielding control between tokens.\"\"\"\n        processed = await asyncio.to_thread(self.sync_compute_digest, user_input)\n        messages = self.compose_prompt(processed)\n        res = self.model_callable(messages)\n        if asyncio.iscoroutine(res):\n            res = await res\n\n        text = str(res)\n        tokens = text.split(\" \")\n        for token in tokens:\n            await asyncio.sleep(0)\n            yield token + \" \"",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
   },
   "candidates": [
     {

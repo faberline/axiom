@@ -75,7 +75,7 @@ def test_curation_fields_pass_through_to_the_training_row(tmp_path: Path) -> Non
     assert gold.why_wrong is None and gold.caught_by is None
     assert miss.why_wrong == "Branch 1 is taken on the input the fixture sends."
     assert miss.caught_by == ("test_b", "test_a")  # order is the corpus's, never re-sorted here
-    row = family.to_decision_dict()
+    row = family.to_row()
     assert "why_wrong" not in row["candidates"][0]
     assert row["candidates"][1]["why_wrong"] == miss.why_wrong
     assert row["candidates"][1]["caught_by"] == ["test_b", "test_a"]
@@ -87,7 +87,7 @@ def test_curation_fields_pass_through_to_the_training_row(tmp_path: Path) -> Non
 
 def test_a_family_without_curation_still_loads(tmp_path: Path) -> None:
     fam = write_family(tmp_path, "01-plain", with_curation=False)
-    row = load_family_from_metadata(fam).to_decision_dict()
+    row = load_family_from_metadata(fam).to_row()
     assert "why_wrong" not in row["candidates"][1]
     assert "caught_by" not in row["candidates"][1]
     assert row["metadata"]["oracle"] is None

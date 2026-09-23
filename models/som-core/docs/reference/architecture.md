@@ -1,7 +1,9 @@
-# SOM (Structured Outcome Model) 架構設計：SQL引擎哲學與多層次解壓
+# SOM (Snippet-Oriented Model) 架構設計：SQL引擎哲學與多層次解壓
 
 ## Goal Description
 本架構精準借鏡 SQL Database 引擎的運作哲學，透過多層次解壓 (Density Decompression) 將自然語言平滑展開為實體組裝代碼。同時，我們確立了嚴格的「輸入邊界限制」，確保 SOM 專注於高內聚的執行任務，防範過大範圍的請求導致管線崩潰。
+
+SOM 是生成式的程式組裝器：每一層都「產生」下一層的紀錄，沒有任何一層從呼叫端或語料提供的候選中「選擇」。near miss 只當訓練時的負面／偏好資料，評估以組裝結果跑 oracle fixture 的通過率為準。各層紀錄的正式格式與 op 詞彙見 [layer-records.md](layer-records.md)。
 
 ## User Review Required
 > [!IMPORTANT]

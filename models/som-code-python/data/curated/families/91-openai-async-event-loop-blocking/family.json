@@ -6,6 +6,17 @@
   "requirement": "Implement an asynchronous OpenAI chat service that performs non-blocking chat completion and streaming requests without stalling the asyncio event loop, with timeout configuration and empty message validation.",
   "skeleton": "AsyncOpenAIChatService with generate_chat_response and stream_chat_response coroutines.",
   "caption": "An OpenAI-style asynchronous chat service written against an injected async client, in the standard library with asyncio and no third-party imports, so every network call is awaited and never stalls the event loop. AsyncOpenAIChatService takes a client and a timeout defaulting to 30.0 seconds, and raises ValueError reporting that the timeout must be positive when it is zero or negative, because a zero timeout would mean waiting forever. generate_chat_response(messages, model, temperature) raises ValueError reporting that messages cannot be empty before any request is made, then awaits client.chat.completions.create with the model, the chat-format messages, the temperature, and the configured timeout, and returns the content of the first choice's message, or an empty string when the content is missing. stream_chat_response is an async generator that applies the same empty-message check, awaits the same chat completions endpoint with streaming enabled and the timeout, then iterates the stream asynchronously and yields each chunk's first-choice delta content whenever it is present, skipping chunks with no choices or empty deltas; it reads delta rather than message because streamed chunks carry incremental text. The legacy completions endpoint is never called. The fixture asserts that a fake client's answer Paris is returned, that empty message lists raise ValueError for both the plain and streaming call, that the default timeout is 30.0, that three streamed deltas arrive as Hello, a space, and world, that a timeout of 0 raises ValueError reporting timeout must be positive, and that two concurrent requests both return concurrent response while the event loop keeps running other work.",
+  "plan": {
+    "intent": "Call a chat model asynchronously without blocking the event loop",
+    "target": "AsyncOpenAIChatService",
+    "constraints": [
+      "A non-positive timeout or an empty message list raises ValueError",
+      "Every request awaits the chat completions endpoint with the configured timeout",
+      "A missing content returns an empty string",
+      "Streaming yields each chunk's delta content and skips empty chunks",
+      "The legacy completions endpoint is never called"
+    ]
+  },
   "rationale": {
     "teaches": "An async chat service that awaits chat.completions.create with a positive timeout, refuses empty messages, and yields streaming delta content chunk by chunk.",
     "why": "The wrong endpoint, a zero timeout, or reading message instead of delta all produce a coroutine that runs; only a fake client that records the call and streams chunks tells them apart. The fixture checks the endpoint called, the timeout, and the streamed text."
@@ -28,7 +39,51 @@
     "raises": [
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "AsyncOpenAIChatService",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Wrap an async OpenAI-style client for single and streamed chat completions."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import AsyncIterator",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "AsyncOpenAIChatService",
+        "source": "class AsyncOpenAIChatService:\n    \"\"\"Chat completions over an injected async client with a fixed timeout.\"\"\"\n\n    def __init__(self, client: Any = None, timeout: float = 30.0) -> None:\n        if timeout <= 0:\n            raise ValueError(\"timeout must be positive\")\n        self.client = client\n        self.timeout = timeout\n\n    async def generate_chat_response(\n        self,\n        messages: list[dict[str, str]],\n        model: str = \"gpt-4o-mini\",\n        temperature: float = 0.7,\n    ) -> str:\n        \"\"\"Return the first choice's content, or an empty string when absent.\"\"\"\n        if not messages:\n            raise ValueError(\"messages cannot be empty\")\n        response = await self.client.chat.completions.create(\n            model=model,\n            messages=messages,\n            temperature=temperature,\n            timeout=self.timeout,\n        )\n        choice = response.choices[0]\n        return choice.message.content or \"\"\n\n    async def stream_chat_response(\n        self,\n        messages: list[dict[str, str]],\n        model: str = \"gpt-4o-mini\",\n    ) -> AsyncIterator[str]:\n        \"\"\"Yield each non-empty content delta from a streamed completion.\"\"\"\n        if not messages:\n            raise ValueError(\"messages cannot be empty\")\n        stream = await self.client.chat.completions.create(\n            model=model,\n            messages=messages,\n            stream=True,\n            timeout=self.timeout,\n        )\n        async for chunk in stream:\n            if chunk.choices and chunk.choices[0].delta.content:\n                yield chunk.choices[0].delta.content",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
   },
   "candidates": [
     {

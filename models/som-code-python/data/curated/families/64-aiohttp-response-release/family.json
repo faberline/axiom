@@ -6,6 +6,17 @@
   "requirement": "Implement SafeResponseConsumer that guarantees explicit connection release via await response.release() on non-200 status codes, decoding errors, or early stream termination, preventing connection pool starvation and socket leaks in high-throughput aiohttp applications.",
   "skeleton": "SafeResponseConsumer class with fetch_payload and read_header_value methods enforcing response release.",
   "caption": "An aiohttp response consumer that always returns the underlying connection to the pool, whatever path the read takes. BadStatusError subclasses Exception. ResponseStreamConsumer.fetch_json_safe(session, url) awaits session.get to obtain the response and, inside a try block, awaits response.release() and raises BadStatusError naming the status when the status is not 200; otherwise it returns the awaited JSON. Any exception raised in that block, including a decoding failure from response.json, awaits release before being re-raised unchanged, so a malformed body cannot leave the connection checked out. Release is awaited rather than merely called, since calling it without await only creates a coroutine that never runs, and release is used rather than close so the connection goes back to the pool instead of being destroyed. read_header_value(session, url, header_key) fetches the response, returns the named header or None, and awaits release in a finally block without ever reading the body, so a header-only probe does not strand its socket. The fixture uses mocked responses and asserts that a 500 raises BadStatusError with at least one awaited release, that a ValueError reporting Invalid JSON from the decoder propagates after release was awaited, that reading the header returns secret-123 with exactly one awaited release, and that a successful fetch returns ok True without ever calling close.",
+  "plan": {
+    "intent": "Always return an aiohttp connection to the pool whatever the read outcome",
+    "target": "ResponseStreamConsumer",
+    "constraints": [
+      "A status other than 200 awaits release and raises BadStatusError",
+      "A body decoding failure awaits release and re-raises unchanged",
+      "release is awaited, never merely called, and close is never used",
+      "A header-only read releases in a finally without reading the body",
+      "A missing header returns None"
+    ]
+  },
   "rationale": {
     "teaches": "Guaranteed response release: await release on non-200, on decode errors, on any exception, and after reading a header, so pooled connections return to the pool.",
     "why": "An unreleased response keeps its connection checked out; with a small pool the next request blocks. The fixture counts release calls per path with a fake response."
@@ -37,7 +48,65 @@
     "raises": [
       "BadStatusError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "BadStatusError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "ResponseStreamConsumer",
+              "kind": "class",
+              "depends_on": [
+                "BadStatusError"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Aiohttp response body consumption and connection release manager."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import aiohttp",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "BadStatusError",
+        "source": "class BadStatusError(Exception):\n    \"\"\"Raised when an HTTP response returns an unexpected status.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ResponseStreamConsumer",
+        "source": "class ResponseStreamConsumer:\n    \"\"\"Extract headers and payloads, always releasing the response connection.\"\"\"\n\n    async def fetch_json_safe(\n        self,\n        session: aiohttp.ClientSession,\n        url: str,\n    ) -> dict[str, Any]:\n        \"\"\"Fetch and decode JSON, releasing the response on any error or bad status.\"\"\"\n        response = await session.get(url)\n        try:\n            if response.status != 200:\n                await response.release()\n                raise BadStatusError(f\"Server returned status {response.status}\")\n            payload: dict[str, Any] = await response.json()\n            return payload\n        except Exception:\n            await response.release()\n            raise\n\n    async def read_header_value(\n        self,\n        session: aiohttp.ClientSession,\n        url: str,\n        header_key: str,\n    ) -> str | None:\n        \"\"\"Read one response header and release the connection without the body.\"\"\"\n        response = await session.get(url)\n        try:\n            return response.headers.get(header_key)\n        finally:\n            await response.release()",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
   },
   "candidates": [
     {

@@ -6,6 +6,17 @@
   "requirement": "Safely purge workspace files, symlinks, and directories without traversing symlinks outside workspace root, preventing arbitrary deletion of external files.",
   "skeleton": "SafeWorkspaceCleaner class with clean_target method ensuring paths stay within workspace_root and unlinking symlinks without following them.",
   "caption": "A standard-library workspace cleaner built on pathlib and shutil that deletes only what lives inside its root and never follows a link out of it, with no third-party imports. SafeWorkspaceCleaner resolves workspace_root strictly at construction. clean_target(target_path) joins a relative path onto the root, keeps an absolute one as given, and resolves only the candidate's parent directory, returning False when that parent does not exist. It raises PermissionError unless the resolved parent equals the root or is_relative_to it, a path-component comparison rather than a string prefix, so a sibling directory whose name merely begins with the workspace name is refused. Before any resolution of the candidate itself it checks is_symlink and, for a link, calls unlink on the link and returns True, so the directory or file it points to is never touched. A missing candidate returns False, and a regular file is unlinked and returns True. For a real directory it resolves the full path, raises PermissionError when that resolved directory escapes the root, and otherwise removes it with shutil.rmtree and returns True. The fixture asserts removal of an ordinary file and subdirectory, that a link to an external directory is removed while the external important.txt keeps its CRITICAL DATA, that a directory containing a link outward is deleted without traversing it, that a parent escape is refused, that a sibling-prefix path is refused with the sibling's file intact, and that a directory symlink is unlinked cleanly.",
+  "plan": {
+    "intent": "Delete paths inside a workspace without following links out of it",
+    "target": "SafeWorkspaceCleaner",
+    "constraints": [
+      "A symlink is unlinked before any resolution, leaving its target untouched",
+      "A parent outside the root, compared by path components, raises PermissionError",
+      "A resolved directory escaping the root raises PermissionError",
+      "Files are unlinked and real directories removed with rmtree",
+      "A missing path returns False"
+    ]
+  },
   "rationale": {
     "teaches": "Workspace cleanup that unlinks a symlink instead of following it, checks containment with is_relative_to on the resolved parent, and raises on escape.",
     "why": "rmtree on a directory symlink or a walk with followlinks deletes files outside the workspace, which no in-workspace test notices. The fixture plants a symlink to an external directory and checks the external files survive."
@@ -27,7 +38,51 @@
     "raises": [
       "PermissionError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "SafeWorkspaceCleaner",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Clean workspace paths without following symlinks out of the workspace root."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import shutil",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pathlib import Path",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SafeWorkspaceCleaner",
+        "source": "class SafeWorkspaceCleaner:\n    \"\"\"Cleans workspace paths without following symlinks or escaping root.\"\"\"\n\n    def __init__(self, workspace_root: str | Path) -> None:\n        self.workspace_root = Path(workspace_root).resolve(strict=True)\n\n    def clean_target(self, target_path: str | Path) -> bool:\n        \"\"\"Safely remove a file, symlink, or directory within workspace_root.\n\n        Returns True if item was removed, False if it did not exist.\n        Raises PermissionError if target_path escapes workspace_root.\n        \"\"\"\n        raw = Path(target_path)\n        candidate = (self.workspace_root / raw) if not raw.is_absolute() else raw\n\n        # Verify parent directory is valid and contained in workspace_root\n        try:\n            resolved_parent = candidate.parent.resolve(strict=True)\n        except (FileNotFoundError, RuntimeError):\n            return False\n\n        if not (\n            resolved_parent == self.workspace_root\n            or resolved_parent.is_relative_to(self.workspace_root)\n        ):\n            raise PermissionError(\n                f\"Target '{target_path}' parent escapes workspace root\"\n            )\n\n        if candidate.is_symlink():\n            candidate.unlink()\n            return True\n\n        if not candidate.exists():\n            return False\n\n        if candidate.is_file():\n            candidate.unlink()\n            return True\n\n        # Candidate is a directory: verify resolved path is also within workspace_root\n        resolved = candidate.resolve(strict=True)\n        if not (\n            resolved == self.workspace_root\n            or resolved.is_relative_to(self.workspace_root)\n        ):\n            raise PermissionError(\n                f\"Target directory '{target_path}' escapes workspace root\"\n            )\n\n        shutil.rmtree(resolved)\n        return True",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
   },
   "candidates": [
     {

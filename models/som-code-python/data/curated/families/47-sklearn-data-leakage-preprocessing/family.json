@@ -6,6 +6,17 @@
   "requirement": "Implement LeakFreeDataSplitter class that validates train/test split bounds and sample counts, splits datasets, fits the feature scaler strictly on the training partition only, and scales test data using training statistics to prevent data leakage.",
   "skeleton": "StandardScaler and LeakFreeDataSplitter class with split_and_scale method returning scaled arrays and the fitted scaler.",
   "caption": "A scikit-learn module that splits a dataset and standardizes it without letting test statistics leak into training. It re-exports sklearn.preprocessing.StandardScaler. LeakFreeDataSplitter takes test_size defaulting to 0.2 and random_state defaulting to 42, raising ValueError unless test_size lies strictly between 0.0 and 1.0, so both endpoints are refused. split_and_scale(X, y) raises ValueError when the lengths of X and y differ and when there are fewer than 10 samples, then calls train_test_split on X converted with numpy to a float64 array and y with that test_size and random_state. Only then does it create a StandardScaler, fit_transform it on the training partition alone, and transform the test partition with those training statistics, returning the scaled training and test arrays, both label arrays, and the fitted scaler. The fixture asserts an 80 and 20 split on 100 rows, the default fraction, the length, bound, and sample-count validation, and that the scaler's learned mean matches neither the test partition's mean nor the full dataset's mean.",
+  "plan": {
+    "intent": "Split and standardize data without leaking test statistics",
+    "target": "LeakFreeDataSplitter",
+    "constraints": [
+      "A test fraction not strictly between 0 and 1 raises ValueError",
+      "Mismatched lengths or fewer than 10 samples raise ValueError",
+      "The split happens before any scaling",
+      "The scaler is fitted on the training partition only and applied to the test partition",
+      "The fitted scaler is returned with both partitions and labels"
+    ]
+  },
   "rationale": {
     "teaches": "Leak-free preprocessing with scikit-learn: split with train_test_split first, fit the StandardScaler on the training partition only, transform the test partition with those statistics, and validate lengths and test_size bounds before splitting.",
     "why": "Fitting the scaler on the full dataset or on the test split still yields arrays of the right shape and plausible values. The fixture compares the scaler's learned mean to the training mean, which is the only direct evidence of where it was fit."
@@ -34,7 +45,69 @@
     "raises": [
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "__all__",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "LeakFreeDataSplitter",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Split a dataset first, then fit the StandardScaler on the training rows only."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import numpy as np",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sklearn.model_selection import train_test_split",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sklearn.preprocessing import StandardScaler",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "__all__",
+        "source": "__all__ = [\"LeakFreeDataSplitter\", \"StandardScaler\"]",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "LeakFreeDataSplitter",
+        "source": "class LeakFreeDataSplitter:\n    \"\"\"Split features and targets, then standardize without test-set leakage.\"\"\"\n\n    def __init__(self, test_size: float = 0.2, random_state: int = 42) -> None:\n        if not 0.0 < test_size < 1.0:\n            raise ValueError(\n                f\"test_size must be strictly between 0.0 and 1.0, got {test_size}\"\n            )\n        self.test_size = test_size\n        self.random_state = random_state\n\n    def split_and_scale(\n        self,\n        X: np.ndarray,\n        y: np.ndarray,\n    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, StandardScaler]:\n        \"\"\"Return scaled train and test features, their targets, and the scaler.\"\"\"\n        if len(X) != len(y):\n            raise ValueError(\n                f\"X and y lengths must match: got len(X)={len(X)}, len(y)={len(y)}\"\n            )\n        if len(X) < 10:\n            raise ValueError(f\"Dataset must contain at least 10 samples, got {len(X)}\")\n\n        X_train, X_test, y_train, y_test = train_test_split(\n            np.asarray(X, dtype=np.float64),\n            np.asarray(y),\n            test_size=self.test_size,\n            random_state=self.random_state,\n        )\n        scaler = StandardScaler()\n        X_train_scaled = scaler.fit_transform(X_train)\n        X_test_scaled = scaler.transform(X_test)\n        return X_train_scaled, X_test_scaled, y_train, y_test, scaler",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
   },
   "candidates": [
     {

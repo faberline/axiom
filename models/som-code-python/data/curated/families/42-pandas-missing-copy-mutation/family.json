@@ -6,6 +6,17 @@
   "requirement": "Implement CohortFeatureTransformer class that extracts and enriches a slice of a master DataFrame. It must enforce explicit .copy() on sliced subsets to isolate mutations from the master DataFrame, validate cohort existence and positive scaling parameters, compute derived features (normalized_score and risk_tier), and guarantee that the master DataFrame remains unmodified after feature extraction.",
   "skeleton": "Enforce explicit DataFrame .copy() on subset slices to prevent unintended caller DataFrame mutations and feature leakage.",
   "caption": "A pandas module that derives cohort features on a copy so the caller's master DataFrame never gains columns. It imports numpy and DataFrame from pandas. CohortFeatureTransformer takes cohort_col defaulting to cohort and base_scale defaulting to 1.0. transform_cohort(df, cohort_name, score_col='score', scale=None) raises ValueError when the cohort column or the score column is missing, when an explicit scale is zero or negative, and when no row matches the cohort, checked with the any of the boolean cohort mask. It calls df.copy() before touching anything, adds normalized_score as the score times the effective scale, and adds risk_tier with np.where as high when the normalized score is at least 50.0 and standard otherwise, so exactly 50 counts as high, then returns the copy's rows selected by the cohort mask. The fixture asserts the default scaling to 40.0 and 60.0, the scale and cohort validation, the inclusive tier boundary, and that neither derived column appears in the master DataFrame afterwards.",
+  "plan": {
+    "intent": "Derive cohort features without mutating the caller's frame",
+    "target": "CohortFeatureTransformer",
+    "constraints": [
+      "A missing cohort or score column, a non-positive scale, or a cohort with no rows raises ValueError",
+      "All derived columns are added to a copy of the frame",
+      "The normalized score is the score times the effective scale",
+      "A normalized score of exactly 50 is tiered high",
+      "Only the matching cohort's rows are returned"
+    ]
+  },
   "rationale": {
     "teaches": "Deriving columns on an explicit df.copy() rather than on the caller's frame, a positive scale check, a sane base_scale, and an inclusive tier boundary.",
     "why": "Assigning a column to the frame a caller passed in mutates their object, and nothing fails until they reuse it. The fixture asserts the master frame has no derived column after the call."
@@ -30,7 +41,51 @@
     "raises": [
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "CohortFeatureTransformer",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Derive cohort features on a copy so the caller's DataFrame never changes."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import numpy as np",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pandas import DataFrame",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "CohortFeatureTransformer",
+        "source": "class CohortFeatureTransformer:\n    \"\"\"Score one cohort of a DataFrame without mutating the master table.\"\"\"\n\n    def __init__(self, cohort_col: str = \"cohort\", base_scale: float = 1.0) -> None:\n        self.cohort_col = cohort_col\n        self.base_scale = base_scale\n\n    def transform_cohort(\n        self,\n        df: DataFrame,\n        cohort_name: str,\n        score_col: str = \"score\",\n        scale: float | None = None,\n    ) -> DataFrame:\n        \"\"\"Return the cohort's rows with normalized_score and risk_tier added.\"\"\"\n        if self.cohort_col not in df.columns:\n            raise ValueError(f\"Cohort column '{self.cohort_col}' not found\")\n        if score_col not in df.columns:\n            raise ValueError(f\"Score column '{score_col}' not found\")\n        if scale is not None and scale <= 0.0:\n            raise ValueError(\"scale must be strictly positive (> 0.0)\")\n\n        effective_scale = self.base_scale if scale is None else scale\n        in_cohort = df[self.cohort_col] == cohort_name\n        if not in_cohort.any():\n            raise ValueError(f\"Cohort '{cohort_name}' not found in dataset\")\n\n        enriched = df.copy()\n        enriched[\"normalized_score\"] = enriched[score_col] * effective_scale\n        enriched[\"risk_tier\"] = np.where(\n            enriched[\"normalized_score\"] >= 50.0, \"high\", \"standard\"\n        )\n        return enriched[in_cohort]",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
   },
   "candidates": [
     {

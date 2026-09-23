@@ -1,9 +1,10 @@
 # SOM code corpus for Python product requirements
 
 This corpus project owns the material the Snippet-Oriented Model learns
-Python from: executable oracle families that teach the model to tell a
-correct, idiomatic use of the Python ecosystem from a near miss, and
-the snippet instruction set the generator assembles programs from. This
+Python from: executable oracle families whose gold is the correct,
+idiomatic program the generator must rebuild and whose near misses are
+negative examples, the layer records that decompose each gold, and the
+snippet instruction set the generator assembles programs from. This
 directory is the product requirements document: what the corpus promises,
 written down before the work items that deliver it. Release Milestones are
 carved from these sections, not the other way round.
@@ -52,21 +53,20 @@ Boundaries that every section inherits:
 |---|---|
 | Model trainer | Every family the engine loads has a gold that passes and near misses that fail on behaviour, so a label is never a guess, and every record says why it is in the corpus. |
 | Corpus author | One layout, one harness, one verifier; a new family or snippet is accepted or refused by a command, not by review. |
-| Generator author | The ISA is complete enough to express the gold of every family it claims, and the decompiled records name which instructions the gold used. |
+| Generator author | Every gold reassembles from its decompiled records, and the coverage figure says how much of it the ISA expresses as snippets. |
 
 ## Horizons
 
 | Horizon | Outcome | Section |
 |---|---|---|
 | H1 | `oracle-fixtures-complete` | [corpus.md](corpus.md) § Oracle fixtures complete |
-| H1 | `decompiler-dsl-corpus` | [data-pipeline.md](data-pipeline.md) § Decompiler DSL corpus |
 | H2 | `snippet-isa-v2` | [snippet-isa.md](snippet-isa.md) § Snippet ISA v2 |
 | H2 | `non-minimal-near-misses` | [corpus.md](corpus.md) § Non-minimal near misses |
 
-H1 is the data the engine cannot train without: the three unproven families
-and the layer records the generator learns from. H2 widens the ISA once an
-assembler exists to consume it and hardens the near misses once the
-discriminator trains on the corpus.
+H1 is the data the engine cannot train without: the three unproven
+families. H2 widens the ISA so more of each gold is a snippet rather than a
+literal block, and hardens the near misses before the engine builds
+preference data from them.
 
 ## Section index
 
@@ -80,7 +80,7 @@ discriminator trains on the corpus.
 | Snippet ISA v1 | snippet-isa.md | shipped | STATUS `snippet-isa` |
 | Snippet ISA v2 | snippet-isa.md | outcome | ROADMAP `snippet-isa-v2` |
 | Project test suite | data-pipeline.md | shipped | STATUS `python-test-suite` |
-| Decompiler DSL corpus | data-pipeline.md | outcome | ROADMAP `decompiler-dsl-corpus` |
+| Decompiled layer records | data-pipeline.md | shipped, limited | STATUS `decompiled-layer-records` |
 | uv-runnable packaging | data-pipeline.md | shipped | STATUS `uv-runnable-packaging` |
 
 Non-goals are not sections. Each file ends with the non-goals that a reader of

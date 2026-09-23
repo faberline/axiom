@@ -6,6 +6,16 @@
   "requirement": "FastAPI GET /orders endpoint returning orders with line items using SQLAlchemy selectinload to eagerly load 1-to-many relationship in exactly 2 SELECT queries for 5 orders.",
   "skeleton": "FastAPI GET /orders with SQLAlchemy selectinload eager loading.",
   "caption": "A FastAPI listing endpoint whose SQL statement count is part of its contract. The module builds a StaticPool engine over in-memory SQLite and a QueryCounter class with class-level count and statements, fed by a before_cursor_execute listener registered on the engine through SQLAlchemy's event API that counts every statement starting with SELECT. Under a DeclarativeBase, Order has id, a non-null order_number, and a status defaulting to completed, with an items relationship declared lazy select and back-populated; OrderItem has id, an order_id foreign key, product_name, quantity, price, and the reverse relationship. get_db yields one session per request and closes it in finally. reset_db drops and recreates the schema, inserts five orders numbered ORD-001 to ORD-005, each with two line items with quantities one and two, commits, and resets the counter; it runs once at import. pydantic response models OrderItemResponse and OrderResponse read from attributes, and OrderResponse nests a list of items. GET /query-metrics returns the current count. GET /orders declares a response_model of a list of OrderResponse and takes include_details defaulting to True: it builds select(Order), adds options(selectinload(Order.items)) when details are included, executes with db.scalars(...).all(), and returns the ORM rows as loaded. With selectinload the items for all five orders arrive in one additional IN query, so the whole request issues exactly two SELECT statements regardless of how many orders exist, every order is returned in insertion order, and every order carries both of its line items.",
+  "plan": {
+    "intent": "List orders with their line items in a fixed number of queries",
+    "target": "Order",
+    "constraints": [
+      "Line items are loaded eagerly with a second IN query",
+      "Listing five orders issues exactly two SELECT statements",
+      "Orders come back in insertion order, each with both of its items",
+      "The statement count is readable over HTTP"
+    ]
+  },
   "rationale": {
     "teaches": "Eager loading a one-to-many relationship with selectinload so a list endpoint issues exactly two SELECTs regardless of row count, with details included by default.",
     "why": "N+1 queries return the correct payload, so only a statement counter catches them. The oracle counts SQL statements, which makes query-shape a testable contract."
@@ -112,7 +122,302 @@
       "sqlalchemy"
     ],
     "raises": [],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "engine",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "QueryCounter",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "before_cursor_execute",
+              "kind": "function",
+              "depends_on": [
+                "engine",
+                "QueryCounter"
+              ]
+            },
+            {
+              "name": "Base",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Order",
+              "kind": "class",
+              "depends_on": [
+                "Base",
+                "OrderItem"
+              ]
+            },
+            {
+              "name": "OrderItem",
+              "kind": "class",
+              "depends_on": [
+                "Base",
+                "Order"
+              ]
+            },
+            {
+              "name": "Base.metadata.create_all",
+              "kind": "statement",
+              "depends_on": [
+                "Base",
+                "engine"
+              ]
+            },
+            {
+              "name": "session_factory",
+              "kind": "constant",
+              "depends_on": [
+                "engine"
+              ]
+            },
+            {
+              "name": "get_db",
+              "kind": "function",
+              "depends_on": [
+                "session_factory"
+              ]
+            },
+            {
+              "name": "reset_db",
+              "kind": "function",
+              "depends_on": [
+                "Base",
+                "engine",
+                "session_factory",
+                "Order",
+                "OrderItem",
+                "QueryCounter"
+              ]
+            },
+            {
+              "name": "reset_db#2",
+              "kind": "statement",
+              "depends_on": [
+                "reset_db"
+              ]
+            },
+            {
+              "name": "OrderItemResponse",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "OrderResponse",
+              "kind": "class",
+              "depends_on": [
+                "OrderItemResponse"
+              ]
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "get_query_metrics",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "QueryCounter"
+              ]
+            },
+            {
+              "name": "get_orders",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "OrderResponse",
+                "get_db",
+                "Order"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Order listing that loads line items with one extra SELECT via selectinload."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Generator, Sequence",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any, ClassVar",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import Depends, FastAPI",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel, ConfigDict",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy import (\n    ForeignKey,\n    create_engine,\n    event,\n    select,\n)",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.orm import (\n    DeclarativeBase,\n    Mapped,\n    Session,\n    mapped_column,\n    relationship,\n    selectinload,\n    sessionmaker,\n)",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.pool import StaticPool",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "engine",
+        "source": "engine = create_engine(\n    \"sqlite:///:memory:\",\n    connect_args={\"check_same_thread\": False},\n    poolclass=StaticPool,\n)",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "QueryCounter",
+        "source": "class QueryCounter:\n    \"\"\"Count the SELECT statements the engine executes.\"\"\"\n\n    count: ClassVar[int] = 0\n    statements: ClassVar[list[str]] = []\n\n    @classmethod\n    def reset(cls) -> None:\n        \"\"\"Start counting from zero.\"\"\"\n        cls.count = 0\n        cls.statements = []",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "before_cursor_execute",
+        "source": "@event.listens_for(engine, \"before_cursor_execute\", named=True)\ndef before_cursor_execute(**kw: Any) -> None:\n    \"\"\"Record every SELECT the engine sends to the database.\"\"\"\n    statement: str = kw[\"statement\"]\n    if statement.strip().upper().startswith(\"SELECT\"):\n        QueryCounter.count += 1\n        QueryCounter.statements.append(statement)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Base",
+        "source": "class Base(DeclarativeBase):\n    \"\"\"Declarative base shared by every table in this module.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Order",
+        "source": "class Order(Base):\n    \"\"\"An order and its line items.\"\"\"\n\n    __tablename__ = \"orders\"\n\n    id: Mapped[int] = mapped_column(primary_key=True, index=True)\n    order_number: Mapped[str] = mapped_column(nullable=False)\n    status: Mapped[str] = mapped_column(default=\"completed\", nullable=False)\n\n    items: Mapped[list[OrderItem]] = relationship(\n        \"OrderItem\", back_populates=\"order\", lazy=\"select\"\n    )",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "OrderItem",
+        "source": "class OrderItem(Base):\n    \"\"\"One product line of an order.\"\"\"\n\n    __tablename__ = \"order_items\"\n\n    id: Mapped[int] = mapped_column(primary_key=True, index=True)\n    order_id: Mapped[int] = mapped_column(ForeignKey(\"orders.id\"), nullable=False)\n    product_name: Mapped[str] = mapped_column(nullable=False)\n    quantity: Mapped[int] = mapped_column(nullable=False)\n    price: Mapped[float] = mapped_column(nullable=False)\n\n    order: Mapped[Order] = relationship(\"Order\", back_populates=\"items\")",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Base.metadata.create_all",
+        "source": "Base.metadata.create_all(bind=engine)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "session_factory",
+        "source": "session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_db",
+        "source": "def get_db() -> Generator[Session, None, None]:\n    \"\"\"Yield one database session per request and close it afterwards.\"\"\"\n    db = session_factory()\n    try:\n        yield db\n    finally:\n        db.close()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db",
+        "source": "def reset_db() -> None:\n    \"\"\"Recreate the tables and seed five orders of two items each.\"\"\"\n    Base.metadata.drop_all(bind=engine)\n    Base.metadata.create_all(bind=engine)\n    db = session_factory()\n    for i in range(1, 6):\n        order = Order(order_number=f\"ORD-{i:03d}\", status=\"completed\")\n        db.add(order)\n        db.flush()\n        item1 = OrderItem(\n            order_id=order.id, product_name=f\"Item {i}-A\", quantity=1, price=10.0\n        )\n        item2 = OrderItem(\n            order_id=order.id, product_name=f\"Item {i}-B\", quantity=2, price=20.0\n        )\n        db.add_all([item1, item2])\n    db.commit()\n    db.close()\n    QueryCounter.reset()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db#2",
+        "source": "reset_db()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "OrderItemResponse",
+        "source": "class OrderItemResponse(BaseModel):\n    \"\"\"Order line representation returned to clients.\"\"\"\n\n    id: int\n    product_name: str\n    quantity: int\n    price: float\n\n    model_config = ConfigDict(from_attributes=True)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "OrderResponse",
+        "source": "class OrderResponse(BaseModel):\n    \"\"\"Order representation returned to clients.\"\"\"\n\n    id: int\n    order_number: str\n    status: str\n    items: list[OrderItemResponse]\n\n    model_config = ConfigDict(from_attributes=True)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "app",
+        "source": "app = FastAPI()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_query_metrics",
+        "source": "@app.get(\"/query-metrics\")\ndef get_query_metrics() -> dict[str, int]:\n    \"\"\"Return how many SELECT statements have run since the last reset.\"\"\"\n    return {\"count\": QueryCounter.count}",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_orders",
+        "source": "@app.get(\"/orders\", response_model=list[OrderResponse])\ndef get_orders(\n    include_details: bool = True, db: Session = Depends(get_db)\n) -> Sequence[Order]:\n    \"\"\"Return every order, eager-loading items unless details are declined.\"\"\"\n    stmt = select(Order)\n    if include_details:\n        stmt = stmt.options(selectinload(Order.items))\n    orders = db.scalars(stmt).all()\n    return orders",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 16
+    }
   },
   "candidates": [
     {

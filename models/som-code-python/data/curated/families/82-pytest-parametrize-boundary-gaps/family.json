@@ -6,6 +6,17 @@
   "requirement": "Provide a comprehensive test specification table and validation evaluator testing a record filtering function against boundary cases: empty string category, zero, negative bounds, and None.",
   "skeleton": "filter_records(records, min_score, category) and get_boundary_test_cases() function providing full equivalence partitions.",
   "caption": "A standard-library record filter paired with a boundary-case table that covers every equivalence partition a parametrized test needs, with no third-party imports. filter_records(records, min_score, category) walks the records and, only when min_score is not None, skips a record whose score is missing or strictly below the threshold, so a threshold of zero is a real filter and a score equal to the threshold is kept. Only when category is not None does it skip a record whose category differs, comparing by equality rather than substring, so an empty-string category selects exactly the records whose category is the empty string instead of acting as a wildcard. Records that survive both checks are returned in their original order. get_boundary_test_cases returns five cases, each with a description, min_score, category, and expected count: a standard match at 50.0 in tech expecting 1, a zero boundary with no category expecting 3, a negative boundary at -10.0 expecting 4, an empty-string category with no threshold expecting 1, and an all-None filter expecting 4. Keeping the zero row is what exposes a filter that tests the threshold for truthiness, and keeping the empty-string row exposes one that treats an empty category as absent. The fixture asserts that the table contains the empty_string_category, zero_boundary, and negative_boundary descriptions with the matching values, that a zero threshold returns the scores 0.0 and 25.0 while excluding a negative one, and that exact category matching returns record 1 for tech and record 3 for the empty string.",
+  "plan": {
+    "intent": "Filter records by score and category with exact boundary semantics",
+    "target": "filter_records",
+    "constraints": [
+      "The score filter applies only when the threshold is not None, so zero is a real threshold",
+      "A score equal to the threshold is kept and a missing score is dropped",
+      "Category matching is exact equality, so an empty string selects only empty categories",
+      "Surviving records keep their original order",
+      "The boundary table covers standard, zero, negative, empty-category, and unfiltered cases"
+    ]
+  },
   "rationale": {
     "teaches": "A boundary test table covering empty-string category, zero and negative min_score, and None, with a filter that treats 0 as a real threshold, uses strict less-than, and matches category exactly.",
     "why": "A table that drops the zero row cannot tell 'if min_score:' from 'is not None', so the filter bug and the table gap hide each other. The fixture runs the full table and checks each partition is present."
@@ -30,7 +41,57 @@
     ],
     "imports": [],
     "raises": [],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "filter_records",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "get_boundary_test_cases",
+              "kind": "function",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Filter scored records and enumerate the boundary cases for the filter."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "filter_records",
+        "source": "def filter_records(\n    records: list[dict[str, Any]],\n    min_score: float | None = None,\n    category: str | None = None,\n) -> list[dict[str, Any]]:\n    \"\"\"Keep records meeting min_score and category; None disables a filter.\"\"\"\n    filtered: list[dict[str, Any]] = []\n    for r in records:\n        score = r.get(\"score\")\n        cat = r.get(\"category\")\n        if min_score is not None and (score is None or score < min_score):\n            continue\n        if category is not None and cat != category:\n            continue\n        filtered.append(r)\n    return filtered",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_boundary_test_cases",
+        "source": "def get_boundary_test_cases() -> list[dict[str, Any]]:\n    \"\"\"Return filter cases around zero, negatives, and empty strings.\"\"\"\n    return [\n        {\n            \"desc\": \"standard_match\",\n            \"min_score\": 50.0,\n            \"category\": \"tech\",\n            \"expected_count\": 1,\n        },\n        {\n            \"desc\": \"zero_boundary\",\n            \"min_score\": 0.0,\n            \"category\": None,\n            \"expected_count\": 3,\n        },\n        {\n            \"desc\": \"negative_boundary\",\n            \"min_score\": -10.0,\n            \"category\": None,\n            \"expected_count\": 4,\n        },\n        {\n            \"desc\": \"empty_string_category\",\n            \"min_score\": None,\n            \"category\": \"\",\n            \"expected_count\": 1,\n        },\n        {\n            \"desc\": \"all_none_filter\",\n            \"min_score\": None,\n            \"category\": None,\n            \"expected_count\": 4,\n        },\n    ]",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
   },
   "candidates": [
     {

@@ -6,6 +6,17 @@
   "requirement": "Implement RedisTransactionPipeline and RedisPubSubManager classes providing atomic multi/exec pipelines with optimistic locking (watch/unwatch and WatchError retries up to max_retries), transaction rollback/reset on failure, and pubsub channel subscription, publishing, message dispatching, unsubscription, and connection cleanup.",
   "skeleton": "RedisTransactionPipeline with optimistic locking retry logic and RedisPubSubManager with message dispatching and channel lifecycle.",
   "caption": "A redis helper module with an optimistic-locking transaction runner and a pub/sub dispatcher. RedisTransactionPipeline takes a client and max_retries defaulting to 3, raising ValueError when max_retries is negative. execute_transaction(watch_keys, callback) raises ValueError when watch_keys is empty, then loops up to max_retries plus one times: it opens a transactional pipeline, WATCHes the keys, calls MULTI, runs the callback against the pipeline, and returns the result of EXECUTE. When a WatchError signals that a watched key changed, it retries while attempts remain and re-raises once they are exhausted, and an AssertionError marks the loop exit as unreachable, and every attempt resets its pipeline in a finally block so the connection returns clean. RedisPubSubManager wraps the client's pubsub object and a dictionary of handler lists per channel. subscribe raises ValueError for an empty channel, strips it, and issues the SUBSCRIBE only for the first handler on a channel; publish validates the channel the same way and returns the client's receiver count. dispatch_message ignores anything whose type is not message and returns 0, otherwise calls every handler for that channel with the channel and data and returns how many ran. unsubscribe and close clear handlers, and close also closes the pubsub. The fixture asserts that one WatchError produces exactly two attempts and that dispatch delivers the pair metrics and cpu_load_80.",
+  "plan": {
+    "intent": "Run optimistic Redis transactions and dispatch pub/sub messages to handlers",
+    "target": "Redis helpers",
+    "constraints": [
+      "A negative retry count or an empty watch list raises ValueError",
+      "Each attempt WATCHes the keys, runs the callback inside MULTI, and executes",
+      "A WatchError retries while attempts remain and is re-raised once they are exhausted",
+      "The pipeline is reset after every attempt, and AssertionError marks the unreachable loop exit",
+      "Subscribing sends SUBSCRIBE only for a channel's first handler, and non-message events dispatch to nobody"
+    ]
+  },
   "rationale": {
     "teaches": "Redis optimistic locking: watch the keys, retry on WatchError up to max_retries with a sane default, reset the pipeline on failure, and dispatch only real pubsub messages.",
     "why": "A pipeline that retries one time too few or never resets still succeeds when nothing races. The fixture injects a WatchError sequence and counts attempts, which is the only way to observe retry arithmetic."
@@ -43,7 +54,69 @@
       "AssertionError",
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "RedisTransactionPipeline",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "RedisPubSubManager",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Redis atomic transaction pipeline with optimistic locking and pubsub manager."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from redis.exceptions import WatchError",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "RedisTransactionPipeline",
+        "source": "class RedisTransactionPipeline:\n    \"\"\"Run atomic MULTI/EXEC transactions, retrying when a WATCHed key changes.\"\"\"\n\n    def __init__(self, client: Any, max_retries: int = 3) -> None:\n        if max_retries < 0:\n            raise ValueError(\"max_retries must be non-negative\")\n        self.client = client\n        self.max_retries = max_retries\n\n    def execute_transaction(\n        self,\n        watch_keys: list[str],\n        callback: Callable[[Any], None],\n    ) -> list[Any]:\n        \"\"\"Execute callback within an atomic pipeline, retrying on WatchError.\"\"\"\n        if not watch_keys:\n            raise ValueError(\"watch_keys must not be empty\")\n\n        for attempt in range(self.max_retries + 1):\n            pipe = self.client.pipeline(transaction=True)\n            try:\n                pipe.watch(*watch_keys)\n                pipe.multi()\n                callback(pipe)\n                return list(pipe.execute())\n            except WatchError:\n                if attempt >= self.max_retries:\n                    raise\n                continue\n            finally:\n                pipe.reset()\n        raise AssertionError(\"unreachable: the last attempt returns or raises\")",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "RedisPubSubManager",
+        "source": "class RedisPubSubManager:\n    \"\"\"Subscribe, publish, and dispatch Redis PubSub messages to channel handlers.\"\"\"\n\n    def __init__(self, client: Any) -> None:\n        self.client = client\n        self.pubsub = self.client.pubsub()\n        self._handlers: dict[str, list[Callable[[str, Any], None]]] = {}\n\n    def subscribe(self, channel: str, handler: Callable[[str, Any], None]) -> None:\n        \"\"\"Subscribe handler to a named channel.\"\"\"\n        if not channel or not isinstance(channel, str) or not channel.strip():\n            raise ValueError(\"channel must be a non-empty string\")\n        clean_channel = channel.strip()\n        if clean_channel not in self._handlers:\n            self._handlers[clean_channel] = []\n            self.pubsub.subscribe(clean_channel)\n        self._handlers[clean_channel].append(handler)\n\n    def publish(self, channel: str, message: Any) -> int:\n        \"\"\"Publish message to a channel and return receiver count.\"\"\"\n        if not channel or not isinstance(channel, str) or not channel.strip():\n            raise ValueError(\"channel must be a non-empty string\")\n        return int(self.client.publish(channel.strip(), message))\n\n    def dispatch_message(self, message_dict: dict[str, Any]) -> int:\n        \"\"\"Dispatch an incoming pubsub message dictionary to registered callbacks.\"\"\"\n        if not isinstance(message_dict, dict) or message_dict.get(\"type\") != \"message\":\n            return 0\n        channel: str = message_dict.get(\"channel\", \"\")\n        data = message_dict.get(\"data\")\n        handlers = self._handlers.get(channel, [])\n        for handler in handlers:\n            handler(channel, data)\n        return len(handlers)\n\n    def unsubscribe(self, channel: str) -> None:\n        \"\"\"Unsubscribe all handlers from a channel.\"\"\"\n        clean_channel = channel.strip() if isinstance(channel, str) else \"\"\n        if clean_channel in self._handlers:\n            del self._handlers[clean_channel]\n            self.pubsub.unsubscribe(clean_channel)\n\n    def close(self) -> None:\n        \"\"\"Close pubsub connection and clear all channel subscriptions.\"\"\"\n        self._handlers.clear()\n        self.pubsub.close()",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
   },
   "candidates": [
     {

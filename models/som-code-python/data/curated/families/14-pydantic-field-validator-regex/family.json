@@ -6,6 +6,16 @@
   "requirement": "IoT device profile model with @field_validator enforcing E.164 phone formatting with mode=\"before\" pre-cleaning, strict SemVer 2.0.0 firmware with anchors, and lowercase normalized 64-hex fingerprint in mode=\"after\".",
   "skeleton": "Pydantic v2 BaseModel with pre-compiled regex validators and mode-specific data sanitation.",
   "caption": "A pydantic v2 model for an IoT device profile whose three string fields are validated by pre-compiled regular expressions. PHONE_REGEX anchors an E.164 number: a plus sign, a leading digit from 1 to 9, and six to fourteen further digits, so a number of up to fifteen digits is accepted. SEMVER_REGEX is the full SemVer 2.0.0 grammar with anchors at both ends: three numeric components without leading zeros, an optional pre-release list after a hyphen, and optional build metadata after a plus sign. FINGERPRINT_REGEX accepts exactly sixty-four hexadecimal characters in either case. DeviceProfile sets extra to forbid and declares device_id, phone with max_length 16, firmware, and fingerprint. validate_phone runs in before mode as a classmethod: when the raw value is a string it first strips spaces, hyphens, and parentheses with re.sub, then requires a string that matches PHONE_REGEX with match, raising ValueError otherwise, and returns the cleaned value; because it runs before type validation, a formatted input with spaces and dashes is cleaned rather than rejected. validate_firmware runs in after mode and raises ValueError when the anchored SemVer pattern does not match, never substituting a default. validate_fingerprint runs in after mode, raises ValueError on a non-matching string, and returns the value lowercased so the same fingerprint written in upper case is stored identically. Every rejection surfaces as a pydantic ValidationError naming the field.",
+  "plan": {
+    "intent": "Validate and normalize an IoT device profile",
+    "target": "DeviceProfile",
+    "constraints": [
+      "A phone number is stripped of spaces, hyphens, and parentheses before it must match E.164, raising ValueError otherwise",
+      "Firmware must be a full SemVer 2.0.0 version, raising ValueError otherwise",
+      "A fingerprint must be 64 hexadecimal characters, raising ValueError otherwise, and is stored lowercase",
+      "Unknown input keys are rejected"
+    ]
+  },
   "rationale": {
     "teaches": "Anchored regexes with match, a before-mode validator that cleans raw input, an after-mode validator that lowercases, and a validator that raises rather than substituting a default.",
     "why": "Regex validators fail open in quiet ways: a missing anchor accepts junk suffixes, search accepts embedded matches, and a substituted default hides bad input. Each has a payload that exposes it."
@@ -44,7 +54,103 @@
     "raises": [
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "PHONE_REGEX",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "SEMVER_REGEX",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "FINGERPRINT_REGEX",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "DeviceProfile",
+              "kind": "class",
+              "depends_on": [
+                "PHONE_REGEX",
+                "SEMVER_REGEX",
+                "FINGERPRINT_REGEX"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Device profile whose phone, firmware, and fingerprint fields are checked by regex."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import re",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel, ConfigDict, Field, field_validator",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "PHONE_REGEX",
+        "source": "PHONE_REGEX = re.compile(r\"^\\+[1-9]\\d{6,14}$\")",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SEMVER_REGEX",
+        "source": "SEMVER_REGEX = re.compile(\n    r\"^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\"\n    r\"(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)\"\n    r\"(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?\"\n    r\"(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$\"\n)",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "FINGERPRINT_REGEX",
+        "source": "FINGERPRINT_REGEX = re.compile(r\"^[0-9a-fA-F]{64}$\")",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "DeviceProfile",
+        "source": "class DeviceProfile(BaseModel):\n    \"\"\"A registered device with normalized, validated identifiers.\"\"\"\n\n    model_config = ConfigDict(extra=\"forbid\")\n\n    device_id: str\n    phone: str = Field(..., max_length=16)\n    firmware: str\n    fingerprint: str\n\n    @field_validator(\"phone\", mode=\"before\")\n    @classmethod\n    def validate_phone(cls, v: Any) -> str:\n        \"\"\"Strip separators and require an E.164 number.\"\"\"\n        if isinstance(v, str):\n            v = re.sub(r\"[\\s\\-\\(\\)]\", \"\", v)\n        if not isinstance(v, str) or not PHONE_REGEX.match(v):\n            raise ValueError(f\"Invalid E.164 phone number: {v!r}\")\n        return v\n\n    @field_validator(\"firmware\", mode=\"after\")\n    @classmethod\n    def validate_firmware(cls, v: str) -> str:\n        \"\"\"Require a SemVer 2.0.0 version string.\"\"\"\n        if not SEMVER_REGEX.match(v):\n            raise ValueError(f\"Invalid SemVer 2.0.0 firmware string: {v!r}\")\n        return v\n\n    @field_validator(\"fingerprint\", mode=\"after\")\n    @classmethod\n    def validate_fingerprint(cls, v: str) -> str:\n        \"\"\"Require 64 hex characters and normalize them to lower case.\"\"\"\n        if not FINGERPRINT_REGEX.match(v):\n            raise ValueError(\n                f\"Fingerprint must be a 64-character hexadecimal string: {v!r}\"\n            )\n        return v.lower()",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 4
+    }
   },
   "candidates": [
     {

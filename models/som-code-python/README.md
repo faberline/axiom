@@ -38,13 +38,17 @@ assembles into code that compiles.
    after editing any `family.json`; it reads the rationale and caption fields,
    re-measures `decompiled` from the gold source, and never executes a
    candidate.
-5. Run the snippet ISA verifier with
+5. Run the round trip with
+   `uv run --project models/som-code-python python models/som-code-python/scripts/verify_roundtrip.py`
+   after changing a gold, its `decompiled` block, or the engine's assembler;
+   it rebuilds every gold from its operation list with `som assemble`,
+   compares the AST, and runs the fixture on the rebuilt file.
+6. Run the snippet ISA verifier with
    `uv run --project models/som-code-python python models/som-code-python/scripts/verify_snippets.py`
    after touching anything under `data/snippets/`.
-6. Point the engine at the corpus with
-   `models/som-core/.venv/bin/som train`, which loads `data/curated` and, when
-   it holds a family, `data/user`; add your own families under `data/user/`
-   as [data/user/README.md](data/user/README.md) describes.
+7. The engine's loader reads `data/curated` and, when it holds a family,
+   `data/user`; add your own families under `data/user/` as
+   [data/user/README.md](data/user/README.md) describes.
 
 ## Executable oracle corpus
 
@@ -111,6 +115,7 @@ module, and compiles it. Version 1 covers FastAPI, Pydantic, and SQLAlchemy.
 | Executable oracle corpus | `oracle-corpus` | Every family with a fixture has a gold candidate that exits 0 and near misses that fail on exactly the fixture tests their `caught_by` declares, and the harness exits non-zero on any other outcome, including a declared oracle that is not the fixture it ran. | `models/som-code-python` |
 | Curated rationale | `curated-rationale` | Every family states what it teaches and why its oracle is executable, every near miss states its observable consequence and the fixture tests that catch it, every gold program has a long caption grounded in its source, and the check exits non-zero on any missing, trivial, label-leaking, or ungrounded field. | `models/som-code-python` |
 | Code quality | `code-quality` | Every gold candidate passes ruff, ruff format, mypy in strict mode, and pylint with zero messages, every near miss passes ruff format and the style rules, and the gate exits non-zero naming each candidate that does not. | `models/som-code-python` |
+| Decompiled layer records | `decompiled-layer-records` | Every family carries an authored L1 plan and the L2 topology, L3 operation list, and snippet coverage measured from its gold, and `som assemble` rebuilds every gold within the scope limit, and the multi-file TODO fixture, from those records to the same AST, with the family's fixture passing on the rebuilt file. | `models/som-code-python`, `models/som-core` |
 | Snippet ISA v1 | `snippet-isa` | Every required snippet exists with consistent parameters, and the full set assembles in dependency order into a module that compiles. | `models/som-code-python` |
 
 ### Executable oracle corpus
@@ -147,6 +152,19 @@ module, and compiles it. Version 1 covers FastAPI, Pydantic, and SQLAlchemy.
   - `models/som-code-python` owns the tool configuration in `pyproject.toml` and the quality gate.
 - Gate: `uv run --project models/som-code-python python models/som-code-python/scripts/verify_quality.py`
 
+### Decompiled layer records
+
+- ID: `decompiled-layer-records`
+- Promise: Every family carries an authored L1 plan and the L2 topology, L3
+  operation list, and snippet coverage measured from its gold, and `som
+  assemble` rebuilds every gold within the scope limit, and the
+  multi-file TODO fixture, from those records to the same AST, with the
+  family's fixture passing on the rebuilt file.
+- Sources:
+  - `models/som-code-python` owns the plans, the decompiler, and the round-trip gate.
+  - `models/som-core` owns the record schema and the assembler.
+- Gate: `uv run --project models/som-code-python python models/som-code-python/scripts/verify_roundtrip.py`
+
 ### Snippet ISA v1
 
 - ID: `snippet-isa`
@@ -163,8 +181,8 @@ module, and compiles it. Version 1 covers FastAPI, Pydantic, and SQLAlchemy.
   failure mode teaches, the record schema, and provenance.
 - [STATUS.md](STATUS.md) is the per-surface support matrix, including the
   families without fixtures.
-- [ROADMAP.md](ROADMAP.md) orders the outcomes: complete the fixtures, emit
-  the decompiler records, then harden the near misses and widen the ISA.
+- [ROADMAP.md](ROADMAP.md) orders the outcomes: complete the fixtures, then
+  harden the near misses and widen the ISA.
 - [CONTRIBUTING.md](CONTRIBUTING.md) is the local workflow and verification.
 - [docs/product/README.md](docs/product/README.md) indexes the product
   requirement sections.

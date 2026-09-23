@@ -23,9 +23,15 @@ non-trivial, and bound to the fixture and the gold source it claims:
   source: it names every exception class the gold raises, every status code
   it declares, and every third-party library it imports, and it names no
   exception class that neither the gold nor the fixture mentions.
+- ``plan`` is the L1 record (``models/som-core/docs/reference/layer-records.md``):
+  exactly ``intent``, ``target``, and a non-empty ``constraints`` list, all
+  non-empty strings; the constraints name every exception class the gold
+  raises and every status code it declares; and neither the ``requirement``
+  nor the ``caption`` is pasted into it.
 - ``decompiled`` equals what ``decompile_gold.measure`` reads from the gold
-  source today, so the surface, imports, raises, and status codes stored in
-  the record cannot drift from the code, the discipline ``caught_by`` follows.
+  source today, so the surface, imports, raises, status codes, topology,
+  operation list, and snippet coverage stored in the record cannot drift
+  from the code, the discipline ``caught_by`` follows.
 
 Exit 0 when every family passes; exit 1 with one line per defect otherwise.
 """
@@ -157,6 +163,38 @@ def check_caption(name: str, meta: dict, gold_src: str | None, fixture_src: str)
     return defects
 
 
+def check_plan(name: str, meta: dict, gold_src: str | None) -> list[str]:
+    """The L1 plan is well formed, grounded in the gold, and not pasted prose."""
+    plan = meta.get("plan")
+    if not isinstance(plan, dict):
+        return [f"{name}: plan missing"]
+    if set(plan) != {"intent", "target", "constraints"}:
+        return [f"{name}: plan fields are {sorted(plan)}, expected constraints, intent, target"]
+    constraints = plan["constraints"]
+    texts = [plan["intent"], plan["target"], *(constraints if isinstance(constraints, list) else [])]
+    if not isinstance(constraints, list) or not constraints:
+        return [f"{name}: plan.constraints must be a non-empty list"]
+    if not all(isinstance(t, str) and t.strip() for t in texts):
+        return [f"{name}: plan fields must be non-empty strings"]
+    defects: list[str] = []
+    joined = normalize(" ".join(texts))
+    for field in ("requirement", "caption"):
+        source = meta.get(field)
+        if isinstance(source, str) and normalize(source) in joined:
+            defects.append(f"{name}: plan contains the {field} verbatim")
+    if gold_src is None:
+        return defects
+    said = "\n".join(constraints)
+    measured = measure(gold_src)
+    for exc in measured["raises"]:
+        if not re.search(rf"\b{re.escape(exc)}\b", said):
+            defects.append(f"{name}: plan.constraints do not name the raised {exc}")
+    for code in measured["status_codes"]:
+        if not re.search(rf"\b{code}\b", said):
+            defects.append(f"{name}: plan.constraints do not name status code {code}")
+    return defects
+
+
 def check_decompiled(name: str, meta: dict, gold_src: str | None) -> list[str]:
     """The stored measurement equals a fresh one; report the keys that moved."""
     if gold_src is None:
@@ -249,6 +287,7 @@ def check_family(fam: Path) -> list[str]:
                 if docs[key] != gold_docs[key]:
                     defects.append(f"{name}/{cid}: docstring of {key} differs from gold")
     defects.extend(check_caption(name, meta, sources.get("gold"), fixture_src))
+    defects.extend(check_plan(name, meta, sources.get("gold")))
     defects.extend(check_decompiled(name, meta, sources.get("gold")))
     return defects
 
@@ -263,15 +302,16 @@ def main() -> int:
         return 1
     defects: list[str] = []
     modes: Counter[str] = Counter()
-    with_oracle = captioned = 0
+    with_oracle = captioned = planned = 0
     for fam in families:
         defects.extend(check_family(fam))
         meta = json.loads((fam / "family.json").read_text(encoding="utf-8"))
         with_oracle += meta.get("oracle") is not None
         captioned += isinstance(meta.get("caption"), str)
+        planned += isinstance(meta.get("plan"), dict)
         modes.update(c.get("failure_mode") for c in meta["candidates"] if c["kind"] != "gold")
     print(
-        f"families: {len(families)}  with oracle: {with_oracle}  captioned: {captioned}"
+        f"families: {len(families)}  with oracle: {with_oracle}  captioned: {captioned}  planned: {planned}"
         f"  near misses: {sum(modes.values())}"
     )
     for mode, count in modes.most_common():

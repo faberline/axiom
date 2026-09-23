@@ -6,6 +6,17 @@
   "requirement": "Implement SafeTaskRegistry wrapping Celery with in-memory eager configuration (task_always_eager=True, broker_url=\"memory://\", result_backend=\"cache+memory://\") and duplicate task registration detection. It must enforce explicit non-empty task names, prevent task shadowing by raising TaskCollisionError on duplicates, support task execution and retrieval, and provide clean registry reset.",
   "skeleton": "SafeTaskRegistry class with Celery app configuration, unique task registration decorator, and collision prevention.",
   "caption": "A Celery task registry that refuses to let two functions silently share one task name. TaskCollisionError subclasses ValueError. SafeTaskRegistry builds a celery application named som_tasks by default with eager execution enabled: task_always_eager follows the eager flag, task_eager_propagates is True so task exceptions surface to the caller, the broker is memory:// and the result backend is cache+memory://, so tests need no running broker. It tracks registered names in a set. register(name, bind=False, max_retries=3) raises ValueError for an empty or whitespace-only name, strips it, and raises TaskCollisionError when the cleaned name is already in its own set or already present in the application's task table; otherwise it returns a decorator that calls the application's task decorator with the explicit name, bind, and max_retries, records the name, and returns the task. get_task looks a name up in the application's task table, list_tasks returns the registered names sorted, and reset deletes each registered task from the application and clears the set. The fixture asserts that an eager task returns 12, that billing.generate_invoice is registered under its explicit name rather than the module path, and that a duplicate registration is rejected instead of shadowing the first task.",
+  "plan": {
+    "intent": "Register Celery tasks under explicit names without silent shadowing",
+    "target": "SafeTaskRegistry",
+    "constraints": [
+      "The app runs tasks eagerly with an in-memory broker and propagates task exceptions",
+      "A blank name raises ValueError and names are stripped before use",
+      "A name already registered here or in the app's task table raises TaskCollisionError",
+      "Tasks are registered under the explicit name, not the module path",
+      "Reset unregisters every task and clears the set"
+    ]
+  },
   "rationale": {
     "teaches": "A Celery task registry that is eager and in-memory by default, requires a non-empty explicit name, raises TaskCollisionError on duplicates, and unregisters tasks on reset.",
     "why": "Celery silently replaces a task registered twice under the same name, so a second definition shadows the first with no error. The fixture registers a duplicate and expects the collision to be reported."
@@ -41,7 +52,77 @@
       "TaskCollisionError",
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "TaskCollisionError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "SafeTaskRegistry",
+              "kind": "class",
+              "depends_on": [
+                "TaskCollisionError"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Safe Celery task registry preventing task shadowing and duplicate registration."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from celery import Celery, Task",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "TaskCollisionError",
+        "source": "class TaskCollisionError(ValueError):\n    \"\"\"Raised when attempting to register a task whose name is already taken.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SafeTaskRegistry",
+        "source": "class SafeTaskRegistry:\n    \"\"\"Task registry preventing silent task shadowing in Celery applications.\"\"\"\n\n    def __init__(self, app_name: str = \"som_tasks\", eager: bool = True) -> None:\n        self.app = Celery(app_name)\n        self.app.conf.update(\n            task_always_eager=eager,\n            task_eager_propagates=True,\n            broker_url=\"memory://\",\n            result_backend=\"cache+memory://\",\n        )\n        self._registered_names: set[str] = set()\n\n    def register(\n        self,\n        name: str,\n        bind: bool = False,\n        max_retries: int = 3,\n    ) -> Callable[[Callable[..., Any]], Task[Any, Any]]:\n        \"\"\"Register a Celery task with explicit unique naming to prevent shadowing.\"\"\"\n        if not name or not isinstance(name, str) or not name.strip():\n            raise ValueError(\"Task name must be a non-empty string\")\n        clean_name = name.strip()\n        if clean_name in self._registered_names or clean_name in self.app.tasks:\n            raise TaskCollisionError(\n                f\"Task '{clean_name}' is already registered; shadowing is prohibited\"\n            )\n\n        def decorator(fn: Callable[..., Any]) -> Task[Any, Any]:\n            # celery-types overloads only literal bind values, not a runtime bool.\n            task: Task[Any, Any] = self.app.task(  # type: ignore[call-overload]\n                name=clean_name,\n                bind=bind,\n                max_retries=max_retries,\n            )(fn)\n            self._registered_names.add(clean_name)\n            return task\n\n        return decorator\n\n    def get_task(self, name: str) -> Task[Any, Any] | None:\n        \"\"\"Retrieve registered task by canonical name.\"\"\"\n        return self.app.tasks.get(name.strip() if isinstance(name, str) else \"\")\n\n    def list_tasks(self) -> list[str]:\n        \"\"\"List all custom tasks registered through this registry.\"\"\"\n        return sorted(list(self._registered_names))\n\n    def reset(self) -> None:\n        \"\"\"Unregister all custom tasks and clear registry state.\"\"\"\n        for name in list(self._registered_names):\n            if name in self.app.tasks:\n                del self.app.tasks[name]\n        self._registered_names.clear()",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
   },
   "candidates": [
     {

@@ -6,6 +6,16 @@
   "requirement": "Demonstrate and test the correct target namespace for unittest.mock.patch. When module worker_service imports from notification_client import send_alert, patching must target where the symbol is looked up (worker_service.send_alert), NOT where it was originally defined (notification_client.send_alert).",
   "skeleton": "Simulated module namespaces NotificationClientModule and WorkerServiceModule, with execute_worker_with_mock().",
   "caption": "A standard-library illustration of where a mock must be installed, using classes that stand in for two modules, with no third-party imports. NotificationClientModule defines a static send_alert that returns False, playing the module where the function is defined. WorkerServiceModule copies that function into its own namespace as a class attribute, the way a from-import binds a name in the importing module, and its process_job class method calls its own send_alert with a message naming the job and returns a dictionary with the job_id and the alert result. execute_worker_with_mock(mock_send) remembers the worker's current send_alert, assigns the mock onto the worker class, which is where the name is looked up at call time, runs process_job for job_42, and in a finally clause assigns the remembered original back onto the worker class. Patching the defining class instead would leave the worker's own reference pointing at the real function, and restoring onto the wrong class or only on some paths would leave the mock installed for later tests. The fixture passes a mock returning True and asserts that the result has job_id job_42 and alert_sent True, which is only possible if the worker's lookup was intercepted, and after each run asserts that the worker's send_alert is once again the very same object as the client's original function.",
+  "plan": {
+    "intent": "Install a mock where the worker looks the function up",
+    "target": "execute_worker_with_mock",
+    "constraints": [
+      "The mock is assigned onto the worker class, not the defining class",
+      "The worker's original function is remembered before patching",
+      "The original is restored onto the worker class in a finally clause",
+      "The job result reports the mock's alert value"
+    ]
+  },
   "rationale": {
     "teaches": "Patching send_alert on the module that looks it up, not the module that defines it, and restoring that same attribute in a finally block.",
     "why": "Patching the defining module leaves the consumer's bound reference untouched, so the real function still runs. The fixture checks the mock was called and the original is restored afterward."
@@ -39,7 +49,79 @@
     ],
     "imports": [],
     "raises": [],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "NotificationClientModule",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "WorkerServiceModule",
+              "kind": "class",
+              "depends_on": [
+                "NotificationClientModule"
+              ]
+            },
+            {
+              "name": "execute_worker_with_mock",
+              "kind": "function",
+              "depends_on": [
+                "WorkerServiceModule"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Replace a dependency where the worker looks it up, then restore it."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from unittest.mock import Mock",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "NotificationClientModule",
+        "source": "class NotificationClientModule:\n    \"\"\"Stand-in for the notification client module.\"\"\"\n\n    @staticmethod\n    def send_alert(message: str) -> bool:\n        \"\"\"Pretend to deliver message; the real client always fails here.\"\"\"\n        del message  # Unused: the stub never delivers anything.\n        return False",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "WorkerServiceModule",
+        "source": "class WorkerServiceModule:\n    \"\"\"Worker that imported send_alert into its own namespace.\"\"\"\n\n    send_alert = NotificationClientModule.send_alert\n\n    @classmethod\n    def process_job(cls, job_id: str) -> dict[str, Any]:\n        \"\"\"Alert that job_id completed and report whether the alert was sent.\"\"\"\n        result = cls.send_alert(f\"Job completed: {job_id}\")\n        return {\"job_id\": job_id, \"alert_sent\": result}",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "execute_worker_with_mock",
+        "source": "def execute_worker_with_mock(mock_send: Mock) -> dict[str, Any]:\n    \"\"\"Run one job with mock_send installed on the worker, then restore it.\"\"\"\n    original = WorkerServiceModule.send_alert\n    WorkerServiceModule.send_alert = mock_send\n    try:\n        return WorkerServiceModule.process_job(\"job_42\")\n    finally:\n        WorkerServiceModule.send_alert = original",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
   },
   "candidates": [
     {

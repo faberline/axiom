@@ -6,6 +6,17 @@
   "requirement": "Configure a rigorous, bounded property test suite GraphCycleDetectorTest that tests a cycle detection algorithm. Must declare realistic @settings(max_examples=100, deadline=500) without suppressing HealthCheck.too_slow or setting deadline=None to paper over exponential algorithms.",
   "skeleton": "A graph connectivity checker has_path(graph, src, dst, max_depth) and settings configuration get_test_settings().",
   "caption": "A plain-dictionary Hypothesis settings profile and bounded graph search, with no third-party imports, whose property tests run with a real example budget and deadline instead of hiding slow code. has_path(graph, src, dst, max_depth) returns True immediately when source and destination are equal, then runs a breadth-first search from the source with a depth counter defaulting to a maximum of 10; it returns True when the destination is dequeued, skips expanding nodes at the depth limit, skips nodes already visited, marks each expanded node as visited, and enqueues only neighbours not yet visited, so a cyclic graph terminates promptly, and it returns False when the queue empties. get_test_settings returns a dictionary with max_examples of 100, deadline_ms of 500, and an empty list of suppressed health checks, so neither too_slow nor any other check is silenced and no example may run unbounded. The fixture asserts that the settings allow at least 50 examples, a deadline that is present and at most 1000 milliseconds, and an empty suppression list that does not contain too_slow, and asserts on a small graph with a cycle that 1 reaches 4, that 4 does not reach 1, and that a node reaches itself.",
+  "plan": {
+    "intent": "Search a graph with bounded depth under a real test budget",
+    "target": "has_path",
+    "constraints": [
+      "A node reaches itself immediately",
+      "Breadth-first search stops expanding at the depth limit",
+      "Visited nodes are never re-enqueued, so cycles terminate",
+      "Settings allow 100 examples with a 500 ms deadline",
+      "No health check is suppressed"
+    ]
+  },
   "rationale": {
     "teaches": "Hypothesis settings with 100 examples, a 500 ms deadline, and no suppressed health checks, over a bounded path search that skips already-visited nodes.",
     "why": "Suppressing too_slow or removing the deadline hides an exponential algorithm behind a green run. The fixture reads the settings dict and checks the search on a cyclic graph terminates within the budget."
@@ -31,7 +42,57 @@
     ],
     "imports": [],
     "raises": [],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "has_path",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "get_test_settings",
+              "kind": "function",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Bound a graph search and describe property-test settings that hide nothing."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "has_path",
+        "source": "def has_path(\n    graph: dict[int, list[int]], src: int, dst: int, max_depth: int = 10\n) -> bool:\n    \"\"\"Whether dst is reachable from src within max_depth breadth-first steps.\"\"\"\n    if src == dst:\n        return True\n    visited: set[int] = set()\n    queue: list[tuple[int, int]] = [(src, 0)]\n    while queue:\n        curr, depth = queue.pop(0)\n        if curr == dst:\n            return True\n        if depth >= max_depth:\n            continue\n        if curr in visited:\n            continue\n        visited.add(curr)\n        for neighbor in graph.get(curr, []):\n            if neighbor not in visited:\n                queue.append((neighbor, depth + 1))\n    return False",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_test_settings",
+        "source": "def get_test_settings() -> dict[str, Any]:\n    \"\"\"Return settings with a real example budget, deadline, and no suppressions.\"\"\"\n    return {\n        \"max_examples\": 100,\n        \"deadline_ms\": 500,\n        \"suppressed_health_checks\": [],\n    }",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
   },
   "candidates": [
     {

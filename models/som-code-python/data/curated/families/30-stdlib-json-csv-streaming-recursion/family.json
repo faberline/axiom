@@ -6,6 +6,17 @@
   "requirement": "Implement StreamSafeDataProcessor with max_depth validation to prevent JSON recursion errors, chunk-based CSV streaming without full in-memory read, trailing batch preservation, and safe column summaries.",
   "skeleton": "StreamSafeDataProcessor class with safe_parse_json, stream_csv_records, and compute_column_summary.",
   "caption": "A standard-library data processor with three methods over csv, io, and json. safe_parse_json scans the raw JSON string character by character before parsing, incrementing a depth counter on every opening brace or bracket and decrementing on every closing one with a floor of zero, and raises ValueError with a message naming the limit as soon as the depth exceeds max_depth, which defaults to 20, so a deeply nested document is rejected at the guard rather than reaching json.loads and hitting the interpreter's recursion limit; a document within the limit is returned from json.loads. stream_csv_records raises ValueError for a batch_size at or below zero, wraps the file object in csv.DictReader, and iterates row by row, copying each row to a plain dict and yielding a batch as soon as it reaches batch_size, so only one batch is ever held in memory and the first batch is available after reading a handful of lines; after the loop it yields the remaining partial batch when it is non-empty, so five rows at a batch size of two produce batches of two, two, and one. compute_column_summary reads the named column through csv.DictReader, skipping missing and blank cells and cells whose float conversion raises ValueError, and tracks count, sum, running minimum, and running maximum in a single pass. When no numeric cell was seen it returns all five keys as 0.0 instead of calling min or max on nothing; otherwise it returns count, sum, mean, min, and max as floats.",
+  "plan": {
+    "intent": "Parse JSON and CSV input without unbounded recursion or memory",
+    "target": "Data processor",
+    "constraints": [
+      "Nesting deeper than the limit raises ValueError before json.loads runs",
+      "CSV rows are yielded in batches as they are read, with the trailing partial batch last",
+      "A batch size of zero or less raises ValueError",
+      "A column summary skips blank and non-numeric cells in one pass",
+      "A column without numeric cells reports zeros instead of failing"
+    ]
+  },
   "rationale": {
     "teaches": "Streaming-safe data handling: a depth pre-scan before json.loads with a sane default, batch-wise CSV iteration that never materializes the file, the trailing partial batch emitted, and an empty-column summary that returns zeros.",
     "why": "A generator that reads the whole file into a list produces identical batches and only differs in memory. The fixture measures peak memory and feeds deeply nested JSON, which is where these misses separate from gold."
@@ -28,7 +39,69 @@
     "raises": [
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "StreamSafeDataProcessor",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Parse JSON and stream CSV without unbounded recursion or memory."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import csv",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import io",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import json",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Iterator",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "StreamSafeDataProcessor",
+        "source": "class StreamSafeDataProcessor:\n    \"\"\"Bounded-depth JSON parsing and batched CSV streaming.\"\"\"\n\n    def safe_parse_json(self, json_str: str, max_depth: int = 20) -> Any:\n        \"\"\"Parse json_str, refusing nesting deeper than max_depth.\"\"\"\n        depth = 0\n        for char in json_str:\n            if char in \"{[\":\n                depth += 1\n                if depth > max_depth:\n                    raise ValueError(\n                        \"JSON nesting depth exceeds maximum allowed depth of \"\n                        f\"{max_depth}\"\n                    )\n            elif char in \"}]\":\n                depth = max(0, depth - 1)\n        return json.loads(json_str)\n\n    def stream_csv_records(\n        self, file_obj: io.TextIOBase, batch_size: int = 100\n    ) -> Iterator[list[dict[str, str]]]:\n        \"\"\"Yield CSV rows in batches of at most batch_size.\"\"\"\n        if batch_size <= 0:\n            raise ValueError(\"batch_size must be positive\")\n        reader = csv.DictReader(file_obj)\n        batch: list[dict[str, str]] = []\n        for row in reader:\n            batch.append(dict(row))\n            if len(batch) >= batch_size:\n                yield batch\n                batch = []\n        if batch:\n            yield batch\n\n    def compute_column_summary(\n        self, file_obj: io.TextIOBase, numeric_column: str\n    ) -> dict[str, float]:\n        \"\"\"Summarize one numeric column in a single pass, skipping bad cells.\"\"\"\n        reader = csv.DictReader(file_obj)\n        count = 0\n        total = 0.0\n        col_min = float(\"inf\")\n        col_max = float(\"-inf\")\n        for row in reader:\n            val_str = row.get(numeric_column)\n            if val_str is not None and val_str.strip() != \"\":\n                try:\n                    val = float(val_str)\n                    total += val\n                    count += 1\n                    col_min = min(col_min, val)\n                    col_max = max(col_max, val)\n                except ValueError:\n                    continue\n        if count == 0:\n            return {\"count\": 0.0, \"sum\": 0.0, \"mean\": 0.0, \"min\": 0.0, \"max\": 0.0}\n        return {\n            \"count\": float(count),\n            \"sum\": total,\n            \"mean\": total / count,\n            \"min\": col_min,\n            \"max\": col_max,\n        }",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
   },
   "candidates": [
     {

@@ -6,6 +6,17 @@
   "requirement": "Implement ResilientAiohttpFetcher with strict request timeout configuration (aiohttp.ClientTimeout), retry loop handling transient disconnects (aiohttp.ClientError and asyncio.TimeoutError), and strict propagation of asyncio.CancelledError to prevent hanging coroutines.",
   "skeleton": "ResilientAiohttpFetcher class with timeout configuration, retry loop, and cancellation handling.",
   "caption": "An aiohttp JSON fetcher that retries transient network failures under an explicit timeout while letting cancellation stop it immediately. FetchError subclasses Exception. ResilientAiohttpFetcher takes total_timeout defaulting to 5.0, connect_timeout defaulting to 2.0, and max_retries defaulting to 2; it raises ValueError when either timeout is not positive and when max_retries is negative, and builds an aiohttp.ClientTimeout with the total and connect values. fetch_json(session, url) makes up to max_retries plus one attempts, so zero retries still performs one request. Each attempt opens session.get with the timeout configuration and, when the status is not 200, raises aiohttp.ClientResponseError carrying the request info, history, and status; otherwise it returns the decoded JSON. The except clause names only TimeoutError and aiohttp.ClientError, so an asyncio.CancelledError, a BaseException, propagates at once and is never counted as a failure. Any aiohttp.ClientError, which includes the response error and connection failures, and any asyncio.TimeoutError is remembered, and the loop sleeps briefly and tries again until the attempts are used up. After the final attempt it raises FetchError naming the URL and the attempt count, chained from the last error. The fixture asserts that cancellation propagates instead of being retried, that the timeout object reaching session.get has total 7.5 and connect 1.5, that a connection error on the first attempt is followed by a successful second call returning data 42, that zero retries makes exactly one call, and that invalid parameters are rejected.",
+  "plan": {
+    "intent": "Fetch JSON with bounded retries under an explicit timeout while honoring cancellation",
+    "target": "ResilientAiohttpFetcher",
+    "constraints": [
+      "Non-positive timeouts or negative retries raise ValueError",
+      "A status other than 200 raises ClientResponseError, which is retried like other client errors",
+      "Only timeouts and aiohttp client errors are retried, so cancellation propagates at once",
+      "Zero retries still makes exactly one attempt",
+      "Exhausted attempts raise FetchError naming the URL, chained from the last error"
+    ]
+  },
   "rationale": {
     "teaches": "A retrying fetch with an explicit ClientTimeout, ClientError and TimeoutError retried max_retries plus one times, CancelledError left uncaught, and non-negative retries validated.",
     "why": "Catching CancelledError as a transient error keeps a cancelled coroutine alive and retrying. The fixture cancels the fetch mid-retry and expects it to stop."
@@ -39,7 +50,71 @@
       "FetchError",
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "FetchError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "ResilientAiohttpFetcher",
+              "kind": "class",
+              "depends_on": [
+                "FetchError"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Resilient aiohttp request fetcher handling disconnects and timeouts."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import asyncio",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import aiohttp",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "FetchError",
+        "source": "class FetchError(Exception):\n    \"\"\"Raised when fetching fails after all retries are exhausted.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ResilientAiohttpFetcher",
+        "source": "class ResilientAiohttpFetcher:\n    \"\"\"Perform HTTP requests with a timeout, bounded retries, and safe cancellation.\"\"\"\n\n    def __init__(\n        self,\n        total_timeout: float = 5.0,\n        connect_timeout: float = 2.0,\n        max_retries: int = 2,\n    ) -> None:\n        if total_timeout <= 0 or connect_timeout <= 0:\n            raise ValueError(\"Timeout values must be positive\")\n        if max_retries < 0:\n            raise ValueError(\"max_retries cannot be negative\")\n\n        self.total_timeout = total_timeout\n        self.connect_timeout = connect_timeout\n        self.max_retries = max_retries\n        self.timeout_config = aiohttp.ClientTimeout(\n            total=total_timeout,\n            connect=connect_timeout,\n        )\n\n    async def fetch_json(\n        self,\n        session: aiohttp.ClientSession,\n        url: str,\n    ) -> dict[str, Any]:\n        \"\"\"Fetch a JSON payload, retrying transient network and timeout errors.\n\n        asyncio.CancelledError is a BaseException, so it is never retried.\n        \"\"\"\n        last_error: Exception | None = None\n        for attempt in range(self.max_retries + 1):\n            try:\n                async with session.get(url, timeout=self.timeout_config) as response:\n                    if response.status != 200:\n                        raise aiohttp.ClientResponseError(\n                            request_info=response.request_info,\n                            history=response.history,\n                            status=response.status,\n                            message=f\"HTTP status {response.status}\",\n                        )\n                    payload: dict[str, Any] = await response.json()\n                    return payload\n            except (TimeoutError, aiohttp.ClientError) as exc:\n                last_error = exc\n                if attempt == self.max_retries:\n                    break\n                await asyncio.sleep(0.001)\n\n        raise FetchError(\n            f\"Failed to fetch {url} after {self.max_retries + 1} attempts\"\n        ) from last_error",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
   },
   "candidates": [
     {

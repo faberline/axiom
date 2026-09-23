@@ -6,6 +6,17 @@
   "requirement": "FastAPI POST /telemetry/bulk endpoint inserting batches of readings using SQLAlchemy 2.0 multi-row insert with .returning() in strictly 1 INSERT statement per 50-row batch, committing generated IDs.",
   "skeleton": "FastAPI POST /telemetry/bulk with SQLAlchemy bulk multi-row insert and returning.",
   "caption": "A FastAPI ingestion endpoint that inserts a batch of telemetry rows with one multi-row INSERT and echoes the generated ids. The module builds a StaticPool engine over in-memory SQLite and a QueryCounter with class-level insert_count and statements, fed by a before_cursor_execute listener registered through SQLAlchemy's event API that counts statements beginning with INSERT. TelemetryReading under a DeclarativeBase has an autoincrement id, device_id, metric_name, a float value, and a string timestamp. get_db yields a session per request and closes it in finally; reset_db drops and recreates the schema and resets the counter, and runs at import. pydantic models TelemetryReadingCreate, BulkTelemetryRequest holding a readings list, and BulkTelemetryResponse with inserted_count and ids frame the API. GET /query-metrics returns the insert count and GET /telemetry returns the row total through func.count. POST /telemetry/bulk declares status 201 and BulkTelemetryResponse: it raises HTTPException 400 with detail Readings payload cannot be empty when the list is empty, dumps every reading to a dict, builds insert(TelemetryReading).returning(TelemetryReading.id), executes that statement once with the whole list of parameter dicts so SQLAlchemy 2.0 renders one INSERT with many VALUES rows, collects the returned ids in order, commits, and returns the count with the id list. A fifty-row batch therefore increments the insert counter exactly once, persists all fifty rows, and answers with fifty ids running from the first generated id to the last.",
+  "plan": {
+    "intent": "Ingest a batch of telemetry readings with a single multi-row insert",
+    "target": "TelemetryReading",
+    "constraints": [
+      "An empty readings list raises HTTPException 400",
+      "A whole batch is written by exactly one INSERT statement that returns the generated ids",
+      "The ids come back in input order and the response answers 201 with the inserted count",
+      "INSERT statements are counted by an engine event listener readable over HTTP",
+      "Rows are committed and visible to a later count query"
+    ]
+  },
   "rationale": {
     "teaches": "A SQLAlchemy 2.0 multi-row insert with returning: one INSERT per batch, a commit, a rejected empty payload, every row included, and the generated ids echoed back.",
     "why": "A per-row loop returns the same ids as a bulk insert, so only a statement count separates them. The family makes the statement count and the id echo part of the contract a generator must meet."
@@ -125,7 +136,306 @@
     "status_codes": [
       201,
       400
-    ]
+    ],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "engine",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "QueryCounter",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "before_cursor_execute",
+              "kind": "function",
+              "depends_on": [
+                "engine",
+                "QueryCounter"
+              ]
+            },
+            {
+              "name": "Base",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "TelemetryReading",
+              "kind": "class",
+              "depends_on": [
+                "Base"
+              ]
+            },
+            {
+              "name": "Base.metadata.create_all",
+              "kind": "statement",
+              "depends_on": [
+                "Base",
+                "engine"
+              ]
+            },
+            {
+              "name": "session_factory",
+              "kind": "constant",
+              "depends_on": [
+                "engine"
+              ]
+            },
+            {
+              "name": "get_db",
+              "kind": "function",
+              "depends_on": [
+                "session_factory"
+              ]
+            },
+            {
+              "name": "reset_db",
+              "kind": "function",
+              "depends_on": [
+                "Base",
+                "engine",
+                "QueryCounter"
+              ]
+            },
+            {
+              "name": "reset_db#2",
+              "kind": "statement",
+              "depends_on": [
+                "reset_db"
+              ]
+            },
+            {
+              "name": "TelemetryReadingCreate",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "BulkTelemetryRequest",
+              "kind": "class",
+              "depends_on": [
+                "TelemetryReadingCreate"
+              ]
+            },
+            {
+              "name": "BulkTelemetryResponse",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "get_query_metrics",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "QueryCounter"
+              ]
+            },
+            {
+              "name": "get_telemetry",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "get_db",
+                "TelemetryReading"
+              ]
+            },
+            {
+              "name": "bulk_insert_telemetry",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "BulkTelemetryResponse",
+                "BulkTelemetryRequest",
+                "get_db",
+                "TelemetryReading"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Telemetry ingestion that writes a whole batch in one INSERT ... RETURNING."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Generator",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any, ClassVar",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import Depends, FastAPI, HTTPException",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy import (\n    create_engine,\n    event,\n    func,\n    insert,\n    select,\n)",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.pool import StaticPool",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "engine",
+        "source": "engine = create_engine(\n    \"sqlite:///:memory:\",\n    connect_args={\"check_same_thread\": False},\n    poolclass=StaticPool,\n)",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "QueryCounter",
+        "source": "class QueryCounter:\n    \"\"\"Count the INSERT statements the engine executes.\"\"\"\n\n    insert_count: ClassVar[int] = 0\n    statements: ClassVar[list[str]] = []\n\n    @classmethod\n    def reset(cls) -> None:\n        \"\"\"Start counting from zero.\"\"\"\n        cls.insert_count = 0\n        cls.statements = []",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "before_cursor_execute",
+        "source": "@event.listens_for(engine, \"before_cursor_execute\", named=True)\ndef before_cursor_execute(**kw: Any) -> None:\n    \"\"\"Record every INSERT the engine sends to the database.\"\"\"\n    statement: str = kw[\"statement\"]\n    if statement.strip().upper().startswith(\"INSERT\"):\n        QueryCounter.insert_count += 1\n        QueryCounter.statements.append(statement)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Base",
+        "source": "class Base(DeclarativeBase):\n    \"\"\"Declarative base shared by every table in this module.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "TelemetryReading",
+        "source": "class TelemetryReading(Base):\n    \"\"\"One metric sample reported by a device.\"\"\"\n\n    __tablename__ = \"telemetry_readings\"\n\n    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)\n    device_id: Mapped[str] = mapped_column(nullable=False)\n    metric_name: Mapped[str] = mapped_column(nullable=False)\n    value: Mapped[float] = mapped_column(nullable=False)\n    timestamp: Mapped[str] = mapped_column(nullable=False)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Base.metadata.create_all",
+        "source": "Base.metadata.create_all(bind=engine)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "session_factory",
+        "source": "session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_db",
+        "source": "def get_db() -> Generator[Session, None, None]:\n    \"\"\"Yield one database session per request and close it afterwards.\"\"\"\n    db = session_factory()\n    try:\n        yield db\n    finally:\n        db.close()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db",
+        "source": "def reset_db() -> None:\n    \"\"\"Recreate the tables and zero the counter.\"\"\"\n    Base.metadata.drop_all(bind=engine)\n    Base.metadata.create_all(bind=engine)\n    QueryCounter.reset()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db#2",
+        "source": "reset_db()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "TelemetryReadingCreate",
+        "source": "class TelemetryReadingCreate(BaseModel):\n    \"\"\"One reading in a bulk upload.\"\"\"\n\n    device_id: str\n    metric_name: str\n    value: float\n    timestamp: str",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "BulkTelemetryRequest",
+        "source": "class BulkTelemetryRequest(BaseModel):\n    \"\"\"Payload accepted when uploading readings in bulk.\"\"\"\n\n    readings: list[TelemetryReadingCreate]",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "BulkTelemetryResponse",
+        "source": "class BulkTelemetryResponse(BaseModel):\n    \"\"\"How many readings were stored and their ids.\"\"\"\n\n    inserted_count: int\n    ids: list[int]",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "app",
+        "source": "app = FastAPI()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_query_metrics",
+        "source": "@app.get(\"/query-metrics\")\ndef get_query_metrics() -> dict[str, int]:\n    \"\"\"Return how many INSERT statements have run since the last reset.\"\"\"\n    return {\"insert_count\": QueryCounter.insert_count}",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_telemetry",
+        "source": "@app.get(\"/telemetry\")\ndef get_telemetry(db: Session = Depends(get_db)) -> dict[str, int | None]:\n    \"\"\"Return how many readings are stored.\"\"\"\n    total = db.scalar(select(func.count(TelemetryReading.id)))\n    return {\"total\": total}",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "bulk_insert_telemetry",
+        "source": "@app.post(\"/telemetry/bulk\", status_code=201, response_model=BulkTelemetryResponse)\ndef bulk_insert_telemetry(\n    payload: BulkTelemetryRequest, db: Session = Depends(get_db)\n) -> BulkTelemetryResponse:\n    \"\"\"Insert every reading in one statement and return the new ids.\"\"\"\n    if not payload.readings:\n        raise HTTPException(status_code=400, detail=\"Readings payload cannot be empty\")\n    values = [r.model_dump() for r in payload.readings]\n    stmt = insert(TelemetryReading).returning(TelemetryReading.id)\n    result = db.execute(stmt, values)\n    inserted_ids = [row[0] for row in result.fetchall()]\n    db.commit()\n    return BulkTelemetryResponse(inserted_count=len(inserted_ids), ids=inserted_ids)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 17
+    }
   },
   "candidates": [
     {

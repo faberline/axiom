@@ -29,9 +29,10 @@ the other way round.
 
 The engine consumes what the corpus projects produce and never owns corpus
 content. `models/som-code-python` owns the executable oracle families, the
-snippet ISA, and the decompiler that turns a family into L1, L2, and L3
-records; this project owns the models that learn from those records and the
-assembler that executes an L3 operation list. The reference design of the four
+snippet ISA, the authored L1 plans, and the decompiler that measures L2 and
+L3 records from each gold program; this project owns the record schema, the
+models that learn from those records, and the assembler that executes an L3
+operation list. The reference design of the four
 layers is [docs/reference/architecture.md](../reference/architecture.md).
 
 Boundaries that every section inherits:
@@ -40,42 +41,48 @@ Boundaries that every section inherits:
   code that no snippet carries.
 - Candidate execution happens in corpus verification and training data
   construction, never at inference.
-- One trained component exists today, the candidate discriminator; every
-  layer below is a future promise until STATUS says otherwise.
+- Every layer generates the next layer's record. No layer chooses among
+  candidates a caller or the corpus supplies, and a near miss is training
+  signal, never an inference-time option.
+- A generated program is judged by its family's oracle fixture passing on
+  the assembled files, not by an accuracy over a candidate list.
 
 ## Who the engine is for
 
 | Reader | What they hold the engine to |
 |---|---|
-| Model trainer | One command trains against a corpus directory, records what it loaded, and reports an accuracy that cannot be 100 percent before training. |
-| Corpus author | The engine's loader refuses a record that does not match the decompiler's schema, so a corpus defect surfaces at load time. |
+| Model trainer | One loader reads every corpus into weighted rows that carry the layer records, and a checkpoint is judged by the fixture pass rate of what it assembles. |
+| Corpus author | One schema validates the decompiler's records, and the reference assembler turns a family's operation list back into its gold program. |
 | Generator user | An in-scope intent becomes files that compile and pass the family fixture; an oversized intent is refused before any code exists. |
 
 ## Horizons
 
 | Horizon | Outcome | Section |
 |---|---|---|
-| H1 | `decompiler-dsl-corpus` | [discriminator.md](discriminator.md) § Layer records from the decompiler |
-| H1 | `discriminator-on-a-real-backbone` | [discriminator.md](discriminator.md) § Discriminator on a real backbone |
+| H1 | `layer-sft-on-a-real-backbone` | [training.md](training.md) § Layer SFT on a real backbone |
+| H1 | `fixture-pass-rate-evaluation` | [training.md](training.md) § Fixture pass rate |
 | H2 | `l1-planner` | [generation.md](generation.md) § L1 Planner |
 | H2 | `l2-component-topology` | [generation.md](generation.md) § L2 Component Topology |
 | H2 | `l3-query-optimizer` | [generation.md](generation.md) § L3 Query Optimizer |
 | H2 | `l4-rust-assembler` | [generation.md](generation.md) § L4 Rust Assembler |
+| H2 | `near-miss-preference-data` | [training.md](training.md) § Near-miss preference data |
 
-H1 is data and trust before layers: the decompiler records are the training
-rows every layer needs, and a discriminator that scores 100 percent before
-its first update is not evidence the optimizer can rank on. H2 then follows
-the layer order top down, because each layer consumes the record the one
-above it emits.
+H1 is a loop worth trusting before layers: next-token training on the layer
+records, and an evaluation that runs the assembled program instead of
+counting matches. H2 then follows the layer order top down, because each
+layer consumes the record the one above it emits, and adds the near-miss
+preference pass once SFT exists.
 
 ## Section index
 
 | Section | File | Kind | Owner |
 |---|---|---|---|
-| Candidate discriminator training | discriminator.md | shipped, limited | STATUS `training-cli-surface`, `discriminator-training-cli` |
-| Corpus loader | discriminator.md | shipped | STATUS `corpus-loader` |
-| Layer records from the decompiler | discriminator.md | outcome | ROADMAP `decompiler-dsl-corpus` |
-| Discriminator on a real backbone | discriminator.md | outcome | ROADMAP `discriminator-on-a-real-backbone` |
+| Corpus loader | training.md | shipped, limited | STATUS `corpus-loader` |
+| Layer records | training.md | shipped | STATUS `layer-records` |
+| Layer SFT on a real backbone | training.md | outcome | ROADMAP `layer-sft-on-a-real-backbone` |
+| Fixture pass rate | training.md | outcome | ROADMAP `fixture-pass-rate-evaluation` |
+| Near-miss preference data | training.md | outcome | ROADMAP `near-miss-preference-data` |
+| Reference assembler | generation.md | shipped | STATUS `reference-assembler` |
 | L1 Planner | generation.md | outcome | ROADMAP `l1-planner` |
 | L2 Component Topology | generation.md | outcome | ROADMAP `l2-component-topology` |
 | L3 Query Optimizer | generation.md | outcome | ROADMAP `l3-query-optimizer` |
@@ -83,4 +90,5 @@ above it emits.
 
 Non-goals are not sections. Each file ends with the non-goals that a reader of
 that area would otherwise assume, pointing at the ROADMAP entry that gives the
-reason: `run-user-code-at-inference`, `published-model-artifact`.
+reason: `candidate-selection-at-inference`, `run-user-code-at-inference`,
+`published-model-artifact`.

@@ -6,6 +6,17 @@
   "requirement": "Symmetric encryption utility enforcing authenticated AES-GCM mode with random 12-byte nonces, associated data authentication, and explicit rejection of insecure ECB mode.",
   "skeleton": "AuthenticatedCipher class with encrypt and decrypt methods using cryptography.hazmat.primitives.ciphers.aead.AESGCM.",
   "caption": "A cryptography AEAD wrapper that encrypts with AES-GCM so every message is both confidential and tamper-evident. VALID_KEY_LENGTHS holds 16 and 32 and NONCE_LENGTH is 12. AuthenticatedCipher raises ValueError when the key length is not one of the valid sizes, so a short key is never padded into a weaker AES key, and builds a single AESGCM instance from it. encrypt(plaintext, associated_data) raises TypeError when the plaintext is not bytes, draws a fresh 12-byte nonce from secrets.token_bytes for every call so a nonce is never reused under the same key, encrypts with the associated data bound into the authentication tag, and returns the ciphertext and nonce. Unlike ECB, which maps equal plaintext blocks to equal ciphertext blocks and carries no integrity check, GCM hides repetition and detects modification. decrypt(ciphertext, nonce, associated_data) raises ValueError when the nonce is not exactly 12 bytes and TypeError when the ciphertext is not bytes, then decrypts with the same associated data; an authentication failure from the library is converted into a ValueError reporting that decryption failed its integrity check, chained from the original. The fixture asserts a 12-byte nonce, ciphertext different from the message, and a successful round trip with associated data, that two identical plaintext blocks encrypt to different ciphertext blocks, that two encryptions use different nonces, that altered associated data and a flipped ciphertext byte each raise ValueError reporting Decryption failed, and that a bad key length and a bad nonce length raise ValueError with their messages.",
+  "plan": {
+    "intent": "Encrypt messages so they are confidential and tamper-evident",
+    "target": "AuthenticatedCipher",
+    "constraints": [
+      "Only 16- or 32-byte keys are accepted, otherwise ValueError",
+      "Non-bytes plaintext or ciphertext raises TypeError",
+      "Every encryption draws a fresh 12-byte nonce and uses AES-GCM with associated data",
+      "A wrong nonce length raises ValueError",
+      "An authentication failure becomes ValueError reporting the failed integrity check"
+    ]
+  },
   "rationale": {
     "teaches": "AES-GCM with a random 12-byte nonce per message, associated data bound into the tag, 16 or 32 byte keys only, nonce length checked on decrypt, and InvalidTag turned into a ValueError.",
     "why": "ECB and a fixed nonce both encrypt and decrypt round-trip perfectly; the flaw only shows when two ciphertexts are compared. The fixture encrypts the same plaintext twice and expects different bytes and a tag failure when the associated data changes."
@@ -39,7 +50,84 @@
       "TypeError",
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "VALID_KEY_LENGTHS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "NONCE_LENGTH",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "AuthenticatedCipher",
+              "kind": "class",
+              "depends_on": [
+                "VALID_KEY_LENGTHS",
+                "NONCE_LENGTH"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Encrypt and authenticate data with AES-GCM and a fresh random nonce."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import secrets",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from cryptography.exceptions import InvalidTag",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from cryptography.hazmat.primitives.ciphers.aead import AESGCM",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "VALID_KEY_LENGTHS",
+        "source": "VALID_KEY_LENGTHS = {16, 32}",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "NONCE_LENGTH",
+        "source": "NONCE_LENGTH = 12",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "AuthenticatedCipher",
+        "source": "class AuthenticatedCipher:\n    \"\"\"Authenticated symmetric encryption using AES-GCM.\"\"\"\n\n    def __init__(self, key: bytes) -> None:\n        if len(key) not in VALID_KEY_LENGTHS:\n            raise ValueError(\"Key must be 16 or 32 bytes for AES\")\n        self._key = key\n        self._cipher = AESGCM(self._key)\n\n    def encrypt(\n        self, plaintext: bytes, associated_data: bytes | None = None\n    ) -> tuple[bytes, bytes]:\n        \"\"\"Encrypt plaintext under a new nonce and return the ciphertext and nonce.\"\"\"\n        if not isinstance(plaintext, bytes):\n            raise TypeError(\"Plaintext must be bytes\")\n        nonce = secrets.token_bytes(NONCE_LENGTH)\n        ciphertext = self._cipher.encrypt(nonce, plaintext, associated_data)\n        return ciphertext, nonce\n\n    def decrypt(\n        self, ciphertext: bytes, nonce: bytes, associated_data: bytes | None = None\n    ) -> bytes:\n        \"\"\"Decrypt and authenticate ciphertext, raising ValueError on tampering.\"\"\"\n        if len(nonce) != NONCE_LENGTH:\n            raise ValueError(f\"Nonce must be exactly {NONCE_LENGTH} bytes\")\n        if not isinstance(ciphertext, bytes):\n            raise TypeError(\"Ciphertext must be bytes\")\n        try:\n            return self._cipher.decrypt(nonce, ciphertext, associated_data)\n        except InvalidTag as exc:\n            raise ValueError(\n                \"Decryption failed: integrity authentication check failed\"\n            ) from exc",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
   },
   "candidates": [
     {

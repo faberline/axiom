@@ -6,6 +6,17 @@
   "requirement": "Implement OffloadedComputeEngine using loop.run_in_executor with a managed ThreadPoolExecutor, synchronized call_count tracking with asyncio.Lock, and proper exception propagation.",
   "skeleton": "Offloaded compute engine offloading blocking sync execution to worker threads without blocking asyncio event loop.",
   "caption": "A pure-asyncio compute engine that keeps CPU-bound work off the event loop thread. OffloadedComputeEngine builds one concurrent.futures.ThreadPoolExecutor with max_workers defaulting to 4 in its constructor, an asyncio.Lock, and a call_count of zero. run_blocking takes a zero-argument synchronous callable: it increments call_count inside async with the lock so concurrent callers cannot lose an update, fetches the running loop with asyncio.get_running_loop, and awaits loop.run_in_executor with the engine's own executor and the callable, returning the callable's result with its generic type T preserved. Because the executor is created once and reused, four consecutive calls submit four jobs to the same pool rather than spawning a fresh pool each time, and the worker runs on a thread that is not the main thread while the loop stays free to schedule other tasks during the call. compute_hash wraps a nested worker that hashes the input bytes with hashlib.sha256 for the requested number of iterations, defaulting to 50000, and returns the final hex digest of 64 characters, handing that worker to run_blocking. An exception raised inside the worker, such as a KeyError, propagates out of the await unchanged rather than being swallowed into a None result. shutdown delegates to the executor's shutdown with the wait flag so worker threads are released deterministically.",
+  "plan": {
+    "intent": "Keep blocking CPU work off the event loop thread",
+    "target": "OffloadedComputeEngine",
+    "constraints": [
+      "One thread pool is created in the constructor and reused by every call",
+      "The call counter is incremented under an asyncio lock",
+      "Work runs through run_in_executor on a worker thread and its result is returned unchanged",
+      "An exception inside the worker propagates to the awaiting caller",
+      "Shutdown releases the pool's threads"
+    ]
+  },
   "rationale": {
     "teaches": "Offloading a blocking call with loop.run_in_executor on a managed ThreadPoolExecutor, a lock-protected counter, and unmodified exception propagation.",
     "why": "Calling the sync function directly or wrapping it in a coroutine returns the correct value while freezing the event loop. The fixture measures loop responsiveness during the call, which is the only way to observe the offload."
@@ -27,7 +38,63 @@
     ],
     "imports": [],
     "raises": [],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "OffloadedComputeEngine",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Offload blocking work to a thread pool so the event loop stays responsive."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import asyncio",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import concurrent.futures",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import hashlib",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "OffloadedComputeEngine",
+        "source": "class OffloadedComputeEngine:\n    \"\"\"Run synchronous callables on a shared thread pool.\"\"\"\n\n    def __init__(self, max_workers: int = 4) -> None:\n        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)\n        self._lock = asyncio.Lock()\n        self.call_count: int = 0\n\n    async def run_blocking[T](self, sync_fn: Callable[[], T]) -> T:\n        \"\"\"Run a callable on the pool and await its result.\"\"\"\n        async with self._lock:\n            self.call_count += 1\n        loop = asyncio.get_running_loop()\n        return await loop.run_in_executor(self.executor, sync_fn)\n\n    async def compute_hash(self, data: bytes, iterations: int = 50_000) -> str:\n        \"\"\"Hash ``data`` repeatedly with SHA-256 off the event loop.\"\"\"\n\n        def _hash_worker() -> str:\n            current = data\n            for _ in range(iterations):\n                current = hashlib.sha256(current).digest()\n            return current.hex()\n\n        return await self.run_blocking(_hash_worker)\n\n    def shutdown(self, wait: bool = True) -> None:\n        \"\"\"Shut the thread pool down.\"\"\"\n        self.executor.shutdown(wait=wait)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
   },
   "candidates": [
     {

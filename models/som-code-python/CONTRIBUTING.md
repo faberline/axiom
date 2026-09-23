@@ -21,7 +21,9 @@ from the gold source, 80 to 400 words, naming every exception it raises and
 library it imports and ending with what the fixture asserts; run
 `scripts/decompile_gold.py --write` after changing a gold candidate so
 `decompiled` matches it, and `--draft <dir>` for a per-family sheet to write
-the caption from. A snippet is one JSON file
+the caption from. Write `plan` beside the caption: an imperative `intent`,
+the domain `target`, and `constraints` that name every exception the gold
+raises and status code it declares, never the requirement text. A snippet is one JSON file
 under `data/snippets/<library>/` and is not in the ISA until the verifier's
 required set names it.
 
@@ -46,6 +48,7 @@ observe.
 | Oracle corpus, every family | `uv run --project models/som-code-python python models/som-code-python/scripts/verify_harness.py` |
 | Curated rationale | `uv run --project models/som-code-python python models/som-code-python/scripts/verify_curation.py` |
 | Code quality | `uv run --project models/som-code-python python models/som-code-python/scripts/verify_quality.py` |
+| Round trip | `uv run --project models/som-code-python python models/som-code-python/scripts/verify_roundtrip.py` |
 | Snippet ISA v1 | `uv run --project models/som-code-python python models/som-code-python/scripts/verify_snippets.py` |
 | Project test suite | `uv run --project models/som-code-python python -m pytest models/som-code-python/tests -q` |
 | Product document contract | `uv run --python 3.13 --no-project scripts/meta/project_docs_contract.py check models/som-code-python --format json` |
@@ -53,6 +56,6 @@ observe.
 
 Run the two document checks after editing `README.md`, `STATUS.md`,
 `ROADMAP.md`, or anything under `docs/product/`. Run the harness, the
-curation check, and the quality gate after editing anything under
-`data/curated/`. The harness accepts family
+curation check, the quality gate, and the round trip after editing anything
+under `data/curated/`. The harness accepts family
 prefixes as arguments to scope a run, but the gate above is the unscoped one.

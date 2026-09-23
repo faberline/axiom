@@ -6,6 +6,17 @@
   "requirement": "Implement ResilientJobRunner with run_job and cancel_job managing cooperative task cancellation, shielding cleanup coroutines, updating job status to 'cancelled', and ensuring cancel_job awaits task completion within timeout.",
   "skeleton": "Asyncio job runner managing task lifecycle, cancellation propagation, and shielded cleanup.",
   "caption": "A pure-asyncio job runner class with no third-party imports. ResilientJobRunner keeps a tasks dict mapping job ids to asyncio.Task objects and a statuses dict of job id to state string. run_job takes a job id, a coroutine factory for the work, and an optional coroutine factory for cleanup. It records the current task under the job id, sets the status to running, and awaits the work inside a try block. A normal result sets completed and is returned. An asyncio.CancelledError sets the status to cancelled, awaits the cleanup coroutine wrapped in asyncio.shield so a second cancellation cannot interrupt the cleanup midway, and re-raises the CancelledError so the task finishes in the cancelled state rather than returning None. Any other Exception sets failed, runs the same shielded cleanup, and re-raises. The finally clause removes the job from the tasks dict in every case. cancel_job looks up the task and returns False when there is none or it is already done; otherwise it calls task.cancel(), awaits asyncio.wait_for over a shielded reference to the task with the given wait_timeout, defaulting to half a second, swallows CancelledError and TimeoutError from that wait, and returns task.done(), so the caller only proceeds once the task has actually finished or the timeout elapsed. Cancellation is distinguished from a crash by its own status value, and a job whose work raises a ValueError is recorded as failed with its cleanup run.",
+  "plan": {
+    "intent": "Run cancellable async jobs whose cleanup always completes",
+    "target": "ResilientJobRunner",
+    "constraints": [
+      "Each job's status moves through running to completed, cancelled, or failed",
+      "A cancelled job runs its cleanup under shield and re-raises the cancellation",
+      "A job that raises another exception is marked failed, runs cleanup, and re-raises",
+      "The task table drops the job in every outcome",
+      "cancel_job waits a bounded time for the task to finish and reports whether it did, returning False for an unknown or finished job"
+    ]
+  },
   "rationale": {
     "teaches": "Cooperative cancellation: catch CancelledError, record cancelled, shield the cleanup coroutine, re-raise, and make cancel_job wait for the task to finish within a timeout.",
     "why": "Cancellation handling that swallows the exception or skips the shield still passes a happy-path run. The fixture cancels mid-flight and inspects status, cleanup completion, and task state afterward."
@@ -26,7 +37,63 @@
     ],
     "imports": [],
     "raises": [],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "ResilientJobRunner",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Run jobs that record their outcome and clean up even when cancelled."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import asyncio",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import contextlib",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable, Coroutine",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ResilientJobRunner",
+        "source": "class ResilientJobRunner:\n    \"\"\"Track running jobs by id and cancel them on request.\"\"\"\n\n    def __init__(self) -> None:\n        self.tasks: dict[str, asyncio.Task[Any]] = {}\n        self.statuses: dict[str, str] = {}\n\n    async def run_job(\n        self,\n        job_id: str,\n        work_coro_fn: Callable[[], Coroutine[Any, Any, Any]],\n        cleanup_coro_fn: Callable[[], Coroutine[Any, Any, Any]] | None = None,\n    ) -> Any:\n        \"\"\"Run a job, record its status, and shield its cleanup from cancellation.\"\"\"\n        current_task = asyncio.current_task()\n        if current_task is not None:\n            self.tasks[job_id] = current_task\n        self.statuses[job_id] = \"running\"\n        try:\n            res = await work_coro_fn()\n            self.statuses[job_id] = \"completed\"\n            return res\n        except asyncio.CancelledError:\n            self.statuses[job_id] = \"cancelled\"\n            if cleanup_coro_fn is not None:\n                await asyncio.shield(cleanup_coro_fn())\n            raise\n        except Exception:\n            self.statuses[job_id] = \"failed\"\n            if cleanup_coro_fn is not None:\n                await asyncio.shield(cleanup_coro_fn())\n            raise\n        finally:\n            self.tasks.pop(job_id, None)\n\n    async def cancel_job(self, job_id: str, wait_timeout: float = 0.5) -> bool:\n        \"\"\"Cancel a running job and report whether it finished within the timeout.\"\"\"\n        task = self.tasks.get(job_id)\n        if task is None or task.done():\n            return False\n        task.cancel()\n        with contextlib.suppress(TimeoutError, asyncio.CancelledError):\n            await asyncio.wait_for(asyncio.shield(task), timeout=wait_timeout)\n        return task.done()",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
   },
   "candidates": [
     {

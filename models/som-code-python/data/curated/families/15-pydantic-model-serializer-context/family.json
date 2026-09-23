@@ -6,6 +6,16 @@
   "requirement": "FinTech customer data masking using Pydantic V2 @model_serializer(mode=\"wrap\") accepting (self, handler, info: SerializationInfo) for roles admin, auditor, and public.",
   "skeleton": "Pydantic v2 BaseModel with wrap-mode model serializer extracting context safely and masking sensitive customer fields.",
   "caption": "A pydantic v2 model, CustomerRecord, with extra set to forbid and fields customer_id, name, credit_card, ssn, and an optional notes defaulting to None, plus one wrap-mode model_serializer named serialize_model with the signature self, handler, info. The serializer first calls handler(self) to obtain the default dictionary, then reads info.context, substituting an empty dict when the context is None so a plain model_dump call without context does not fail, and takes the role from that dict with public as the default. An admin role receives the dictionary unchanged. Every other role gets the credit card masked: the last four characters of the stored number are kept when it has at least four characters, and the field becomes four groups of asterisks followed by those digits, so the issuer prefix is hidden and only the tail is exposed. An auditor role additionally has ssn replaced by a fixed masked pattern while notes are preserved. Any other role, including the public default and an empty context dictionary, has ssn and notes removed from the output entirely with dict.pop, so their absence rather than a masked value is what the client sees. The role is compared with equality against each literal in turn, and the least privileged view is the default whenever the caller passes no role at all.",
+  "plan": {
+    "intent": "Mask customer data in serialized output according to the caller's role",
+    "target": "CustomerRecord",
+    "constraints": [
+      "An admin sees every field unchanged",
+      "Every other role sees the card number masked except its last four digits",
+      "An auditor also sees the SSN masked but keeps the notes",
+      "Any other role, or no context at all, has SSN and notes removed from the output"
+    ]
+  },
   "rationale": {
     "teaches": "A wrap-mode model_serializer with the (self, handler, info) signature that reads role from info.context safely and masks by role, defaulting to the least privileged view.",
     "why": "Serialization context is easy to get almost right: the wrong signature raises at class creation, an or-chain always takes the admin branch, and the wrong default leaks everything when no context is passed. Each is one dump call away from being observed."
@@ -28,7 +38,57 @@
       "pydantic"
     ],
     "raises": [],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "CustomerRecord",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Customer record whose serialized fields are masked by the caller's role."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import (\n    BaseModel,\n    ConfigDict,\n    SerializationInfo,\n    SerializerFunctionWrapHandler,\n    model_serializer,\n)",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "CustomerRecord",
+        "source": "class CustomerRecord(BaseModel):\n    \"\"\"A customer with payment and identity fields that need masking.\"\"\"\n\n    model_config = ConfigDict(extra=\"forbid\")\n\n    customer_id: str\n    name: str\n    credit_card: str\n    ssn: str\n    notes: str | None = None\n\n    @model_serializer(mode=\"wrap\")\n    def serialize_model(\n        self, handler: SerializerFunctionWrapHandler, info: SerializationInfo\n    ) -> dict[str, Any]:\n        \"\"\"Mask the card for every role but admin, and hide more from the public.\"\"\"\n        data: dict[str, Any] = handler(self)\n        context = info.context if info.context is not None else {}\n        role = context.get(\"role\", \"public\")\n\n        if role == \"admin\":\n            return data\n\n        raw_cc = data.get(\"credit_card\", \"\")\n        last_4 = raw_cc[-4:] if len(raw_cc) >= 4 else raw_cc\n        data[\"credit_card\"] = f\"****-****-****-{last_4}\"\n\n        if role == \"auditor\":\n            data[\"ssn\"] = \"***-**-****\"\n            return data\n        data.pop(\"ssn\", None)\n        data.pop(\"notes\", None)\n        return data",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
   },
   "candidates": [
     {

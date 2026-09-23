@@ -6,6 +6,17 @@
   "requirement": "Implement SafeTransferManager with account ID-based lock hierarchy to prevent deadlocks, single-lock self-transfer handling, balance validation, and transaction rollback on credit failure.",
   "skeleton": "SafeTransferManager and Account classes with deadlock-free lock acquisition.",
   "caption": "A threading-based transfer manager with no external dependencies. Account stores an integer account_id, an integer balance, and its own threading.Lock. SafeTransferManager.transfer takes a source, a target, and an amount: it raises ValueError for a zero or negative amount before touching any lock. When source and target are the same account it acquires that single lock once, returns False when the balance is below the amount, and otherwise returns True without moving money, so a self-transfer never tries to enter a non-reentrant lock twice. For two distinct accounts it orders them by account_id with a conditional expression, first being the lower id and second the higher regardless of which was passed as source, and acquires first.lock then second.lock in nested with blocks. Two threads transferring in opposite directions therefore take the locks in the same global order and cannot deadlock, which the fixture proves by joining both threads under a timeout and checking that the combined balances are unchanged. Inside the locks it returns False when the source balance is insufficient, leaving both balances untouched; otherwise it debits the source, then credits the target inside a try block whose except clause restores the debited amount before re-raising, so a credit that fails with a RuntimeError leaves the source balance exactly where it started.",
+  "plan": {
+    "intent": "Move money between accounts from many threads without deadlock",
+    "target": "SafeTransferManager",
+    "constraints": [
+      "A non-positive amount raises ValueError before any lock is taken",
+      "Locks of two accounts are always acquired in ascending account id order",
+      "A self-transfer takes its single lock only once",
+      "Insufficient funds returns False and leaves both balances unchanged",
+      "A failed credit restores the debited amount before re-raising"
+    ]
+  },
   "rationale": {
     "teaches": "Deadlock-free transfers through a global lock order by account id, a single-lock path for self-transfers, a balance check, and rollback when the credit fails.",
     "why": "Lock-order bugs pass every sequential test and deadlock only under contention. The fixture drives opposing transfers concurrently with a timeout, turning a hang into a red."
@@ -34,7 +45,59 @@
     "raises": [
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Account",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "SafeTransferManager",
+              "kind": "class",
+              "depends_on": [
+                "Account"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Transfer funds between accounts without deadlocking on their locks."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import threading",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Account",
+        "source": "class Account:\n    \"\"\"A bank balance guarded by its own lock.\"\"\"\n\n    def __init__(self, account_id: int, balance: int) -> None:\n        self.account_id = account_id\n        self.balance = balance\n        self.lock = threading.Lock()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SafeTransferManager",
+        "source": "class SafeTransferManager:\n    \"\"\"Move funds while always locking the lower account id first.\"\"\"\n\n    def transfer(self, source: Account, target: Account, amount: int) -> bool:\n        \"\"\"Move amount from source to target; return False when funds run short.\"\"\"\n        if amount <= 0:\n            raise ValueError(\"Transfer amount must be positive\")\n\n        if source.account_id == target.account_id:\n            with source.lock:\n                return source.balance >= amount\n\n        first, second = (\n            (source, target)\n            if source.account_id < target.account_id\n            else (target, source)\n        )\n        with first.lock, second.lock:\n            if source.balance < amount:\n                return False\n            source.balance -= amount\n            try:\n                target.balance += amount\n            except Exception:\n                source.balance += amount\n                raise\n            return True",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
   },
   "candidates": [
     {

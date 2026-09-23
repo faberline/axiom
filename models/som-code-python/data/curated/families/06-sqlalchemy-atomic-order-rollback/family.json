@@ -6,6 +6,17 @@
   "requirement": "Atomic multi-item order placement POST /orders decrementing product stock and creating OrderItem records, rolling back all database mutations cleanly when any product has insufficient stock.",
   "skeleton": "FastAPI order placement endpoint with multi-item inventory validation and atomic SQLAlchemy transaction rollback.",
   "caption": "A FastAPI order service whose order placement is one atomic SQLAlchemy transaction over in-memory SQLite. The schema has three tables under a DeclarativeBase: Product with name, integer stock, and float price; Order with a total_price defaulting to 0.0 and an items relationship; and OrderItem with order_id and product_id foreign keys, quantity, unit_price, and a back-reference to its order. reset_db drops and recreates the schema, and get_db yields one session per request and closes it in finally. pydantic models cover product creation and response, an OrderItemRequest of product_id and quantity, an OrderCreate carrying a list of them, and order item and order responses read from ORM attributes. POST /products answers 201; GET /products/{product_id} and GET /orders/{order_id} raise HTTPException 404 when the row is missing; GET /orders lists every order. POST /orders first rejects an empty item list with HTTPException 400. It then creates an Order and, inside a try block, walks every requested line: a missing product raises HTTPException 404, a quantity greater than the available stock raises HTTPException 400 with detail Insufficient stock, and otherwise the stock is decremented, the line total accumulated, and an OrderItem added at the product's current price. A quantity exactly equal to the remaining stock passes the check. Only after every line succeeds does the handler set total_price, commit once, refresh, and return 201. Any HTTPException, and any other Exception, triggers db.rollback before re-raising, so a failure on the last line leaves every earlier stock value untouched and the session clean for the next request.",
+  "plan": {
+    "intent": "Place a multi-line order atomically against product stock",
+    "target": "Order",
+    "constraints": [
+      "An empty order raises HTTPException 400",
+      "An unknown product raises HTTPException 404 and insufficient stock raises HTTPException 400",
+      "A quantity equal to the remaining stock is accepted",
+      "Any failure rolls back every stock change made by earlier lines",
+      "A placed order is committed once and answers 201 with its total"
+    ]
+  },
   "rationale": {
     "teaches": "An atomic multi-row order: validate every line first, commit once, roll back on any failure, and treat exactly-remaining stock as sufficient.",
     "why": "A partial commit leaves inventory inconsistent while every request still returns a sensible status. Checking stock after a deliberately failed order is the only way to see it, and the fixture does exactly that."
@@ -172,7 +183,372 @@
       201,
       400,
       404
-    ]
+    ],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "engine",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "Base",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Product",
+              "kind": "class",
+              "depends_on": [
+                "Base"
+              ]
+            },
+            {
+              "name": "Order",
+              "kind": "class",
+              "depends_on": [
+                "Base",
+                "OrderItem"
+              ]
+            },
+            {
+              "name": "OrderItem",
+              "kind": "class",
+              "depends_on": [
+                "Base",
+                "Order"
+              ]
+            },
+            {
+              "name": "Base.metadata.create_all",
+              "kind": "statement",
+              "depends_on": [
+                "Base",
+                "engine"
+              ]
+            },
+            {
+              "name": "reset_db",
+              "kind": "function",
+              "depends_on": [
+                "Base",
+                "engine"
+              ]
+            },
+            {
+              "name": "session_factory",
+              "kind": "constant",
+              "depends_on": [
+                "engine"
+              ]
+            },
+            {
+              "name": "get_db",
+              "kind": "function",
+              "depends_on": [
+                "session_factory"
+              ]
+            },
+            {
+              "name": "ProductCreate",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "ProductResponse",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "OrderItemRequest",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "OrderCreate",
+              "kind": "class",
+              "depends_on": [
+                "OrderItemRequest"
+              ]
+            },
+            {
+              "name": "OrderItemResponse",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "OrderResponse",
+              "kind": "class",
+              "depends_on": [
+                "OrderItemResponse"
+              ]
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "create_product",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "ProductResponse",
+                "ProductCreate",
+                "get_db",
+                "Product"
+              ]
+            },
+            {
+              "name": "get_product",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "ProductResponse",
+                "get_db",
+                "Product"
+              ]
+            },
+            {
+              "name": "list_orders",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "OrderResponse",
+                "get_db",
+                "Order"
+              ]
+            },
+            {
+              "name": "get_order",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "OrderResponse",
+                "get_db",
+                "Order"
+              ]
+            },
+            {
+              "name": "create_order",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "OrderResponse",
+                "OrderCreate",
+                "get_db",
+                "Order",
+                "Product",
+                "OrderItem"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Order service: place multi-item orders atomically, rolling back on any failure."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Generator",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import Depends, FastAPI, HTTPException",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel, ConfigDict",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy import ForeignKey, create_engine, select",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.orm import (\n    DeclarativeBase,\n    Mapped,\n    Session,\n    mapped_column,\n    relationship,\n    sessionmaker,\n)",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.pool import StaticPool",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "engine",
+        "source": "engine = create_engine(\n    \"sqlite:///:memory:\",\n    connect_args={\"check_same_thread\": False},\n    poolclass=StaticPool,\n)",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Base",
+        "source": "class Base(DeclarativeBase):\n    \"\"\"Declarative base shared by every table in this module.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Product",
+        "source": "class Product(Base):\n    \"\"\"A product with a price and a stock count.\"\"\"\n\n    __tablename__ = \"products\"\n\n    id: Mapped[int] = mapped_column(primary_key=True, index=True)\n    name: Mapped[str] = mapped_column(nullable=False)\n    stock: Mapped[int] = mapped_column(nullable=False)\n    price: Mapped[float] = mapped_column(nullable=False)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Order",
+        "source": "class Order(Base):\n    \"\"\"A placed order and its line items.\"\"\"\n\n    __tablename__ = \"orders\"\n\n    id: Mapped[int] = mapped_column(primary_key=True, index=True)\n    total_price: Mapped[float] = mapped_column(nullable=False, default=0.0)\n    items: Mapped[list[OrderItem]] = relationship(\"OrderItem\", back_populates=\"order\")",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "OrderItem",
+        "source": "class OrderItem(Base):\n    \"\"\"One product line of an order, priced at order time.\"\"\"\n\n    __tablename__ = \"order_items\"\n\n    id: Mapped[int] = mapped_column(primary_key=True, index=True)\n    order_id: Mapped[int] = mapped_column(ForeignKey(\"orders.id\"), nullable=False)\n    product_id: Mapped[int] = mapped_column(ForeignKey(\"products.id\"), nullable=False)\n    quantity: Mapped[int] = mapped_column(nullable=False)\n    unit_price: Mapped[float] = mapped_column(nullable=False)\n\n    order: Mapped[Order] = relationship(\"Order\", back_populates=\"items\")",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Base.metadata.create_all",
+        "source": "Base.metadata.create_all(bind=engine)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db",
+        "source": "def reset_db() -> None:\n    \"\"\"Drop and recreate every table.\"\"\"\n    Base.metadata.drop_all(bind=engine)\n    Base.metadata.create_all(bind=engine)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "session_factory",
+        "source": "session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_db",
+        "source": "def get_db() -> Generator[Session, None, None]:\n    \"\"\"Yield one database session per request and close it afterwards.\"\"\"\n    db = session_factory()\n    try:\n        yield db\n    finally:\n        db.close()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ProductCreate",
+        "source": "class ProductCreate(BaseModel):\n    \"\"\"Payload accepted when creating a product.\"\"\"\n\n    name: str\n    stock: int\n    price: float",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ProductResponse",
+        "source": "class ProductResponse(BaseModel):\n    \"\"\"Product representation returned to clients.\"\"\"\n\n    id: int\n    name: str\n    stock: int\n    price: float\n\n    model_config = ConfigDict(from_attributes=True)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "OrderItemRequest",
+        "source": "class OrderItemRequest(BaseModel):\n    \"\"\"One requested product line of a new order.\"\"\"\n\n    product_id: int\n    quantity: int",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "OrderCreate",
+        "source": "class OrderCreate(BaseModel):\n    \"\"\"Payload accepted when placing an order.\"\"\"\n\n    items: list[OrderItemRequest]",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "OrderItemResponse",
+        "source": "class OrderItemResponse(BaseModel):\n    \"\"\"Order line representation returned to clients.\"\"\"\n\n    product_id: int\n    quantity: int\n    unit_price: float\n\n    model_config = ConfigDict(from_attributes=True)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "OrderResponse",
+        "source": "class OrderResponse(BaseModel):\n    \"\"\"Order representation returned to clients.\"\"\"\n\n    id: int\n    total_price: float\n    items: list[OrderItemResponse]\n\n    model_config = ConfigDict(from_attributes=True)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "app",
+        "source": "app = FastAPI()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "create_product",
+        "source": "@app.post(\"/products\", status_code=201, response_model=ProductResponse)\ndef create_product(payload: ProductCreate, db: Session = Depends(get_db)) -> Product:\n    \"\"\"Persist a new product and return it.\"\"\"\n    product = Product(\n        name=payload.name,\n        stock=payload.stock,\n        price=payload.price,\n    )\n    db.add(product)\n    db.commit()\n    db.refresh(product)\n    return product",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_product",
+        "source": "@app.get(\"/products/{product_id}\", response_model=ProductResponse)\ndef get_product(product_id: int, db: Session = Depends(get_db)) -> Product:\n    \"\"\"Return one product by id, or 404 when it does not exist.\"\"\"\n    product = db.get(Product, product_id)\n    if not product:\n        raise HTTPException(status_code=404, detail=\"Product not found\")\n    return product",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "list_orders",
+        "source": "@app.get(\"/orders\", response_model=list[OrderResponse])\ndef list_orders(db: Session = Depends(get_db)) -> list[Order]:\n    \"\"\"Return every order.\"\"\"\n    return list(db.scalars(select(Order)))",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_order",
+        "source": "@app.get(\"/orders/{order_id}\", response_model=OrderResponse)\ndef get_order(order_id: int, db: Session = Depends(get_db)) -> Order:\n    \"\"\"Return one order by id, or 404 when it does not exist.\"\"\"\n    order = db.get(Order, order_id)\n    if not order:\n        raise HTTPException(status_code=404, detail=\"Order not found\")\n    return order",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "create_order",
+        "source": "@app.post(\"/orders\", status_code=201, response_model=OrderResponse)\ndef create_order(payload: OrderCreate, db: Session = Depends(get_db)) -> Order:\n    \"\"\"Reserve stock for every line and commit the order as one transaction.\"\"\"\n    if not payload.items:\n        raise HTTPException(\n            status_code=400, detail=\"Order must contain at least one item\"\n        )\n\n    order = Order(total_price=0.0)\n    db.add(order)\n\n    try:\n        total = 0.0\n        for item_req in payload.items:\n            product = db.get(Product, item_req.product_id)\n            if not product:\n                raise HTTPException(\n                    status_code=404, detail=f\"Product {item_req.product_id} not found\"\n                )\n\n            if product.stock < item_req.quantity:\n                raise HTTPException(status_code=400, detail=\"Insufficient stock\")\n\n            product.stock -= item_req.quantity\n            item_total = product.price * item_req.quantity\n            total += item_total\n\n            order_item = OrderItem(\n                order=order,\n                product_id=product.id,\n                quantity=item_req.quantity,\n                unit_price=product.price,\n            )\n            db.add(order_item)\n\n        order.total_price = total\n        db.commit()\n        db.refresh(order)\n        return order\n    except HTTPException:\n        db.rollback()\n        raise\n    except Exception:\n        db.rollback()\n        raise",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 21
+    }
   },
   "candidates": [
     {

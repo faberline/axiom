@@ -106,9 +106,9 @@ spans the README capabilities `oracle-corpus`, `curated-rationale`, and
 - Problem: Every near miss is a one-line edit of its gold, so a model can
   score the corpus by edit distance without learning the behaviour the
   fixture judges.
-- Who: model trainers, whose validation score would overstate the
-  discriminator; critic authors, who need a defect that is not the only
-  changed line.
+- Who: model trainers, whose preference data would let the optimizer
+  learn edit distance instead of behaviour; critic authors, who need a
+  defect that is not the only changed line.
 - Promise: Families gain near misses that are refactored or carry two
   defects, each still failing its fixture on an assertion with a measured
   `caught_by`, and `diff` against the gold shows more than one hunk.

@@ -6,6 +6,17 @@
   "requirement": "Implement ValidatedStateGraph with strict TypedDict schema definition and channel reducers. Nodes must treat input state as immutable and return partial state updates without in-place mutations of lists or dictionaries. Fields declared with list concatenation reducers (Annotated[list[str], operator.add]) must receive list values, not raw primitives. Output keys must conform strictly to the state schema.",
   "skeleton": "State graph with TypedDict schema, list reducer validation, and immutable state updates.",
   "caption": "A LangGraph-style state graph written in the standard library with a TypedDict schema, copy, and operator and no third-party imports, whose nodes return fresh partial updates and whose reducer only accepts declared, correctly typed keys. AgentState declares messages as a list of strings annotated with operator.add as its reducer, metadata as a dictionary, and step_count as an integer, and ValidatedStateGraph reads those annotation names as the allowed keys. validate_node_output returns False when the update is not a dictionary, when any key is not declared in the schema, or when messages is present but is not a list, so a raw string can never be concatenated character by character. The ingest node returns a one-element messages list with the user text prefixed by user and the incoming step_count plus one, without touching the input. The process node copies the incoming metadata into a new dictionary before marking it processed, and returns a system processed message list, that new dictionary, and step_count plus one. apply_update raises ValueError naming the update when validation fails, deep-copies the current state, concatenates the message lists with operator.add, deep-copies any new metadata, and takes the new step_count, returning the new state so the caller's state is never mutated. run_pipeline starts with no messages, api as the metadata source, and step 0, and applies the ingest and process updates in turn. The fixture asserts that the input state's messages and metadata are unchanged after each node, that the final messages are user: order request followed by system: processed, that a list passes and a raw string fails validation, that an undeclared key fails, and that the final step_count is 2.",
+  "plan": {
+    "intent": "Apply graph node updates through a validated state reducer",
+    "target": "ValidatedStateGraph",
+    "constraints": [
+      "Only keys declared in the state schema are accepted",
+      "messages must be a list and is merged with operator.add",
+      "An invalid update raises ValueError naming it",
+      "Updates are applied to a deep copy so the caller's state never changes",
+      "Nodes return fresh partial updates without mutating their input"
+    ]
+  },
   "rationale": {
     "teaches": "Graph nodes that copy lists and dicts before updating, return list values for list-reducer channels, reject undeclared schema keys, and increment step_count from the incoming state.",
     "why": "In-place mutation gives the right output while corrupting the caller's state. The fixture snapshots the input state before each node and checks it is unchanged afterward."
@@ -39,7 +50,77 @@
     "raises": [
       "ValueError"
     ],
-    "status_codes": []
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "AgentState",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "ValidatedStateGraph",
+              "kind": "class",
+              "depends_on": [
+                "AgentState"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Apply validated, immutable node updates to a reducer-annotated graph state."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import copy",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import operator",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Annotated, Any, TypedDict",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "AgentState",
+        "source": "class AgentState(TypedDict):\n    \"\"\"Graph state whose messages channel is reduced by concatenation.\"\"\"\n\n    messages: Annotated[list[str], operator.add]\n    metadata: dict[str, Any]\n    step_count: int",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ValidatedStateGraph",
+        "source": "class ValidatedStateGraph:\n    \"\"\"State graph pipeline enforcing immutable updates and schema validation.\"\"\"\n\n    def __init__(self) -> None:\n        self.schema_keys = set(AgentState.__annotations__.keys())\n\n    def validate_node_output(self, update: dict[str, Any]) -> bool:\n        \"\"\"Whether update names only schema keys and carries list messages.\"\"\"\n        if not isinstance(update, dict):\n            return False\n        for key in update:\n            if key not in self.schema_keys:\n                return False\n        return \"messages\" not in update or isinstance(update[\"messages\"], list)\n\n    def ingest_node(self, state: AgentState, incoming_text: str) -> dict[str, Any]:\n        \"\"\"Return an update adding the user's text and one step.\"\"\"\n        return {\n            \"messages\": [f\"user: {incoming_text}\"],\n            \"step_count\": state[\"step_count\"] + 1,\n        }\n\n    def process_node(self, state: AgentState) -> dict[str, Any]:\n        \"\"\"Return an update marking metadata processed, without mutating state.\"\"\"\n        new_metadata = dict(state.get(\"metadata\", {}))\n        new_metadata[\"processed\"] = True\n        return {\n            \"messages\": [\"system: processed\"],\n            \"metadata\": new_metadata,\n            \"step_count\": state[\"step_count\"] + 1,\n        }\n\n    def apply_update(self, state: AgentState, update: dict[str, Any]) -> AgentState:\n        \"\"\"Return a new state with update merged, raising ValueError when invalid.\"\"\"\n        if not self.validate_node_output(update):\n            raise ValueError(f\"Invalid node update: {update}\")\n\n        new_state = copy.deepcopy(state)\n        if \"messages\" in update:\n            new_state[\"messages\"] = operator.add(\n                new_state[\"messages\"], update[\"messages\"]\n            )\n        if \"metadata\" in update:\n            new_state[\"metadata\"] = copy.deepcopy(update[\"metadata\"])\n        if \"step_count\" in update:\n            new_state[\"step_count\"] = update[\"step_count\"]\n        return new_state\n\n    def run_pipeline(self, initial_text: str) -> AgentState:\n        \"\"\"Run ingest then process from initial_text and return the final state.\"\"\"\n        current_state: AgentState = {\n            \"messages\": [],\n            \"metadata\": {\"source\": \"api\"},\n            \"step_count\": 0,\n        }\n        up1 = self.ingest_node(current_state, initial_text)\n        current_state = self.apply_update(current_state, up1)\n\n        up2 = self.process_node(current_state)\n        current_state = self.apply_update(current_state, up2)\n        return current_state",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
   },
   "candidates": [
     {
