@@ -1,0 +1,176 @@
+{
+  "family_id": "07-sqlalchemy-unique-conflict-409",
+  "domain": "python",
+  "area": "sqlalchemy",
+  "capability": "unique-conflict-409",
+  "requirement": "User registration endpoint POST /users enforcing unique email constraint, catching SQLAlchemy IntegrityError upon commit, rolling back the session, and returning HTTP 409 Conflict.",
+  "skeleton": "FastAPI user registration endpoint with SQLAlchemy unique constraint handling and session rollback.",
+  "caption": "A FastAPI user registration service over SQLAlchemy and in-memory SQLite in which the email uniqueness rule lives in the schema and the conflict is translated at commit time. The module builds a StaticPool engine, a DeclarativeBase, and a User table with integer id, an indexed email column declared unique=True and nullable=False, and a non-null username; reset_db drops and recreates the schema, the sessionmaker has autocommit and autoflush off, and get_db yields one session per request and closes it in finally. pydantic models are UserCreate with email and username and UserResponse with id, email, and username read from ORM attributes. GET /users returns every user, and GET /users/{user_id} loads by primary key and raises HTTPException 404 when absent. POST /users declares status 201, builds a User from the payload, adds it, and wraps the commit and refresh in a try block. When the database rejects the insert because the email already exists, the IntegrityError from sqlalchemy.exc is caught, the session is rolled back so it can be used again, and the handler raises HTTPException 409 with detail Email already registered. The existing user is never modified by a duplicate attempt, and a fresh registration with a different email succeeds immediately after a conflict.",
+  "rationale": {
+    "teaches": "Unique-constraint conflict handling: declare the constraint on the column, catch IntegrityError at commit, roll back, and answer 409.",
+    "why": "Generated registration code commonly answers 500, answers 400, or silently overwrites. Reading both the status and the persisted state after a duplicate request tells all of these apart."
+  },
+  "oracle": "fixtures/test_07_sqlalchemy_unique_conflict_409.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "engine"
+      },
+      {
+        "kind": "class",
+        "name": "Base",
+        "bases": [
+          "DeclarativeBase"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "User",
+        "bases": [
+          "Base"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "assign",
+        "name": "session_factory"
+      },
+      {
+        "kind": "function",
+        "name": "get_db",
+        "params": []
+      },
+      {
+        "kind": "class",
+        "name": "UserCreate",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "UserResponse",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "list_users",
+        "params": [
+          "db"
+        ],
+        "route": "GET /users"
+      },
+      {
+        "kind": "function",
+        "name": "get_user",
+        "params": [
+          "user_id",
+          "db"
+        ],
+        "route": "GET /users/{user_id}"
+      },
+      {
+        "kind": "function",
+        "name": "create_user",
+        "params": [
+          "payload",
+          "db"
+        ],
+        "route": "POST /users"
+      }
+    ],
+    "imports": [
+      "fastapi",
+      "pydantic",
+      "sqlalchemy"
+    ],
+    "raises": [
+      "HTTPException"
+    ],
+    "status_codes": [
+      201,
+      404,
+      409
+    ]
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A duplicate email raises an unhandled IntegrityError, so the client receives 500 instead of 409.",
+      "caught_by": [
+        "test_duplicate_email_does_not_overwrite_existing_user",
+        "test_duplicate_email_returns_409_conflict",
+        "test_session_clean_after_conflict_allows_subsequent_registration"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A duplicate email answers 400 instead of 409 Conflict.",
+      "caught_by": [
+        "test_duplicate_email_does_not_overwrite_existing_user",
+        "test_duplicate_email_returns_409_conflict",
+        "test_session_clean_after_conflict_allows_subsequent_registration"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The session is not rolled back after the IntegrityError, so the next operation on it fails with a pending-rollback error.",
+      "caught_by": [
+        "test_session_clean_after_conflict_allows_subsequent_registration"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Registering an existing email overwrites that user's username and returns 200, so anyone can rename another account.",
+      "caught_by": [
+        "test_duplicate_email_does_not_overwrite_existing_user",
+        "test_duplicate_email_returns_409_conflict",
+        "test_session_clean_after_conflict_allows_subsequent_registration"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The email column carries no unique constraint, so duplicate registrations succeed and two users share one email.",
+      "caught_by": [
+        "test_duplicate_email_does_not_overwrite_existing_user",
+        "test_duplicate_email_returns_409_conflict",
+        "test_session_clean_after_conflict_allows_subsequent_registration"
+      ]
+    }
+  ]
+}

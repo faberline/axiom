@@ -33,9 +33,18 @@ import re
 import sys
 from pathlib import Path
 
-CORPUS = Path(__file__).resolve().parent.parent / "data" / "python-v2"
-MATERIALS = CORPUS / "materials"
+DATA = Path(__file__).resolve().parent.parent / "data"
+CORPUS = DATA / "curated"
+MATERIALS = CORPUS / "families"
 FIXTURES = CORPUS / "fixtures"
+
+
+def use_corpus(corpus: Path) -> None:
+    """Point the module at another corpus layer, e.g. ``data/user``."""
+    global CORPUS, MATERIALS, FIXTURES
+    CORPUS = corpus.resolve()
+    MATERIALS = CORPUS / "families"
+    FIXTURES = CORPUS / "fixtures"
 HTTP_METHODS = {"get", "post", "put", "patch", "delete", "head", "options", "websocket"}
 CLI_DECORATORS = {"command", "callback"}
 CLASS_NAME_RE = re.compile(r"[A-Z][A-Za-z0-9]*")
@@ -248,8 +257,10 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--write", action="store_true", help="store the block under decompiled in each family.json")
     ap.add_argument("--draft", type=Path, help="write one caption-authoring sheet per family into this directory")
+    ap.add_argument("--corpus", type=Path, default=CORPUS, help="corpus layer to read (default data/curated; data/user for your own families)")
     ap.add_argument("families", nargs="*", help="family number prefixes to limit to, e.g. 01 48")
     args = ap.parse_args()
+    use_corpus(args.corpus)
 
     selected = families()
     if args.families:

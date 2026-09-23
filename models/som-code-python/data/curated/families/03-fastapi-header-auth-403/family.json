@@ -1,0 +1,149 @@
+{
+  "family_id": "03-fastapi-header-auth-403",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "header-auth-tenant-isolation",
+  "requirement": "Implement GET /documents/{doc_id} requiring X-Tenant-ID header, scoping documents to matching tenants with 403 Forbidden on tenant mismatch, 404 on missing document, and 422 on missing header.",
+  "skeleton": "FastAPI route with Header dependency and multi-tenant authorization guard.",
+  "caption": "A multi-tenant FastAPI document service with SQLAlchemy persistence in an in-memory SQLite database. Module setup builds the StaticPool engine, sessionmaker, DeclarativeBase, and a Document table with integer id, an indexed non-null tenant_id string, and non-null title and content. seed_database inserts two documents when id 1 is absent: Alpha Strategy owned by tenant-alpha and Beta Plans owned by tenant-beta; reset_db drops, recreates, and reseeds; get_db yields a session per request inside try/finally. The pydantic DocumentOut model returns id, tenant_id, title, and content from ORM attributes. The single GET /documents/{doc_id} route reads a required header through Header with alias X-Tenant-ID, so a request without that header fails validation with 422 before the handler runs. The handler first selects the document by id and raises HTTPException 404 with detail Document not found when nothing matches. Only then does it compare the stored tenant_id with the header value the caller actually sent, raising HTTPException 403 with detail Forbidden: Tenant mismatch on inequality. A matching tenant receives the full document. Existence is decided before ownership, and ownership is decided against the request header, never against a fixed tenant name.",
+  "rationale": {
+    "teaches": "Header-based tenant isolation and the status ladder around it: 422 when the header is absent, 404 for a missing document, 403 when the document belongs to another tenant, and a comparison against the caller's header rather than a constant.",
+    "why": "An insecure direct object reference is invisible at the type level; the route still compiles, runs, and returns documents. Only a fixture with two tenants observes the leak, which is exactly what the oracle provides."
+  },
+  "oracle": "fixtures/test_03_fastapi_header_auth_403.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "engine"
+      },
+      {
+        "kind": "assign",
+        "name": "session_factory"
+      },
+      {
+        "kind": "class",
+        "name": "Base",
+        "bases": [
+          "DeclarativeBase"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Document",
+        "bases": [
+          "Base"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "seed_database",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "get_db",
+        "params": []
+      },
+      {
+        "kind": "class",
+        "name": "DocumentOut",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "get_document",
+        "params": [
+          "doc_id",
+          "x_tenant_id",
+          "db"
+        ],
+        "route": "GET /documents/{doc_id}"
+      }
+    ],
+    "imports": [
+      "fastapi",
+      "pydantic",
+      "sqlalchemy"
+    ],
+    "raises": [
+      "HTTPException"
+    ],
+    "status_codes": [
+      403,
+      404
+    ]
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The tenant check is gone, so any caller presenting any X-Tenant-ID can read every tenant's document.",
+      "caught_by": [
+        "test_access_other_tenant_document_forbidden_403"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The header is optional, so a request with no X-Tenant-ID receives 200 and the document instead of 422.",
+      "caught_by": [
+        "test_missing_tenant_header_rejected_422"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A tenant mismatch answers 401 Unauthorized, telling clients to re-authenticate instead of that access is forbidden.",
+      "caught_by": [
+        "test_access_other_tenant_document_forbidden_403"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "A non-existent document answers 403 instead of 404, so a client cannot tell missing from foreign and existence is decided by the wrong status.",
+      "caught_by": [
+        "test_nonexistent_document_returns_404_even_with_valid_header"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The document's tenant is compared to the literal admin, so other tenants are denied their own documents and admin's documents are readable by anyone.",
+      "caught_by": [
+        "test_access_own_tenant_document_success_200",
+        "test_access_second_tenant_document_success_200"
+      ]
+    }
+  ]
+}

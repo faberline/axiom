@@ -1,9 +1,0 @@
-{
-  "state": "I lost my debit card and need a replacement.",
-  "question": "Which banking support intent best matches this customer message?",
-  "candidates": [
-    {"id": "lost-card", "text": "lost or stolen card"},
-    {"id": "cash", "text": "cash withdrawal amount"},
-    {"id": "exchange", "text": "card exchange rate"}
-  ]
-}

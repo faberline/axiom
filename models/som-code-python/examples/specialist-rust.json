@@ -1,8 +1,0 @@
-{
-  "state": "An Axum handler must return a typed JSON error for a missing record and commit the SQLx transaction only after the write succeeds.",
-  "question": "Which patch satisfies the Rust backend requirements?",
-  "candidates": [
-    {"id": "typed-transaction", "text": "let row = sqlx::query_as!(Record, \"SELECT * FROM records WHERE id = ?\", id).fetch_optional(&mut *tx).await?; let row = row.ok_or(ApiError::NotFound)?; tx.commit().await?; Ok(Json(row))"},
-    {"id": "panic-on-missing", "text": "let row = query.fetch_one(&pool).await.unwrap(); Ok(Json(row))"}
-  ]
-}

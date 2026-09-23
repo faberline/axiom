@@ -1,0 +1,101 @@
+{
+  "family_id": "62-aiohttp-timeout-disconnects",
+  "domain": "python",
+  "area": "aiohttp",
+  "capability": "timeout-disconnects",
+  "requirement": "Implement ResilientAiohttpFetcher with strict request timeout configuration (aiohttp.ClientTimeout), retry loop handling transient disconnects (aiohttp.ClientError and asyncio.TimeoutError), and strict propagation of asyncio.CancelledError to prevent hanging coroutines.",
+  "skeleton": "ResilientAiohttpFetcher class with timeout configuration, retry loop, and cancellation handling.",
+  "caption": "An aiohttp JSON fetcher that retries transient network failures under an explicit timeout while letting cancellation stop it immediately. FetchError subclasses Exception. ResilientAiohttpFetcher takes total_timeout defaulting to 5.0, connect_timeout defaulting to 2.0, and max_retries defaulting to 2; it raises ValueError when either timeout is not positive and when max_retries is negative, and builds an aiohttp.ClientTimeout with the total and connect values. fetch_json(session, url) makes up to max_retries plus one attempts, so zero retries still performs one request. Each attempt opens session.get with the timeout configuration and, when the status is not 200, raises aiohttp.ClientResponseError carrying the request info, history, and status; otherwise it returns the decoded JSON. The except clause names only TimeoutError and aiohttp.ClientError, so an asyncio.CancelledError, a BaseException, propagates at once and is never counted as a failure. Any aiohttp.ClientError, which includes the response error and connection failures, and any asyncio.TimeoutError is remembered, and the loop sleeps briefly and tries again until the attempts are used up. After the final attempt it raises FetchError naming the URL and the attempt count, chained from the last error. The fixture asserts that cancellation propagates instead of being retried, that the timeout object reaching session.get has total 7.5 and connect 1.5, that a connection error on the first attempt is followed by a successful second call returning data 42, that zero retries makes exactly one call, and that invalid parameters are rejected.",
+  "rationale": {
+    "teaches": "A retrying fetch with an explicit ClientTimeout, ClientError and TimeoutError retried max_retries plus one times, CancelledError left uncaught, and non-negative retries validated.",
+    "why": "Catching CancelledError as a transient error keeps a cancelled coroutine alive and retrying. The fixture cancels the fetch mid-retry and expects it to stop."
+  },
+  "oracle": "fixtures/test_62_aiohttp_timeout_disconnects.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "FetchError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ResilientAiohttpFetcher",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "fetch_json"
+        ]
+      }
+    ],
+    "imports": [
+      "aiohttp"
+    ],
+    "raises": [
+      "ClientResponseError",
+      "FetchError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "CancelledError is caught with the transient errors, so a cancelled fetch keeps retrying instead of stopping.",
+      "caught_by": [
+        "test_cancellation_propagates_immediately"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "timeout=None disables the request timeout, so a silent server hangs the fetch forever.",
+      "caught_by": [
+        "test_timeout_config_passed_to_session_get"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Only TimeoutError is retried, so a ClientConnectionError fails the fetch on the first attempt.",
+      "caught_by": [
+        "test_retries_on_client_connector_error"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The loop runs max_retries times instead of max_retries plus one, so one fewer attempt is made than configured.",
+      "caught_by": [
+        "test_max_retries_zero_executes_single_attempt"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A negative max_retries is accepted, so the loop never runs and every fetch returns without a request.",
+      "caught_by": [
+        "test_invalid_parameters"
+      ]
+    }
+  ]
+}

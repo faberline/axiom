@@ -2,7 +2,7 @@
 """SOM Code Snippet Library Verifier (scripts/verify_snippets.py).
 
 Validates:
-1. Presence and JSON schema integrity of all 8 required snippet definitions under data/snippets/v1/.
+1. Presence and JSON schema integrity of all 8 required snippet definitions under data/snippets/.
 2. Mustache parameter consistency.
 3. Assembly of a mock `main.py` combining all 8 snippets in dependency order.
 4. Syntactic compilation via `ast.parse` and `python -m py_compile main.py` with exit code 0.
@@ -80,14 +80,14 @@ DUMMY_VALUES: Dict[str, str] = {
 def find_snippets_dir() -> Path:
     current = Path(__file__).resolve().parent
     candidates = [
-        current.parent / "data" / "snippets" / "v1",
-        Path.cwd() / "data" / "snippets" / "v1",
-        Path.cwd() / "models" / "som-code-python" / "data" / "snippets" / "v1",
+        current.parent / "data" / "snippets",
+        Path.cwd() / "data" / "snippets",
+        Path.cwd() / "models" / "som-code-python" / "data" / "snippets",
     ]
     for c in candidates:
         if c.is_dir():
             return c
-    raise FileNotFoundError("Could not locate data/snippets/v1 directory.")
+    raise FileNotFoundError("Could not locate data/snippets directory.")
 
 
 def validate_snippet_schema(data: Any, expected_id: str, path: Path) -> None:

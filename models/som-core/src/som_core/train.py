@@ -1,6 +1,6 @@
 """MLX LoRA Training Pipeline for Structured Outcome Models (SOM).
 
-Accepts parsed datasets from som_core.dataset (including python-v2 scenarios),
+Accepts parsed datasets from som_core.dataset (oracle-family corpora),
 supports both real pre-trained base models and self-contained MLX LoRA skeleton
 backbones for deterministic local training on Apple Silicon.
 """
@@ -22,7 +22,7 @@ import mlx.optimizers as optim
 from mlx.utils import tree_flatten, tree_map, tree_unflatten
 import numpy as np
 
-from .dataset import find_python_v2_dir, load_python_v2_dataset, split_dataset
+from .dataset import load_corpora, resolve_layer_weights, split_dataset, weighted_epoch
 from .model import DecisionModel, encoded_logits, load_model, restore_adapter, save_adapter
 from .paths import ROOT, model_path, read_json, read_rows, resolve_checkpoint, sha256, write_json
 from .schema import encode
@@ -188,6 +188,31 @@ def assess(
     }
 
 
+def assess_by_layer(
+    model: DecisionModel,
+    encoded: list[Any],
+    rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """:func:`assess` over the whole split, plus one entry per layer under ``by_layer``."""
+    result: dict[str, Any] = dict(assess(model, encoded, rows))
+    layers = sorted({r.get("layer", "curated") for r in rows})
+    result["by_layer"] = {
+        layer: assess(
+            model,
+            [e for e, r in zip(encoded, rows) if r.get("layer", "curated") == layer],
+            [r for r in rows if r.get("layer", "curated") == layer],
+        )
+        for layer in layers
+    }
+    return result
+
+
+def format_by_layer(result: dict[str, Any]) -> str:
+    return ", ".join(
+        f"{layer} acc={m['accuracy']:.2%} (n={m['n']})" for layer, m in result.get("by_layer", {}).items()
+    )
+
+
 def train(
     run: Path | str = "runs/default",
     smoke: bool = False,
@@ -198,6 +223,7 @@ def train(
     batch_size: int = 1,
     lr: float = 1e-4,
     use_skeleton: bool = False,
+    layer_weights: dict[str, float] | None = None,
 ) -> dict[str, Any]:
     """Execute the MLX LoRA training loop.
 
@@ -210,7 +236,7 @@ def train(
     resume : bool
         If True, resume from existing checkpoint in run dir.
     dataset : list[dict] | None
-        Pre-parsed dataset rows. If None, loaded from data_dir or python-v2.
+        Pre-parsed dataset rows. If None, loaded from data_dir or the default corpora.
     data_dir : Path | str | None
         Path to dataset directory if dataset is None.
     epochs : int | None
@@ -221,6 +247,9 @@ def train(
         Learning rate for AdamW.
     use_skeleton : bool
         Force usage of the MLX Skeleton LoRA model.
+    layer_weights : dict[str, float] | None
+        Expected repeats per epoch for each layer's training rows; defaults to
+        ``SOM_LAYER_WEIGHTS`` or ``DEFAULT_LAYER_WEIGHTS`` (user rows twice).
 
     Returns
     -------
@@ -239,18 +268,31 @@ def train(
     if dataset is not None:
         rows = list(dataset)
     else:
-        print(f"[som-train] Loading dataset from: {data_dir or 'python-v2'}")
-        rows = load_python_v2_dataset(data_dir=data_dir)
+        print(f"[som-train] Loading dataset from: {data_dir or 'default corpora'}")
+        rows = load_corpora([data_dir] if data_dir else None)
 
     if not rows:
-        raise ValueError("Dataset is empty. Ensure python-v2 materials exist.")
+        raise ValueError("Dataset is empty. Ensure the corpus has families.")
 
     print(f"[som-train] Loaded {len(rows)} scenario families for training.")
 
+    weights = dict(layer_weights) if layer_weights is not None else resolve_layer_weights()
     train_rows, val_rows = split_dataset(rows, val_ratio=0.25 if len(rows) > 3 else 0.5)
+    layer_counts = {
+        layer: {"families": sum(1 for r in train_rows if r.get("layer", "curated") == layer)}
+        for layer in sorted({r.get("layer", "curated") for r in rows})
+    }
+    train_rows = weighted_epoch(train_rows, weights)
+    for layer, counts in layer_counts.items():
+        counts["weighted_rows"] = sum(1 for r in train_rows if r.get("layer", "curated") == layer)
+    if not train_rows:
+        raise ValueError(f"Layer weights {weights} leave no training rows.")
     if smoke:
         train_rows = train_rows[:4]
-        val_rows = val_rows[:2]
+        val_rows = [
+            r for layer in sorted({v.get("layer", "curated") for v in val_rows})
+            for r in [v for v in val_rows if v.get("layer", "curated") == layer][:2]
+        ]
 
     # 2. Configure training
     max_epochs = epochs if epochs is not None else (2 if smoke else 5)
@@ -260,6 +302,7 @@ def train(
         "smoke": smoke,
         "max_epochs": max_epochs,
         "gradient_accumulation": min(batch_size, len(train_rows)),
+        "layer_weights": weights,
     }
 
     # 3. Load Model and Tokenizer
@@ -280,20 +323,30 @@ def train(
         "updates": 0,
         "elapsed_seconds": 0.0,
         "total_training_examples": len(train_rows),
+        "train_layers": layer_counts,
         "history": [],
     }
 
     if resume:
         saved = resolve_checkpoint(run)
         previous = read_json(saved / "trainer.json")
+        saved_weights = previous.get("config", {}).get("layer_weights")
+        if saved_weights is not None and saved_weights != weights:
+            raise ValueError(
+                f"Run was trained with layer weights {saved_weights}; resuming with {weights} "
+                "would change the training set under samples_seen. Start a new run."
+            )
         restore_adapter(model, saved)
         optimizer.state = tree_unflatten(list(mx.load(str(saved / "optimizer.npz")).items()))
         mx.random.state = [mx.load(str(saved / "rng.npz"))["state"]]
         state = previous
     else:
-        init_val = assess(model, encoded_val, val_rows)
+        init_val = assess_by_layer(model, encoded_val, val_rows)
         state["initial_validation"] = init_val
-        print(f"[som-train] Initial Validation: loss={init_val['loss']:.4f}, acc={init_val['accuracy']:.2%}")
+        print(
+            f"[som-train] Initial Validation: loss={init_val['loss']:.4f}, acc={init_val['accuracy']:.2%} "
+            f"[{format_by_layer(init_val)}]"
+        )
         checkpoint(model, optimizer, run, state)
 
     # 6. Loss Function
@@ -384,7 +437,7 @@ def train(
             del accumulated, grads
 
         state["elapsed_seconds"] = prior_elapsed + time.monotonic() - started
-        final_val = assess(model, encoded_val, val_rows)
+        final_val = assess_by_layer(model, encoded_val, val_rows)
         state["final_validation"] = final_val
         state["status"] = status
 
@@ -402,7 +455,8 @@ def train(
         print(
             f"[som-train] {status.capitalize()} | "
             f"Samples seen: {state['samples_seen']} | "
-            f"Final Val Loss: {final_val['loss']:.4f}, Acc: {final_val['accuracy']:.2%} | "
+            f"Final Val Loss: {final_val['loss']:.4f}, Acc: {final_val['accuracy']:.2%} "
+            f"[{format_by_layer(final_val)}] | "
             f"Checkpoint: {destination.name}"
         )
         return summary

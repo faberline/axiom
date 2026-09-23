@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Verify the curation layer of the python-v2 executable oracle corpus.
+"""Verify the curation layer of an executable oracle corpus (default ``data/curated``).
 
-The harness (``data/python-v2/fixtures/verify_harness.py``) proves the
+The harness (``scripts/verify_harness.py``) proves the
 behavioral contract by execution. This script proves, without executing any
 candidate, that the curation written into each ``family.json`` is present,
 non-trivial, and bound to the fixture and the gold source it claims:
@@ -32,6 +32,7 @@ Exit 0 when every family passes; exit 1 with one line per defect otherwise.
 
 from __future__ import annotations
 
+import argparse
 import ast
 import io
 import json
@@ -44,9 +45,18 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from decompile_gold import measure  # noqa: E402
 
-CORPUS = Path(__file__).resolve().parent.parent / "data" / "python-v2"
-MATERIALS = CORPUS / "materials"
+DATA = Path(__file__).resolve().parent.parent / "data"
+CORPUS = DATA / "curated"
+MATERIALS = CORPUS / "families"
 FIXTURES = CORPUS / "fixtures"
+
+
+def use_corpus(corpus: Path) -> None:
+    """Point the module at another corpus layer, e.g. ``data/user``."""
+    global CORPUS, MATERIALS, FIXTURES
+    CORPUS = corpus.resolve()
+    MATERIALS = CORPUS / "families"
+    FIXTURES = CORPUS / "fixtures"
 MISS_IDS = ["miss_1", "miss_2", "miss_3", "miss_4", "miss_5"]
 MIN_WORDS_RATIONALE = 8
 MIN_WORDS_WHY_WRONG = 6
@@ -244,6 +254,9 @@ def check_family(fam: Path) -> list[str]:
 
 
 def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--corpus", type=Path, default=CORPUS, help="corpus layer to read (default data/curated; data/user for your own families)")
+    use_corpus(ap.parse_args().corpus)
     families = sorted(d for d in MATERIALS.iterdir() if (d / "family.json").is_file())
     if not families:
         print(f"no families under {MATERIALS}")

@@ -22,22 +22,29 @@ def verify() -> None:
 @app.command()
 def train(
     domain: str = typer.Option("python", help="The domain model to train (e.g., python, react)"),
-    data_dir: Optional[list[str]] = typer.Option(None, "--data-dir", "-d", help="Corpus directory; repeat to train on several corpora together (defaults to python-v2 data)"),
+    data_dir: Optional[list[str]] = typer.Option(None, "--data-dir", "-d", help="Corpus directory; repeat to train on several corpora together (defaults to som-code-python data/curated plus data/user when it has families)"),
     epochs: int = typer.Option(3, "--epochs", "-e", help="Number of training epochs"),
     batch_size: int = typer.Option(1, "--batch-size", "-b", help="Gradient accumulation batch size"),
     lr: float = typer.Option(1e-4, "--lr", help="Learning rate"),
     smoke: bool = typer.Option(False, "--smoke", help="Run smoke test mode with minimal steps"),
     output_dir: Optional[str] = typer.Option(None, "--output-dir", "-o", help="Output directory for checkpoints"),
     use_skeleton: bool = typer.Option(True, "--skeleton", help="Use MLX Skeleton LoRA model for local training"),
+    layer_weight: Optional[list[str]] = typer.Option(None, "--layer-weight", "-w", help="Layer weight as layer=weight, repeatable (defaults curated=1, user=2; SOM_LAYER_WEIGHTS=user=3,curated=1 when not given)"),
 ) -> None:
     """Train a Structured Outcome Model (SOM) adapter via MLX using scenario datasets."""
     typer.echo(f"=== SOM Training Pipeline: domain={domain} ===")
-    from .dataset import load_corpora
+    from .dataset import load_corpora, resolve_layer_weights
     from .train import train as run_train
+
+    weights = resolve_layer_weights(layer_weight)
 
     typer.echo(f"Loading corpora: {', '.join(data_dir) if data_dir else 'auto-discover'}")
     dataset = load_corpora(data_dir)
-    typer.echo(f"Successfully loaded {len(dataset)} scenario examples from {len(data_dir or [None])} corpus directories.")
+    by_layer = {layer: sum(1 for r in dataset if r.get("layer") == layer) for layer in weights}
+    typer.echo(
+        f"Successfully loaded {len(dataset)} scenario examples "
+        f"({', '.join(f'{k}={v} x{weights[k]:g}' for k, v in by_layer.items())})."
+    )
 
     run_path = output_dir or f"runs/{domain}-lora"
     typer.echo(f"Starting MLX LoRA training loop -> output: {run_path}")
@@ -50,6 +57,7 @@ def train(
         batch_size=batch_size,
         lr=lr,
         use_skeleton=use_skeleton,
+        layer_weights=weights,
     )
     typer.echo(f"Training finished with status: {summary.get('status')}")
     typer.echo(f"Checkpoint saved: {summary.get('checkpoint')}")

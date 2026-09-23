@@ -21,7 +21,7 @@ generation layers are documented, not implemented. The
 1. Create the project environment with `uv sync` inside `models/som-core`
    and confirm the MLX device with `models/som-core/.venv/bin/som verify`.
 2. Train the discriminator against one or more corpus directories with
-   `models/som-core/.venv/bin/som train --data-dir models/som-code-python/data/python-v2`,
+   `models/som-core/.venv/bin/som train --data-dir models/som-code-python/data/curated`,
    repeating `--data-dir` once per corpus to train on `som-code`,
    `som-code-python`, and `som-code-rust` together (add `--smoke` for a
    bounded run); the run directory records a `training_summary.json` and one
@@ -53,7 +53,7 @@ component in this repository.
 - The `som` entry point is declared in [pyproject.toml](pyproject.toml); the
   Typer app in `src/som_core/cli.py` is the whole CLI surface.
 - Training data is read through `src/som_core/dataset.py`, which expects the
-  `data/python-v2/materials/<family>/` layout that
+  `data/<layer>/families/<family>/` layout that
   [`models/som-code-python`](../som-code-python/README.md) documents and
   passes that project's curation fields (`rationale`, `oracle`, `caption`,
   `decompiled`, `why_wrong`, `caught_by`) through to the training row; the module docstring states the
@@ -69,7 +69,7 @@ component in this repository.
 | Capability | ID | User promise | Sources |
 |---|---|---|---|
 | Training CLI surface | `training-cli-surface` | The `som` entry point installs from this project and lists the `verify`, `train`, and `serve` commands with their documented options. | `models/som-core` |
-| Corpus loader | `corpus-loader` | `som train` unions every `--data-dir` corpus into one dataset in the order given, carries each near miss's `why_wrong` and `caught_by` through to its training row unchanged, and refuses an empty corpus or a family id that two corpora both claim. | `models/som-core` |
+| Corpus loader | `corpus-loader` | `som train` unions every `--data-dir` corpus into one dataset in the order given, tags each row curated or user and samples it by its layer weight (curated=1, user=2 unless `--layer-weight` or `SOM_LAYER_WEIGHTS` says otherwise), carries each near miss's `why_wrong` and `caught_by` through to its training row unchanged, and refuses an empty corpus, a family id that two corpora both claim without a user-layer `overrides`, and a malformed weight. | `models/som-core` |
 
 ### Training CLI surface
 
@@ -84,9 +84,12 @@ component in this repository.
 
 - ID: `corpus-loader`
 - Promise: `som train` unions every `--data-dir` corpus into one dataset in
-  the order given, carries each near miss's `why_wrong` and `caught_by`
-  through to its training row unchanged, and refuses an empty corpus or a
-  family id that two corpora both claim.
+  the order given, tags each row curated or user and samples it by its
+  layer weight (curated=1, user=2 unless `--layer-weight` or
+  `SOM_LAYER_WEIGHTS` says otherwise), carries each near miss's `why_wrong`
+  and `caught_by` through to its training row unchanged, and refuses an
+  empty corpus, a family id that two corpora both claim without a
+  user-layer `overrides`, and a malformed weight.
 - Sources:
   - `models/som-core` owns the loader and the pytest cases that hold it to this.
 - Gate: `models/som-core/.venv/bin/python -m pytest models/som-core/tests -q`

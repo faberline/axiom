@@ -25,7 +25,7 @@ to what they observe. `runs/` is local output and never committed.
 | CLI surface | `models/som-core/.venv/bin/som --help` |
 | Corpus loader | `models/som-core/.venv/bin/python -m pytest models/som-core/tests -q` |
 | MLX device | `models/som-core/.venv/bin/som verify` |
-| Smoke training run | `models/som-core/.venv/bin/som train --smoke --data-dir models/som-code-python/data/python-v2 --output-dir models/som-core/runs/smoke` |
+| Smoke training run | `models/som-core/.venv/bin/som train --smoke --data-dir models/som-code-python/data/curated --output-dir models/som-core/runs/smoke` |
 | Product document contract | `uv run --python 3.13 --no-project scripts/meta/project_docs_contract.py check models/som-core --format json` |
 | META-doc contract | `uv run --project apps/aw aw metadoc check models/som-core` |
 

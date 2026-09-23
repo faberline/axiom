@@ -9,7 +9,7 @@ This area spans the README capability `snippet-isa`.
 - Problem: none open as shipped; the limits below belong to the outcome in
   this area.
 - Who: generator authors; corpus authors adding a snippet.
-- Promise: `data/snippets/v1/<library>/<id>.json` is one instruction: an
+- Promise: `data/snippets/<library>/<id>.json` is one instruction: an
   `id`, a `description`, the `imports` it needs, and a Mustache `template`
   with named parameters. The verifier checks every required snippet exists,
   that parameters are consistent, assembles the whole set in dependency order
@@ -41,5 +41,3 @@ This area spans the README capability `snippet-isa`.
 
 - No snippet for a platform without a Python oracle; see ROADMAP
   `platform-pilot-families`.
-- No promise about the legacy specialist runtimes that once consumed
-  snippets; see ROADMAP `legacy-ranker-lineage`.

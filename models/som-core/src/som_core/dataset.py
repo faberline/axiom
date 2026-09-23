@@ -1,16 +1,33 @@
 """Dataset parser for Structured Outcome Models (SOM).
 
-Parses oracle-family corpora (``materials/<family>/family.json`` plus one
+Parses oracle-family corpora (``families/<family>/family.json`` plus one
 candidate file per entry) and compiled JSONL records for MLX training and
 evaluation.
 
 Rules this module owns:
 
-- A corpus is one directory whose ``materials/`` holds the families; several
+- A corpus is one directory whose ``families/`` holds the families; several
   corpora (``som-code``, ``som-code-python``, ``som-code-rust``) are loaded
   together by :func:`load_corpora`, which refuses an empty corpus and a
   family id that two corpora both claim, so a union is never silently a
   subset and a row id is never ambiguous.
+- Each corpus project ships two layers: ``data/curated`` (the project's own,
+  checked by its harness and curation gates) and ``data/user`` (families a
+  user adds locally, same schema, never committed). With no ``--data-dir``,
+  :func:`find_default_corpora` loads curated first and user only when it
+  holds a family; the duplicate-id refusal keeps a user family from
+  shadowing a curated one.
+- Every dict row carries ``layer``: ``"user"`` when its corpus directory is
+  named ``user``, ``"curated"`` otherwise. A user family replaces a curated
+  one only by declaring ``"overrides": "<row id>"`` in its ``family.json``;
+  the target must already be loaded, only the user layer may override, and
+  one target takes one override, so a team convention wins on purpose and a
+  typo never silently leaves the curated family in place.
+- User rows are team conventions and train with more weight:
+  :data:`DEFAULT_LAYER_WEIGHTS` gives each layer's expected repeats per
+  epoch, applied by :func:`weighted_epoch` to the training split only.
+  :func:`split_dataset` stratifies by layer, so each layer has its own
+  unweighted validation rows and its accuracy is reported on its own.
 - The curation fields a corpus project measures for each near miss,
   ``why_wrong`` and ``caught_by``, ride on :class:`CandidateRecord` unchanged
   and reach the training row through :meth:`CandidateRecord.to_dict`; a gold
@@ -27,10 +44,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import json
+import math
 import os
 from pathlib import Path
 import random
 from typing import Any, Iterable, Optional
+
+CURATED = "curated"
+USER = "user"
+FAMILIES = "families"
+LAYERS = (CURATED, USER)
+DEFAULT_LAYER_WEIGHTS: dict[str, float] = {CURATED: 1.0, USER: 2.0}
 
 
 @dataclass(frozen=True)
@@ -236,22 +260,22 @@ def load_family_from_metadata(family_dir: Path | str) -> ScenarioFamily:
     )
 
 
-def load_materials_dataset(materials_dir: Path | str) -> list[ScenarioFamily]:
-    """Scan a materials directory and parse all scenario families.
+def load_families(families_dir: Path | str) -> list[ScenarioFamily]:
+    """Scan a ``families/`` directory and parse all scenario families.
 
     Parameters
     ----------
-    materials_dir : Path | str
-        Path to materials directory (e.g. data/python-v2/materials).
+    families_dir : Path | str
+        Path to a families directory (e.g. data/curated/families).
 
     Returns
     -------
     list[ScenarioFamily]
         Sorted list of parsed scenario families.
     """
-    path = Path(materials_dir).resolve()
+    path = Path(families_dir).resolve()
     if not path.is_dir():
-        raise NotADirectoryError(f"Materials directory does not exist: {path}")
+        raise NotADirectoryError(f"Families directory does not exist: {path}")
 
     family_dirs = [d for d in path.iterdir() if d.is_dir() and (d / "family.json").is_file()]
     if not family_dirs:
@@ -312,52 +336,63 @@ def export_dataset_to_jsonl(
     return path
 
 
-def find_python_v2_dir(search_root: Path | str | None = None) -> Path:
-    """Locate the som-code-python/data/python-v2 directory."""
-    env_path = os.environ.get("SOM_PYTHON_V2_DATA")
-    if env_path and Path(env_path).exists():
-        return Path(env_path).resolve()
+def find_default_corpora(search_root: Path | str | None = None) -> list[Path]:
+    """Locate som-code-python's corpora: ``data/curated``, then ``data/user``.
+
+    ``data/curated`` is required; ``data/user`` is included only when it
+    holds at least one family, so an untouched checkout trains on the
+    curated corpus alone. ``SOM_DATA_DIRS`` (``os.pathsep``-separated)
+    overrides the search.
+    """
+    env = os.environ.get("SOM_DATA_DIRS")
+    if env:
+        return [Path(p).resolve() for p in env.split(os.pathsep) if p]
 
     start = Path(search_root).resolve() if search_root else Path.cwd().resolve()
-    candidates = [
-        start / "models" / "som-code-python" / "data" / "python-v2",
-        start / "som-code-python" / "data" / "python-v2",
-        start / "data" / "python-v2",
-        start.parent / "som-code-python" / "data" / "python-v2",
-        start.parent.parent / "som-code-python" / "data" / "python-v2",
-        start.parents[2] / "som-code-python" / "data" / "python-v2" if len(start.parents) > 2 else None,
-        Path(__file__).resolve().parents[4] / "models" / "som-code-python" / "data" / "python-v2",
+    roots = [
+        start / "models" / "som-code-python" / "data",
+        start / "som-code-python" / "data",
+        start / "data",
+        start.parent / "som-code-python" / "data",
+        Path(__file__).resolve().parents[3] / "som-code-python" / "data",
     ]
-
-    for cand in candidates:
-        if cand and cand.exists() and cand.is_dir():
-            return cand.resolve()
+    for root in roots:
+        curated = root / CURATED
+        if (curated / FAMILIES).is_dir():
+            dirs = [curated.resolve()]
+            user_families = root / USER / FAMILIES
+            if user_families.is_dir() and any(user_families.glob("*/family.json")):
+                dirs.append((root / USER).resolve())
+            return dirs
 
     raise FileNotFoundError(
-        "Could not automatically locate 'som-code-python/data/python-v2'. "
-        "Please provide the path explicitly or set SOM_PYTHON_V2_DATA."
+        "Could not locate 'som-code-python/data/curated'. "
+        "Pass --data-dir explicitly or set SOM_DATA_DIRS."
     )
 
 
-def load_python_v2_dataset(
-    data_dir: Path | str | None = None,
+def load_corpus(
+    data_dir: Path | str,
     as_dicts: bool = True,
 ) -> list[dict[str, Any]] | list[ScenarioFamily]:
-    """High-level loader for python-v2 dataset."""
-    base_path = Path(data_dir).resolve() if data_dir else find_python_v2_dir()
+    """Load one corpus: a ``.jsonl`` file, or a directory whose ``families/`` holds the families."""
+    base_path = Path(data_dir).resolve()
 
     if base_path.is_file() and base_path.suffix == ".jsonl":
-        rows = load_jsonl_dataset(base_path)
-        return rows
+        return load_jsonl_dataset(base_path)
 
-    materials_dir = base_path / "materials" if (base_path / "materials").is_dir() else base_path
-    if (materials_dir / "materials").is_dir():
-        materials_dir = materials_dir / "materials"
-
-    scenarios = load_materials_dataset(materials_dir)
+    families_dir = base_path / FAMILIES
+    scenarios = load_families(families_dir if families_dir.is_dir() else base_path)
     if as_dicts:
         return [s.to_decision_dict() for s in scenarios]
     return scenarios
+
+
+def corpus_layer(corpus: Path | str) -> str:
+    """``"user"`` for a corpus directory (or a ``.jsonl`` inside one) named ``user``, else ``"curated"``."""
+    path = Path(corpus)
+    name = path.parent.name if path.suffix == ".jsonl" else path.name
+    return USER if name == USER else CURATED
 
 
 def load_corpora(
@@ -366,39 +401,154 @@ def load_corpora(
 ) -> list[dict[str, Any]] | list[ScenarioFamily]:
     """Load one or more corpora into a single dataset, in the order given.
 
-    ``None`` or an empty iterable falls back to the auto-discovered python-v2
-    corpus, the same as :func:`load_python_v2_dataset` with no argument. A
-    corpus that yields no family, and a row id that two corpora both produce,
-    are refused with ``ValueError`` naming the directories, so a training run
-    over three corpora is never silently a run over two.
+    ``None`` or an empty iterable falls back to :func:`find_default_corpora`.
+    A corpus that yields no family, and a row id that two corpora both
+    produce, are refused with ``ValueError`` naming the directories, so a
+    training run over three corpora is never silently a run over two. A
+    user-layer family that declares ``overrides`` replaces that earlier row;
+    an override from the curated layer, of an id not yet loaded, or of a
+    target another family already overrides is refused.
     """
-    dirs = [Path(d) for d in (data_dirs or [])]
-    if not dirs:
-        return load_python_v2_dataset(data_dir=None, as_dicts=as_dicts)
+    dirs = [Path(d) for d in (data_dirs or [])] or find_default_corpora()
 
     rows: list[Any] = []
     seen: dict[str, Path] = {}
+    overridden: dict[str, tuple[str, Path]] = {}
     for corpus in dirs:
-        loaded = load_python_v2_dataset(data_dir=corpus, as_dicts=as_dicts)
+        loaded = load_corpus(corpus, as_dicts=as_dicts)
         if not loaded:
             raise ValueError(f"Corpus yields no family: {corpus}")
+        layer = corpus_layer(corpus)
         for item in loaded:
-            row_id = item["id"] if as_dicts else item.to_decision_dict()["id"]
+            row = item if as_dicts else item.to_decision_dict()
+            row_id = row["id"]
             if row_id in seen:
                 raise ValueError(
                     f"Family id {row_id!r} is claimed by both {seen[row_id]} and {corpus}"
                 )
+            target = (row.get("metadata") or {}).get("overrides")
+            if target is not None:
+                if layer != USER:
+                    raise ValueError(
+                        f"Family {row_id!r} in {corpus} declares overrides {target!r}; "
+                        "only the user layer may override"
+                    )
+                if target in overridden:
+                    prior_id, prior_dir = overridden[target]
+                    raise ValueError(
+                        f"Family id {target!r} is overridden by both {prior_id!r} in {prior_dir} "
+                        f"and {row_id!r} in {corpus}"
+                    )
+                if target not in seen:
+                    raise ValueError(
+                        f"Family {row_id!r} in {corpus} overrides {target!r}, "
+                        "which no earlier corpus loads"
+                    )
+                overridden[target] = (row_id, corpus)
+            if as_dicts:
+                item["layer"] = layer
             seen[row_id] = corpus
         rows.extend(loaded)
+
+    if overridden:
+        rows = [
+            r for r in rows
+            if (r["id"] if as_dicts else r.to_decision_dict()["id"]) not in overridden
+        ]
     return rows
+
+
+def parse_layer_weights(specs: Iterable[str] | str | None) -> dict[str, float]:
+    """Parse ``layer=weight`` specs over :data:`DEFAULT_LAYER_WEIGHTS`.
+
+    Accepts a list of specs or one comma-separated string (the
+    ``SOM_LAYER_WEIGHTS`` form). An unknown layer, a non-number, and a
+    negative weight are refused; ``0`` keeps the layer out of training but
+    not out of validation.
+    """
+    weights = dict(DEFAULT_LAYER_WEIGHTS)
+    if specs is None:
+        return weights
+    items = specs.split(",") if isinstance(specs, str) else list(specs)
+    for spec in items:
+        spec = spec.strip()
+        if not spec:
+            continue
+        name, sep, value = spec.partition("=")
+        name = name.strip()
+        if not sep or name not in LAYERS:
+            raise ValueError(f"Layer weight {spec!r} must be one of {', '.join(LAYERS)}=<weight>")
+        try:
+            weight = float(value)
+        except ValueError:
+            raise ValueError(f"Layer weight {spec!r} is not a number") from None
+        if not (weight >= 0 and math.isfinite(weight)):
+            raise ValueError(f"Layer weight {spec!r} must be zero or more and finite")
+        weights[name] = weight
+    return weights
+
+
+def resolve_layer_weights(specs: Iterable[str] | None = None) -> dict[str, float]:
+    """CLI specs when given, else ``SOM_LAYER_WEIGHTS``, else the defaults."""
+    specs = list(specs or [])
+    if specs:
+        return parse_layer_weights(specs)
+    return parse_layer_weights(os.environ.get("SOM_LAYER_WEIGHTS"))
+
+
+def weighted_epoch(
+    rows: list[dict[str, Any]],
+    weights: dict[str, float] | None = None,
+    seed: int = 42,
+) -> list[dict[str, Any]]:
+    """Repeat each row by its layer's weight, then shuffle deterministically.
+
+    A weight's integer part is repeated outright and its fractional part adds
+    one more copy with that probability, so the expected count per row equals
+    the weight. A row without ``layer`` counts as curated.
+    """
+    weights = weights or DEFAULT_LAYER_WEIGHTS
+    rng = random.Random(seed)
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        weight = weights.get(row.get("layer", CURATED), 1.0)
+        whole = int(weight)
+        copies = whole + (1 if rng.random() < weight - whole else 0)
+        out.extend([row] * copies)
+    rng.shuffle(out)
+    return out
 
 
 def split_dataset(
     rows: list[Any],
     val_ratio: float = 0.25,
     seed: int = 42,
+    stratify_by: str | None = "layer",
 ) -> tuple[list[Any], list[Any]]:
-    """Deterministically split dataset into (train_rows, val_rows)."""
+    """Deterministically split dataset into (train_rows, val_rows).
+
+    With ``stratify_by`` and more than one value of it among the rows, each
+    group is split on its own and the halves are concatenated, so every
+    layer keeps validation rows of its own; a group of one row goes to
+    training only rather than into both halves.
+    """
+    if stratify_by and rows and all(isinstance(r, dict) for r in rows):
+        groups: dict[Any, list[Any]] = {}
+        for row in rows:
+            groups.setdefault(row.get(stratify_by), []).append(row)
+        if len(groups) > 1:
+            train_rows: list[Any] = []
+            val_rows: list[Any] = []
+            for key in sorted(groups, key=str):
+                if len(groups[key]) == 1:
+                    # One row cannot be both trained on and held out honestly.
+                    train_rows.extend(groups[key])
+                    continue
+                t, v = split_dataset(groups[key], val_ratio=val_ratio, seed=seed, stratify_by=None)
+                train_rows.extend(t)
+                val_rows.extend(v)
+            return train_rows, val_rows
+
     if not rows:
         return [], []
     if len(rows) == 1:

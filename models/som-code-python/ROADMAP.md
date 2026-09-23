@@ -4,9 +4,9 @@
 
 This roadmap orders the work that turns the Python corpus into the training
 material the four-layer generator in `models/som-core` needs. The order is
-data first: finish the oracle fixtures, add the algorithm, data-structure, and
-design-pattern families the project exists to teach, emit the decompiled
-layer records, then fix packaging and prune the legacy tests. The current
+data first: finish the oracle fixtures, emit the decompiled layer records,
+then harden the near misses and widen the ISA. The subject stays the Python
+ecosystem written as code its community accepts. The current
 support state is in [STATUS.md](STATUS.md).
 
 ## Near-term outcomes
@@ -14,7 +14,7 @@ support state is in [STATUS.md](STATUS.md).
 ### Oracle fixtures complete
 
 - ID: `oracle-fixtures-complete`
-- Outcome: Every family under `data/python-v2/materials` has a fixture, the
+- Outcome: Every family under `data/curated/families` has a fixture, the
   harness reports no skipped family, it exits non-zero when a family has no
   fixture instead of skipping it, and no `oracle` or `caught_by` field is
   `null`.
@@ -26,21 +26,6 @@ support state is in [STATUS.md](STATUS.md).
   exiting 0 and each near miss failing on exactly its declared `caught_by`,
   the curation check reports no `null` field, and a run with one fixture
   renamed away exits non-zero.
-- Tracking: Not assigned.
-
-### Algorithm, data structure, and design pattern families
-
-- ID: `algorithm-data-structure-and-design-pattern-families`
-- Outcome: The corpus gains families whose gold and near misses differ in an
-  algorithm, a data structure, or a design pattern, each with a fixture that
-  fails the near miss on behaviour, so the discriminator learns those
-  distinctions and not only library-usage pitfalls.
-- Boundary: New families and fixtures under `data/python-v2` following the
-  existing layout; not a new layout, and not the engine.
-- Completion evidence: The harness run over the new families shows every
-  gold exiting 0 and every near miss failing on an assertion, and
-  `family.json` for each names the algorithm, structure, or pattern it
-  teaches.
 - Tracking: Not assigned.
 
 ### Decompiler DSL corpus
@@ -59,29 +44,6 @@ support state is in [STATUS.md](STATUS.md).
   over the TODO fixture.
 - Tracking: Not assigned.
 
-### uv-runnable packaging
-
-- ID: `uv-runnable-packaging`
-- Outcome: `uv run --project models/som-code-python` resolves `som-core` from
-  its sibling path and imports the `som` package from where it lives.
-- Boundary: `pyproject.toml` and the lock file only; no code moves.
-- Completion evidence: `uv run --project models/som-code-python python -c
-  "import som, som_core"` exits 0 from the repository root.
-- Tracking: Not assigned.
-
-### Legacy suite retired
-
-- ID: `legacy-suite-retired`
-- Outcome: The project test suite exits 0 because every test that reads a
-  legacy corpus, runtime, or lock file that is not tracked here is removed
-  or moved with the data it needs.
-- Boundary: The tests named in the STATUS row `python-test-suite` and the
-  modules only they exercise; not the oracle, candidate quality, corpus
-  materializer, seed inventory, training runtime, or snippet tests.
-- Completion evidence: The pytest gate in STATUS exits 0 with no
-  deselection.
-- Tracking: Not assigned.
-
 ## Later outcomes
 
 ### Non-minimal near misses
@@ -91,7 +53,7 @@ support state is in [STATUS.md](STATUS.md).
   gold candidate, refactored or carrying two defects, so a discriminator that
   scores edit distance instead of behaviour stops scoring well on the corpus.
 - Boundary: New near-miss candidates and their `family.json` entries under
-  `data/python-v2/materials`, each still failing its fixture on an assertion
+  `data/curated/families`, each still failing its fixture on an assertion
   with a measured `caught_by`; not new families and not the harness.
 - Completion evidence: The harness and the curation check exit 0 over the
   changed families, and `diff` between each new candidate and its gold shows
@@ -113,14 +75,13 @@ support state is in [STATUS.md](STATUS.md).
 
 ## Non-goals
 
-### Legacy ranker lineage
+### Algorithms, data structures, and design patterns
 
-- ID: `legacy-ranker-lineage`
-- Reason: The specialist and developer ranker research, its runtimes, and
-  the `som-research-*` lock files predate the layer model and are kept only
-  so that history can be read; the v4 seed adapter they expect stays local
-  and untracked. Nothing here promises to restore their data or keep their
-  tests green.
+- ID: `algorithms-data-structures-and-design-patterns`
+- Reason: Families that differ in an algorithm, a data structure, or a design
+  pattern as such are language-neutral and belong to the `som-code` corpus;
+  this project teaches how the Python ecosystem is used and written, and a
+  family here is judged by library behaviour and community style.
 
 ### Platform pilot families
 

@@ -3,14 +3,15 @@
 What a model trainer and a corpus author get from the oracle families: one
 layout, one harness, a label that a fixture earned by running the
 candidates, and the written reason each record is in the corpus. This area
-spans the README capabilities `oracle-corpus` and `curated-rationale`.
+spans the README capabilities `oracle-corpus`, `curated-rationale`, and
+`code-quality`.
 
 ## Executable oracle families
 
 - Problem: none open as shipped; the limits below belong to the first outcome
   in this area.
 - Who: model trainers loading labels; corpus authors adding a family.
-- Promise: Every family under `data/python-v2/materials` is a `family.json`,
+- Promise: Every family under `data/curated/families` is a `family.json`,
   a `gold`, and `miss_1` through `miss_5`. The harness maps each family to
   its fixture, runs every candidate, and exits 0 only when every gold exits 0
   and every near miss fails on an assertion rather than a syntax or
@@ -21,11 +22,10 @@ spans the README capabilities `oracle-corpus` and `curated-rationale`.
   `09-pydantic-field-cross-validation`, and
   `10-security-timing-constant-auth` have no fixture; the harness reports
   that no test file matched, skips them, and still exits 0, so their
-  candidates are unproven. Every shipped family is a library-usage pitfall
-  rather than an algorithm, data structure, or design pattern.
+  candidates are unproven.
 - Non-goals: a Docker, Terraform, or Git family (ROADMAP
-  `platform-pilot-families`); restoring the legacy ranker corpora (ROADMAP
-  `legacy-ranker-lineage`).
+  `platform-pilot-families`); a family about an algorithm, data structure,
+  or design pattern as such (ROADMAP `algorithms-data-structures-and-design-patterns`).
 - Neighbours: [Curated rationale](#curated-rationale) below, whose
   `caught_by` this harness measures.
 - Status rows: `oracle-corpus`.
@@ -51,7 +51,7 @@ spans the README capabilities `oracle-corpus` and `curated-rationale`.
   outside 80 to 400 words, one that pastes the requirement, one that omits
   an exception the gold raises, a status code it declares, or a library it
   imports, and a `decompiled` block that no longer matches the source. The
-  README under `data/python-v2`
+  README under `data/curated`
   carries the reasoning for a reader who starts from the data.
 - Limits today: families `08-asyncio-concurrency-limiter`,
   `09-pydantic-field-cross-validation`, and
@@ -63,6 +63,25 @@ spans the README capabilities `oracle-corpus` and `curated-rationale`.
   above, whose harness measures `caught_by`; [Oracle fixtures
   complete](#oracle-fixtures-complete) below, which removes the limit.
 - Status rows: `curated-rationale`.
+
+## Code quality
+
+- Problem: none open as shipped.
+- Who: model trainers, whose generator imitates the gold programs, so a
+  gold that the community's tools reject teaches code nobody would merge;
+  corpus authors, who need style judged by a command rather than a review.
+- Promise: Every gold candidate is modern, PEP 8, typed Python that passes
+  ruff with the full selection, ruff format, mypy in strict mode, and pylint
+  with zero messages, under the tool tables in `pyproject.toml`. Every near
+  miss passes ruff format and the style rules `E,W,I,UP`, so style never
+  separates it from its gold. The gate exits non-zero and names every
+  candidate and message that fails.
+- Non-goals: the behavioural lint rules on near misses, whose defects may be
+  exactly what those rules flag; a type checker or linter the community does
+  not run.
+- Neighbours: [Curated rationale](#curated-rationale) above, whose check
+  requires the six candidates to share every comment and docstring.
+- Status rows: `code-quality`.
 
 ## Oracle fixtures complete
 
@@ -81,29 +100,6 @@ spans the README capabilities `oracle-corpus` and `curated-rationale`.
   and [Curated rationale](#curated-rationale) above, whose Limits this
   removes.
 - Outcome: `oracle-fixtures-complete`. Tracking: Not assigned.
-
-## Algorithm, data structure, and design pattern families
-
-- Problem: The `som-code-*` projects exist to teach the model algorithms,
-  data structures, and design patterns, and no shipped family does; the
-  discriminator can only learn to spot a misused library call.
-- Who: model trainers; generator authors, whose L3 optimizer has to prefer
-  the right structure, not only the right call.
-- Promise: The corpus gains families whose gold and near misses differ in
-  the algorithm, the data structure, or the design pattern used, each judged
-  by a fixture that fails the near miss on behaviour, and each `family.json`
-  names what the family teaches.
-- Non-goals: a new layout; a benchmark suite from another project copied in
-  without a fixture of its own.
-- Open: which families come first; whether a family may share a fixture
-  with a library-usage family that exercises the same behaviour; and whether
-  the near misses for a design-pattern family are wrong patterns or broken
-  implementations of the right one.
-- Neighbours: [Oracle fixtures complete](#oracle-fixtures-complete) above,
-  which fixes the harness these families are judged by; the decompiler
-  outcome in [data-pipeline.md](data-pipeline.md), which will record which
-  snippets each gold used.
-- Outcome: `algorithm-data-structure-and-design-pattern-families`. Tracking: Not assigned.
 
 ## Non-minimal near misses
 
@@ -128,5 +124,5 @@ spans the README capabilities `oracle-corpus` and `curated-rationale`.
 
 - No family for a platform without a Python oracle; see ROADMAP
   `platform-pilot-families`.
-- No promise about the legacy corpora under `data/som/` or
-  `data/python-v1-rejected/`; see ROADMAP `legacy-ranker-lineage`.
+- No family about an algorithm, data structure, or design pattern as such;
+  see ROADMAP `algorithms-data-structures-and-design-patterns`.

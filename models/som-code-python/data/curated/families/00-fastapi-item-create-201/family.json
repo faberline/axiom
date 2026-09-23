@@ -1,0 +1,163 @@
+{
+  "family_id": "00-fastapi-item-create-201",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "route-status-and-persistence",
+  "requirement": "Create a POST /items endpoint that accepts JSON payload with name, price (>0.0), and optional description, validates input, persists to SQLite DB, and returns HTTP 201 Created with the created item.",
+  "skeleton": "FastAPI route with Pydantic payload validation and SQLAlchemy in-memory persistence.",
+  "caption": "A single-module FastAPI service that persists items in an in-memory SQLite database through SQLAlchemy. The module builds one engine with StaticPool and check_same_thread disabled so every request shares the same connection, a sessionmaker with autocommit and autoflush off, a DeclarativeBase subclass, and an Item table with an autoincrementing integer id, a non-null name, a non-null float price, and a nullable description. A reset_db helper drops and recreates the tables, and a get_db generator dependency yields one session per request and closes it in a finally block. Two pydantic models frame the contract: ItemCreate requires a name of at least one character, a price strictly greater than zero, and an optional description; ItemOut exposes id, name, price, and description and reads from ORM attributes. The POST /items route declares status code 201, validates the payload, builds an Item from every field the client sent, adds it, commits, refreshes, and returns it. The companion GET /items/{item_id} route selects by primary key and raises HTTPException with 404 when no row exists. Persistence is real: a later read through a fresh session sees the committed row, including the description exactly as the client sent it, and a price such as 0.5 is accepted because only non-positive prices are refused.",
+  "rationale": {
+    "teaches": "A create endpoint that gets every contract detail right at once: 201 on success, a gt=0 price constraint, a real commit, and faithful passthrough of the client's payload.",
+    "why": "A generator assembling a route from snippets usually gets the shape right and the details wrong: the status code, the constraint boundary, flush versus commit. Each detail is observable through one HTTP round trip plus one database read, so the oracle separates code that looks right from code that is right."
+  },
+  "oracle": "fixtures/test_00_fastapi_item_create_201.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "engine"
+      },
+      {
+        "kind": "assign",
+        "name": "session_factory"
+      },
+      {
+        "kind": "class",
+        "name": "Base",
+        "bases": [
+          "DeclarativeBase"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Item",
+        "bases": [
+          "Base"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "get_db",
+        "params": []
+      },
+      {
+        "kind": "class",
+        "name": "ItemCreate",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ItemOut",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "create_item",
+        "params": [
+          "payload",
+          "db"
+        ],
+        "route": "POST /items"
+      },
+      {
+        "kind": "function",
+        "name": "get_item",
+        "params": [
+          "item_id",
+          "db"
+        ],
+        "route": "GET /items/{item_id}"
+      }
+    ],
+    "imports": [
+      "fastapi",
+      "pydantic",
+      "sqlalchemy"
+    ],
+    "raises": [
+      "HTTPException"
+    ],
+    "status_codes": [
+      201,
+      404
+    ]
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Creation answers 200 OK instead of 201 Created, so a client that checks for 201 treats the insert as not having happened.",
+      "caught_by": [
+        "test_create_item_allows_decimal_price_under_one",
+        "test_create_item_description_persisted",
+        "test_create_item_success_201"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A zero or negative price is accepted and persisted instead of being rejected with 422.",
+      "caught_by": [
+        "test_create_item_rejects_negative_or_zero_price"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The insert is flushed but never committed, so the item disappears when the session closes and a later read finds nothing.",
+      "caught_by": [
+        "test_create_item_description_persisted",
+        "test_create_item_success_201"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The description the client sent is discarded and stored as null.",
+      "caught_by": [
+        "test_create_item_description_persisted",
+        "test_create_item_success_201"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Prices between 0 and 1 are rejected with 422 even though the contract only forbids non-positive prices.",
+      "caught_by": [
+        "test_create_item_allows_decimal_price_under_one"
+      ]
+    }
+  ]
+}

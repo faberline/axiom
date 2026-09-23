@@ -12,8 +12,11 @@ This area spans the README capabilities `training-cli-surface` and
   in this area.
 - Who: model trainers running the loop on Apple silicon.
 - Promise: `som train --data-dir <corpus>` loads every oracle family under
-  `materials/`, runs an MLX LoRA loop for the requested epochs, and writes a
-  `training_summary.json` plus one checkpoint per update to the run
+  `families/`, and with no `--data-dir` loads som-code-python's `data/curated`
+  plus `data/user` when it holds a family, trains both layers together
+  with user families weighted above curated ones (curated=1, user=2 by
+  default, `--layer-weight` to change), runs an MLX LoRA loop for the requested epochs, and writes a
+  `training_summary.json` with per-layer validation plus one checkpoint per update to the run
   directory. `som verify` prints the MLX version and device before any
   training starts.
 - Limits today: every run trains the randomly initialised skeleton backbone,

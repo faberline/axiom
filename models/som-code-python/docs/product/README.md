@@ -2,7 +2,7 @@
 
 This corpus project owns the material the Snippet-Oriented Model learns
 Python from: executable oracle families that teach the model to tell a
-working algorithm, data structure, or design pattern from a near miss, and
+correct, idiomatic use of the Python ecosystem from a near miss, and
 the snippet instruction set the generator assembles programs from. This
 directory is the product requirements document: what the corpus promises,
 written down before the work items that deliver it. Release Milestones are
@@ -32,10 +32,10 @@ The corpus makes promises about data, never about a model. A family is
 proven by its fixture running the candidates; a snippet is proven by the
 verifier assembling and compiling it. The engine that trains on this data is
 `models/som-core`, and the layer model it implements is that project's
-reference document. The `som-code-*` projects exist so the model learns
-algorithms, data structures, and design patterns from verified code; the
-families shipped so far are library-usage pitfalls, and closing that gap is
-the second outcome below.
+reference document. This project teaches the Python ecosystem written as
+modern, PEP 8, pythonic code that ruff, mypy, and pylint accept; algorithms,
+data structures, and design patterns as such belong to the language-neutral
+`som-code` corpus.
 
 Boundaries that every section inherits:
 
@@ -43,8 +43,8 @@ Boundaries that every section inherits:
   verification; nothing here runs at inference.
 - A family without a fixture proves nothing, whatever the harness exit code
   says; STATUS records it as unproven.
-- The legacy ranker lineage carried in this tree makes no promise and is a
-  non-goal, not a section.
+- A gold candidate that the quality gate rejects is a defect, whatever its
+  fixture says.
 
 ## Who the corpus is for
 
@@ -59,17 +59,13 @@ Boundaries that every section inherits:
 | Horizon | Outcome | Section |
 |---|---|---|
 | H1 | `oracle-fixtures-complete` | [corpus.md](corpus.md) § Oracle fixtures complete |
-| H1 | `algorithm-data-structure-and-design-pattern-families` | [corpus.md](corpus.md) § Algorithm, data structure, and design pattern families |
 | H1 | `decompiler-dsl-corpus` | [data-pipeline.md](data-pipeline.md) § Decompiler DSL corpus |
-| H2 | `uv-runnable-packaging` | [data-pipeline.md](data-pipeline.md) § uv-runnable packaging |
-| H2 | `legacy-suite-retired` | [data-pipeline.md](data-pipeline.md) § Legacy suite retired |
-| H3 | `snippet-isa-v2` | [snippet-isa.md](snippet-isa.md) § Snippet ISA v2 |
-| H3 | `non-minimal-near-misses` | [corpus.md](corpus.md) § Non-minimal near misses |
+| H2 | `snippet-isa-v2` | [snippet-isa.md](snippet-isa.md) § Snippet ISA v2 |
+| H2 | `non-minimal-near-misses` | [corpus.md](corpus.md) § Non-minimal near misses |
 
-H1 is the data the engine cannot train without: the three unproven families,
-the families the project exists to teach, and the layer records the
-generator learns from. H2 is hygiene that unblocks tooling. H3 widens the ISA
-once an assembler exists to consume it and hardens the near misses once the
+H1 is the data the engine cannot train without: the three unproven families
+and the layer records the generator learns from. H2 widens the ISA once an
+assembler exists to consume it and hardens the near misses once the
 discriminator trains on the corpus.
 
 ## Section index
@@ -78,16 +74,15 @@ discriminator trains on the corpus.
 |---|---|---|---|
 | Executable oracle families | corpus.md | shipped, limited | STATUS `oracle-corpus` |
 | Curated rationale | corpus.md | shipped, limited | STATUS `curated-rationale` |
+| Code quality | corpus.md | shipped | STATUS `code-quality` |
 | Oracle fixtures complete | corpus.md | outcome | ROADMAP `oracle-fixtures-complete` |
-| Algorithm, data structure, and design pattern families | corpus.md | outcome | ROADMAP `algorithm-data-structure-and-design-pattern-families` |
 | Non-minimal near misses | corpus.md | outcome | ROADMAP `non-minimal-near-misses` |
 | Snippet ISA v1 | snippet-isa.md | shipped | STATUS `snippet-isa` |
 | Snippet ISA v2 | snippet-isa.md | outcome | ROADMAP `snippet-isa-v2` |
-| Project test suite | data-pipeline.md | shipped, limited | STATUS `python-test-suite` |
+| Project test suite | data-pipeline.md | shipped | STATUS `python-test-suite` |
 | Decompiler DSL corpus | data-pipeline.md | outcome | ROADMAP `decompiler-dsl-corpus` |
-| uv-runnable packaging | data-pipeline.md | outcome | ROADMAP `uv-runnable-packaging` |
-| Legacy suite retired | data-pipeline.md | outcome | ROADMAP `legacy-suite-retired` |
+| uv-runnable packaging | data-pipeline.md | shipped | STATUS `uv-runnable-packaging` |
 
 Non-goals are not sections. Each file ends with the non-goals that a reader of
 that area would otherwise assume, pointing at the ROADMAP entry that gives the
-reason: `legacy-ranker-lineage`, `platform-pilot-families`.
+reason: `algorithms-data-structures-and-design-patterns`, `platform-pilot-families`.

@@ -57,15 +57,3 @@ def resolve_checkpoint(path):
     if (path / "latest.json").exists():
         return path / read_json(path / "latest.json")["checkpoint"]
     return path
-
-
-def verify_data():
-    manifest_path = ROOT / "data" / "manifest.json"
-    if not manifest_path.exists():
-        return {}
-    manifest = read_json(manifest_path)
-    for split, digest in manifest.get("sha256", {}).items():
-        split_file = ROOT / "data" / f"{split}.jsonl"
-        if split_file.exists() and sha256(split_file) != digest:
-            raise ValueError(f"Prepared data changed: {split}. Run prepare again.")
-    return manifest

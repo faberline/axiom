@@ -1,0 +1,102 @@
+{
+  "family_id": "25-stdlib-multiprocessing-shared-state",
+  "domain": "python",
+  "area": "stdlib",
+  "capability": "multiprocessing-shared-state",
+  "requirement": "Implement ParallelMetricsAggregator with multiprocessing Value and Array, process-safe atomic locking, category boundary validation, and clean worker joining.",
+  "skeleton": "ParallelMetricsAggregator class using multiprocessing.Value and Array.",
+  "caption": "A multiprocessing metrics aggregator built on shared memory primitives from the standard library. ParallelMetricsAggregator takes num_categories, defaulting to 10, and allocates a multiprocessing.Value of C int for the total and a multiprocessing.Array of C ints, one slot per category. record_batch validates the category index first, raising IndexError with a message naming the index and the valid range when it is negative or at or beyond num_categories, so an out-of-range write is refused with a clear error rather than failing inside the shared array. It then increments the total under total_count.get_lock() and the category slot under category_counts.get_lock(), each in its own with block, so concurrent workers in separate processes cannot lose an update. get_metrics reads the total and copies the array to a plain list, each under the matching lock, and returns a dict with total and categories. A module-level _simulation_worker function, importable by child processes, calls record_batch a fixed number of times for one category. run_parallel_simulation starts one multiprocessing.Process per worker, defaulting to 4, assigning category i modulo num_categories and passing the aggregator itself so the shared values are inherited, then joins each process with a two-second timeout, terminating and re-joining any straggler, and only after every join returns the metrics. Four workers at 2000 iterations each therefore report a total of exactly 8000, category sums that add to 8000, and 2000 in each touched category, a load heavy enough that an unlocked increment loses updates.",
+  "rationale": {
+    "teaches": "Shared counters across processes with Value and Array updated under get_lock, bounds-checked category indexes, and worker joins before reading the totals.",
+    "why": "A lost update under a race is probabilistic, so a fixture has to hammer the counter from several processes and check the exact total. Missing joins and missing bounds checks show up in the same run."
+  },
+  "oracle": "fixtures/test_25_stdlib_multiprocessing_shared_state.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "function",
+        "name": "_simulation_worker",
+        "params": [
+          "aggregator",
+          "category_index",
+          "count",
+          "iterations"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "ParallelMetricsAggregator",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "record_batch",
+          "get_metrics",
+          "run_parallel_simulation"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "IndexError"
+    ],
+    "status_codes": []
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "total_count is incremented without get_lock, so concurrent workers lose updates and the total comes up short.",
+      "caught_by": [
+        "test_parallel_simulation_consistency",
+        "test_race_condition_locks_acquired"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "category_counts is updated without its lock, so per-category totals are lost under contention.",
+      "caught_by": [
+        "test_race_condition_locks_acquired"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Every non-zero category records a count of 0, so only category 0 ever accumulates.",
+      "caught_by": [
+        "test_parallel_simulation_consistency"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "Workers are never joined, so the metrics are read before the workers finish.",
+      "caught_by": [
+        "test_parallel_simulation_consistency"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The category index is not bounds-checked, so an out-of-range index raises from inside the shared array instead of IndexError with a message.",
+      "caught_by": [
+        "test_category_bounds_validation"
+      ]
+    }
+  ]
+}
