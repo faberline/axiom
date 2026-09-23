@@ -5,11 +5,35 @@
   "capability": "connection-pooling",
   "requirement": "Implement PooledAiohttpManager with configured aiohttp.TCPConnector limits (limit, limit_per_host), connection concurrency bound via asyncio.Semaphore, session reuse across multiple concurrent requests with connector_owner=False, and comprehensive teardown.",
   "skeleton": "PooledAiohttpManager class with TCPConnector limit configuration, concurrency semaphore, session reuse, and teardown.",
+  "caption": "An aiohttp request manager that shares one bounded connection pool across many concurrent fetches and tears it down completely. PooledAiohttpManager takes max_connections defaulting to 10, limit_per_host defaulting to 5, and timeout_seconds defaulting to 15.0. It raises ValueError when max_connections or limit_per_host is not positive, and when limit_per_host exceeds max_connections, because such a per-host cap could never take effect. It builds an aiohttp.TCPConnector with limit set to max_connections, limit_per_host set to the per-host value, and cleanup of closed transports enabled, an asyncio.Semaphore sized to max_connections, and a ClientTimeout with the total. get_session lazily creates one ClientSession on that connector with connector_owner set to False, so closing the session does not close the shared pool, and returns the same session until it is closed. fetch_one acquires the semaphore before opening session.get and returns the response text, which bounds how many requests are in flight regardless of how many are scheduled. fetch_batch schedules fetch_one for every URL and gathers the bodies in order. close closes an open session and then closes the connector if it is still open, and works even when no session was ever created. The fixture asserts that the connector carries limit 8 and limit_per_host 4, that a batch of three fetches and a later batch create exactly one session, that peak concurrency with a limit of 2 never exceeds 2, that close shuts the connector for both a used and an unused manager, and that each invalid limit raises ValueError with its message.",
   "rationale": {
     "teaches": "A shared TCPConnector with limit and limit_per_host, a semaphore bounding in-flight requests, one session reused with connector_owner=False, and connector teardown.",
     "why": "Pool limits are invisible until concurrency exceeds them. The fixture fires more requests than the limit and measures peak concurrency, and checks the connector is closed afterward."
   },
   "oracle": "fixtures/test_63_aiohttp_connection_pooling.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "PooledAiohttpManager",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "get_session",
+          "fetch_one",
+          "fetch_batch",
+          "close"
+        ]
+      }
+    ],
+    "imports": [
+      "aiohttp"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

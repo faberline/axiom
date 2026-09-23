@@ -5,11 +5,32 @@
   "capability": "rate-limit-backoff-and-context-compaction",
   "requirement": "Implement a resilient OpenAI chat session manager with exponential backoff on 429 rate limit errors, context window compaction preserving system prompt, and configurable max retries.",
   "skeleton": "ResilientChatSession with add_message, prune_history_for_context, and send_message methods.",
+  "caption": "An OpenAI-style chat session written against an injected client, in the standard library with no third-party imports, that retries 429 rate limits with capped exponential backoff and compacts its history when the context window overflows. ResilientChatSession takes the client, a model defaulting to gpt-4o, max_retries defaulting to 3, a base backoff of 0.05 seconds, and a maximum backoff of 1.0 second, and keeps a list of role and content messages appended by add_message. prune_history_for_context returns False when there are two or fewer messages; when the first message is a system prompt it also returns False with three or fewer, and otherwise keeps that system prompt and drops the two oldest messages after it; without a system prompt it drops the first two messages; it returns True whenever it removed something. send_message appends the user prompt and loops calling client.chat.completions.create with the model and the full history. On success it appends the assistant's content and returns it. On an error whose message mentions context_length_exceeded, or whose class name mentions a context window, it prunes and retries, raising RuntimeError reporting that the context window cannot be pruned further when pruning refuses. On an error whose class name mentions a rate limit or whose message contains 429, it counts an attempt, raises RuntimeError naming the maximum once the count exceeds max_retries, and otherwise sleeps base backoff times two to the previous attempt count, capped at the maximum, then retries. Any other error propagates unchanged. The fixture asserts that after a context overflow the answer is compaction success and the system prompt survives first, that three rate-limit failures followed by success return recovered after 3 retries with four create calls, that the default max_retries is 3, that pruning a two-message history returns False and leaves both messages, and that a plain call returns standard output.",
   "rationale": {
     "teaches": "A chat session that retries 429 errors with exponential backoff up to max_retries, defaults to 3 retries, prunes history while keeping the system prompt, and refuses to prune below a minimal history.",
     "why": "A retry loop that stops one attempt early or a pruner that drops the system prompt still returns a response. The fixture uses a fake client that raises 429 a set number of times and inspects the pruned history."
   },
   "oracle": "fixtures/test_93_openai_resilient_chat_session.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "ResilientChatSession",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "add_message",
+          "prune_history_for_context",
+          "send_message"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "RuntimeError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

@@ -75,9 +75,11 @@ thematic; the area is in each `family.json`.
 | `family_id`, `domain`, `area`, `capability` | Identity and taxonomy. |
 | `requirement` | The task as a user would state it; the skeleton the candidates share. |
 | `skeleton` | The shape every candidate keeps, so the near misses differ only in behavior. |
+| `caption` | The long description of the gold program, 80 to 400 words, written the way an image model's training caption describes a picture: every component, its defaults, its guards, the exceptions it raises, the libraries it imports, and what the fixture asserts. It is the planner's input, written in the voice of a user who already knows exactly what they want. |
 | `rationale.teaches` | One sentence naming the contract details the gold candidate gets right. |
 | `rationale.why` | Why an executable oracle is needed here: what is invisible statically and what the fixture observes. |
 | `oracle` | `fixtures/test_<nn>_<name>.py`, or `null` for the three families without a fixture yet. |
+| `decompiled` | What the gold source says about itself, measured from its AST by `scripts/decompile_gold.py`: `surface` (top-level classes with bases and methods, functions with parameters and any HTTP route or CLI command, module constants), `imports` (third-party top-level modules), `raises` (exception classes raised by name), `status_codes`. |
 | `candidates[]` | `gold` plus `miss_1` to `miss_5`; each has `id`, `module`, `kind`. |
 | `candidates[].failure_mode` | Near misses only; one of the seven modes above. |
 | `candidates[].why_wrong` | Near misses only; the observable consequence of the defect, one sentence. |
@@ -94,11 +96,17 @@ rationale cannot drift from the behavior it describes.
   and the candidate text and learns to rank gold above each near miss.
   `why_wrong` and `caught_by` are the supervision for the next step, a
   critic that names the defect and the test that would expose it.
-- L1 (planner) reads `requirement` and `skeleton` as the target of a plan.
+- L1 (planner) reads `caption` as its prompt and `requirement` and
+  `skeleton` as the short forms of the same target. A requirement is how a
+  user asks; a caption is everything a user would have to say for one
+  program to be the only right answer, the way image models are trained on
+  long synthetic captions and then prompted with short ones.
+- L2 (component topology) reads `decompiled.surface` as the component list
+  the plan must lay out; `decompiled.imports` names its dependencies.
 - L4 (assembler) reads the gold candidate as the reference realization of
   the snippet ISA under `../snippets/v1/`; the near misses are its
   hard negatives.
-- L2 and L3 are not trained from this corpus yet; the roadmap in the
+- L3 is not trained from this corpus yet; the roadmap in the
   project [ROADMAP](../../ROADMAP.md) names the corpus they need.
 
 ## Verification
@@ -116,8 +124,18 @@ declared `caught_by` to equal the tests that failed. The curation check
 never executes a candidate; it requires the rationale fields to be present
 and non-trivial, `caught_by` to name tests defined in the fixture, comments
 and docstrings to be identical across the six candidates, and no label word
-in any candidate source. Both print `[RESULT: SUCCESS]` or one line per
-defect.
+in any candidate source. It also requires every `caption` to be 80 to 400
+words, free of label words, not the `requirement` pasted in, and honest
+about the gold source: it names each exception class the gold raises, each
+status code it declares, and each third-party library it imports, and names
+no exception class that neither the gold nor the fixture mentions. And it
+re-measures `decompiled` from the gold source and fails on any difference,
+so the stored facts cannot drift, the same discipline as `caught_by`. Both
+print `[RESULT: SUCCESS]` or one line per defect.
+
+`models/som-code-python/scripts/decompile_gold.py --write` refreshes
+`decompiled` after a gold candidate changes; `--draft <dir>` writes one
+sheet per family for the person revising its caption.
 
 ## Known gaps
 

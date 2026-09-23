@@ -5,11 +5,43 @@
   "capability": "decorator-wraps",
   "requirement": "Implement audit_logged decorator preserving wrapped function metadata via functools.wraps and HandlerRegistry with capacity bounds and stats tracking.",
   "skeleton": "audit_logged decorator function and HandlerRegistry class with register, execute, get_doc, and clear methods.",
+  "caption": "A standard-library module built around a parameterized decorator factory and a bounded handler registry, with no third-party imports. audit_logged(action_name) first checks that action_name is a non-empty string and raises ValueError otherwise; the decorator it returns raises TypeError when the decorated object is not callable, and wraps the function with functools.wraps so the wrapper passes arguments straight through while keeping the original __name__, __doc__, and a __wrapped__ pointer back to the undecorated function. HandlerRegistry keeps a handlers dictionary keyed by function name and a parallel statistics dictionary of call counts. register raises TypeError for a non-callable handler, raises ValueError once twenty handlers are already stored so the twentieth registration succeeds and the twenty-first is rejected, and raises ValueError for an object without a __name__; a stored handler starts with a call count of zero. execute raises KeyError for an unknown name, otherwise increments that handler's count and returns its result. get_doc raises KeyError for an unknown name and otherwise returns the handler's docstring, which only survives because the decorator copied it. clear empties both dictionaries and total_calls sums every count. The fixture asserts that decorated handlers keep their identity metadata, that the registry cap is exact at twenty, and that call statistics and docstring lookups follow the registered names.",
   "rationale": {
     "teaches": "A logging decorator that preserves the wrapped function's name and docstring with functools.wraps, a registry that rejects non-callables, allows exactly 20 handlers, looks up by presence, and clears its stats.",
     "why": "A decorator without wraps still runs the function; only introspection of __name__ and __doc__ reveals the loss. The fixture reads them, which is what documentation and tooling do."
   },
   "oracle": "fixtures/test_34_syntax_decorator_wraps.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "function",
+        "name": "audit_logged",
+        "params": [
+          "action_name"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "HandlerRegistry",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "register",
+          "execute",
+          "get_doc",
+          "clear",
+          "total_calls"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "KeyError",
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

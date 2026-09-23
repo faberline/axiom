@@ -5,11 +5,42 @@
   "capability": "cryptographic-nonce-generation",
   "requirement": "Cryptographic initialization vector manager for AES-CBC with Encrypt-then-MAC (HMAC-SHA256), strictly enforcing cryptographically random 16-byte IVs per encryption, constant-time MAC verification, and preventing IV reuse or predictable sequences.",
   "skeleton": "SecureCBCEncryptor class with encrypt and decrypt methods using cryptography.hazmat.primitives.ciphers and hmac.",
+  "caption": "A cryptography AES-CBC encryptor that pairs an unpredictable random IV per message with Encrypt-then-MAC authentication. BLOCK_SIZE_BYTES is 16 and KEY_SIZE_BYTES is 32. SecureCBCEncryptor takes separate encryption and MAC keys and raises ValueError when either is not exactly 32 bytes. encrypt(plaintext) raises TypeError when the plaintext is not bytes, draws a fresh 16-byte IV from secrets.token_bytes for every call rather than using a counter, a timestamp, a padded short value, or one IV fixed at construction, pads the plaintext with PKCS7 to the 128-bit block size, and encrypts it with AES in CBC mode under that IV. It then computes an HMAC-SHA256 tag over the IV concatenated with the ciphertext and returns the ciphertext, IV, and 32-byte tag. decrypt(ciphertext, iv, mac) raises ValueError when the IV is not exactly 16 bytes, recomputes the tag over IV and ciphertext, and compares it with hmac.compare_digest in constant time, raising ValueError reporting that message authentication failed before any decryption happens, so tampered data never reaches the padding logic. Only after a valid tag does it decrypt and strip the PKCS7 padding. The fixture asserts a 16-byte IV, a 32-byte tag, and a correct round trip, that five encryptions produce five distinct IVs whose values are not consecutive and are not mostly zero bytes, that a flipped tag byte and a flipped ciphertext byte each raise ValueError reporting Message authentication failed, and that wrong encryption and MAC key lengths raise ValueError with their messages.",
   "rationale": {
     "teaches": "AES-CBC with a fresh random 16-byte IV per message, Encrypt-then-MAC over IV plus ciphertext, constant-time MAC verification before decryption, and IV length validated.",
     "why": "A predictable IV yields valid ciphertext that decrypts correctly, so a round-trip test passes. The fixture encrypts twice and compares IVs, and tampers with the MAC to check decryption is refused."
   },
   "oracle": "fixtures/test_74_crypto_predictable_iv_nonce.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "BLOCK_SIZE_BYTES"
+      },
+      {
+        "kind": "assign",
+        "name": "KEY_SIZE_BYTES"
+      },
+      {
+        "kind": "class",
+        "name": "SecureCBCEncryptor",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "encrypt",
+          "decrypt"
+        ]
+      }
+    ],
+    "imports": [
+      "cryptography"
+    ],
+    "raises": [
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

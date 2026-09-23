@@ -5,11 +5,42 @@
   "capability": "immutable-state-reducers-and-schema-contracts",
   "requirement": "Implement ValidatedStateGraph with strict TypedDict schema definition and channel reducers. Nodes must treat input state as immutable and return partial state updates without in-place mutations of lists or dictionaries. Fields declared with list concatenation reducers (Annotated[list[str], operator.add]) must receive list values, not raw primitives. Output keys must conform strictly to the state schema.",
   "skeleton": "State graph with TypedDict schema, list reducer validation, and immutable state updates.",
+  "caption": "A LangGraph-style state graph written in the standard library with a TypedDict schema, copy, and operator and no third-party imports, whose nodes return fresh partial updates and whose reducer only accepts declared, correctly typed keys. AgentState declares messages as a list of strings annotated with operator.add as its reducer, metadata as a dictionary, and step_count as an integer, and ValidatedStateGraph reads those annotation names as the allowed keys. validate_node_output returns False when the update is not a dictionary, when any key is not declared in the schema, or when messages is present but is not a list, so a raw string can never be concatenated character by character. The ingest node returns a one-element messages list with the user text prefixed by user and the incoming step_count plus one, without touching the input. The process node copies the incoming metadata into a new dictionary before marking it processed, and returns a system processed message list, that new dictionary, and step_count plus one. apply_update raises ValueError naming the update when validation fails, deep-copies the current state, concatenates the message lists with operator.add, deep-copies any new metadata, and takes the new step_count, returning the new state so the caller's state is never mutated. run_pipeline starts with no messages, api as the metadata source, and step 0, and applies the ingest and process updates in turn. The fixture asserts that the input state's messages and metadata are unchanged after each node, that the final messages are user: order request followed by system: processed, that a list passes and a raw string fails validation, that an undeclared key fails, and that the final step_count is 2.",
   "rationale": {
     "teaches": "Graph nodes that copy lists and dicts before updating, return list values for list-reducer channels, reject undeclared schema keys, and increment step_count from the incoming state.",
     "why": "In-place mutation gives the right output while corrupting the caller's state. The fixture snapshots the input state before each node and checks it is unchanged afterward."
   },
   "oracle": "fixtures/test_100_langgraph_state_reducer_schema_validation.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "AgentState",
+        "bases": [
+          "TypedDict"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ValidatedStateGraph",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "validate_node_output",
+          "ingest_node",
+          "process_node",
+          "apply_update",
+          "run_pipeline"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

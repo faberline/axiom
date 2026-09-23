@@ -5,11 +5,53 @@
   "capability": "shell-injection-prevention",
   "requirement": "Execute external commands safely using argument vectors without shell=True, preventing arbitrary command injection while enforcing allowlists, timeouts, and error handling.",
   "skeleton": "SafeCommandRunner class with run method and execute_command helper.",
+  "caption": "A standard-library command runner built on subprocess that passes an argument vector straight to the operating system instead of through a shell, with no third-party imports. CommandResult is a dataclass of stdout, stderr, and exit_code, aliased as ExecutionResult. SafeCommandRunner takes an optional list of allowed commands, stored as a set, and default_timeout defaulting to 10.0. run(args, timeout=None) raises ValueError unless args is a non-empty list of strings, so a bare string is refused, and raises PermissionError when an allowlist exists and the first element is not in it. The effective timeout is the explicit value or the default, and ValueError is raised unless it is positive, so zero is refused. It calls subprocess.run with the list itself, capture_output and text enabled, shell=False, check=True, and the timeout, so every argument reaches the program as one literal string and shell metacharacters such as a semicolon are never interpreted. A CalledProcessError becomes RuntimeError carrying the exit code and stderr, and an expired timeout becomes TimeoutError, both chained from the original. execute_command(binary, args, timeout=5.0, allowed_binaries) prepends the binary to the arguments and delegates to a runner. The fixture asserts captured output with exit code 0, that an argument containing a semicolon is echoed back verbatim with nothing injected, that exit code 42 surfaces in the RuntimeError, the timeout and argument validation, that three arguments arrive intact, and that commands outside the allowlist are refused.",
   "rationale": {
     "teaches": "Command execution with an argument vector and shell=False, a non-empty string-list check, an allowlist that blocks anything not in it, and a positive timeout.",
     "why": "shell=True with a joined string runs every test command correctly and only fails when an argument contains a shell metacharacter. The fixture passes an argument with a semicolon and checks that it reaches the program literally."
   },
   "oracle": "fixtures/test_51_subprocess_shell_injection.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "CommandResult",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "ExecutionResult"
+      },
+      {
+        "kind": "class",
+        "name": "SafeCommandRunner",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "run"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "execute_command",
+        "params": [
+          "binary",
+          "args",
+          "timeout",
+          "allowed_binaries"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "PermissionError",
+      "RuntimeError",
+      "TimeoutError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

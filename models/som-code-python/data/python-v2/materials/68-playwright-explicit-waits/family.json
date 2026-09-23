@@ -5,11 +5,36 @@
   "capability": "explicit-wait-conditions",
   "requirement": "Implement ResilientElementWaiter for UI automation that explicitly waits for DOM elements to reach target states ('visible', 'attached', 'detached', 'hidden') via page.wait_for_selector() and dynamic condition polling, validating positive timeouts and supported states, preventing race conditions from fixed time.sleep.",
   "skeleton": "class ResilientElementWaiter:\n    def __init__(self, default_timeout: float = 10.0, poll_interval: float = 0.05) -> None:\n        ...\n    def wait_for_element(self, page, selector: str, state: str = 'visible', timeout = None):\n        ...\n    def wait_and_click(self, page, selector: str, timeout = None):\n        ...\n    def poll_condition(self, predicate, timeout = None) -> bool:\n        ...\n",
+  "caption": "A Playwright-style explicit wait helper, written in the standard library against a duck-typed page object with no third-party imports, that waits for elements to reach a state rather than sleeping for a fixed time. VALID_STATES lists visible, attached, detached, and hidden. ResilientElementWaiter takes default_timeout defaulting to 10.0 and poll_interval defaulting to 0.05 and raises ValueError unless both are positive. wait_for_element(page, selector, state, timeout) raises ValueError for an empty or non-string selector and for a state outside VALID_STATES, resolves the timeout to the default when none is given and raises ValueError when the effective value is not positive, then returns page.wait_for_selector called with the selector, the state, and the timeout. Errors from the page, such as a TimeoutError, propagate to the caller instead of being turned into None. wait_and_click waits for the visible state specifically, because an attached element may not yet be displayed, then clicks it and returns it. poll_condition(predicate, timeout) validates the timeout, computes a deadline from time.monotonic, returns True as soon as the predicate holds, sleeps poll_interval between checks so it never busy-spins, and returns False when the deadline passes. The fixture asserts that the wait goes through wait_for_selector with the visible state and never queries the page directly, that a click waits for visible, that zero or negative timeouts and intervals raise ValueError mentioning positive, that a TimeoutError reporting timed out reaches the caller, and that polling sleeps at least twice with an interval of 0.01.",
   "rationale": {
     "teaches": "Explicit waits through page.wait_for_selector with a target state, a visible default for clicks, positive timeouts, exceptions propagated, and a polling loop that sleeps between checks.",
     "why": "A fixed sleep passes when the page is fast and fails when it is slow; an exception swallowed into None turns a timeout into a later AttributeError. The fixture uses a fake page with controllable timing."
   },
   "oracle": "fixtures/test_68_playwright_explicit_waits.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "VALID_STATES"
+      },
+      {
+        "kind": "class",
+        "name": "ResilientElementWaiter",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "wait_for_element",
+          "wait_and_click",
+          "poll_condition"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

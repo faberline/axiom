@@ -4,7 +4,7 @@
 The harness (``data/python-v2/fixtures/verify_harness.py``) proves the
 behavioral contract by execution. This script proves, without executing any
 candidate, that the curation written into each ``family.json`` is present,
-non-trivial, and bound to the fixture it claims:
+non-trivial, and bound to the fixture and the gold source it claims:
 
 - ``rationale.teaches`` and ``rationale.why`` exist and are real sentences.
 - ``oracle`` names an existing fixture, or is null exactly when no fixture
@@ -17,6 +17,15 @@ non-trivial, and bound to the fixture it claims:
 - Comments and docstrings are identical across the six candidates, so no
   candidate can be told apart by prose instead of behavior.
 - No candidate mentions a label word (gold, near miss, failure mode).
+- ``caption`` is the long description of the gold program, the planner's
+  target: between ``MIN_WORDS_CAPTION`` and ``MAX_WORDS_CAPTION`` words, no
+  label word, not the ``requirement`` pasted in, and honest about the gold
+  source: it names every exception class the gold raises, every status code
+  it declares, and every third-party library it imports, and it names no
+  exception class that neither the gold nor the fixture mentions.
+- ``decompiled`` equals what ``decompile_gold.measure`` reads from the gold
+  source today, so the surface, imports, raises, and status codes stored in
+  the record cannot drift from the code, the discipline ``caught_by`` follows.
 
 Exit 0 when every family passes; exit 1 with one line per defect otherwise.
 """
@@ -32,17 +41,33 @@ import tokenize
 from collections import Counter
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from decompile_gold import measure  # noqa: E402
+
 CORPUS = Path(__file__).resolve().parent.parent / "data" / "python-v2"
 MATERIALS = CORPUS / "materials"
 FIXTURES = CORPUS / "fixtures"
 MISS_IDS = ["miss_1", "miss_2", "miss_3", "miss_4", "miss_5"]
 MIN_WORDS_RATIONALE = 8
 MIN_WORDS_WHY_WRONG = 6
+MIN_WORDS_CAPTION = 80
+MAX_WORDS_CAPTION = 400
 LABEL_RE = re.compile(r"\bgold\b|near.?miss|failure.?mode|\bmiss[ _][0-9]", re.IGNORECASE)
+CAPTION_EXC_RE = re.compile(r"\b[A-Z][A-Za-z0-9]*(?:Error|Exception|Exit)\b")
+IMPORT_ALIASES = {
+    "bs4": ("beautifulsoup",),
+    "jwt": ("pyjwt",),
+    "yaml": ("pyyaml",),
+    "sklearn": ("scikit-learn",),
+}
 
 
 def words(text: str) -> int:
     return len(text.split())
+
+
+def normalize(text: str) -> str:
+    return " ".join(text.lower().split())
 
 
 def comment_multiset(src: str) -> Counter[str]:
@@ -88,6 +113,55 @@ def fixture_for(family_name: str) -> Path | None:
     return hits[0] if hits else None
 
 
+def check_caption(name: str, meta: dict, gold_src: str | None, fixture_src: str) -> list[str]:
+    """Caption honesty: bounded, label-free, not the requirement, grounded in the gold."""
+    defects: list[str] = []
+    caption = meta.get("caption")
+    if not isinstance(caption, str):
+        return [f"{name}: caption missing"]
+    n = words(caption)
+    if n < MIN_WORDS_CAPTION or n > MAX_WORDS_CAPTION:
+        defects.append(f"{name}: caption has {n} words, outside {MIN_WORDS_CAPTION}..{MAX_WORDS_CAPTION}")
+    hit = LABEL_RE.search(caption)
+    if hit:
+        defects.append(f"{name}: label word {hit.group(0)!r} in caption")
+    if normalize(meta.get("requirement", "")) in normalize(caption):
+        defects.append(f"{name}: caption contains the requirement verbatim")
+    if gold_src is None:
+        return defects
+    grounding = gold_src + "\n" + fixture_src
+    for exc in sorted(set(CAPTION_EXC_RE.findall(caption))):
+        if not re.search(rf"\b{re.escape(exc)}\b", grounding):
+            defects.append(f"{name}: caption names {exc}, which neither the gold nor the fixture mentions")
+    measured = measure(gold_src)
+    for exc in measured["raises"]:
+        if not re.search(rf"\b{re.escape(exc)}\b", caption):
+            defects.append(f"{name}: caption does not name the raised {exc}")
+    for code in measured["status_codes"]:
+        if not re.search(rf"\b{code}\b", caption):
+            defects.append(f"{name}: caption does not name status code {code}")
+    low = caption.lower()
+    for mod in measured["imports"]:
+        if not any(alias in low for alias in (mod.lower(), *IMPORT_ALIASES.get(mod, ()))):
+            defects.append(f"{name}: caption does not name the imported library {mod}")
+    return defects
+
+
+def check_decompiled(name: str, meta: dict, gold_src: str | None) -> list[str]:
+    """The stored measurement equals a fresh one; report the keys that moved."""
+    if gold_src is None:
+        return []
+    measured = measure(gold_src)
+    stored = meta.get("decompiled")
+    if stored == measured:
+        return []
+    if not isinstance(stored, dict):
+        return [f"{name}: decompiled missing"]
+    moved = [k for k in measured if stored.get(k) != measured[k]]
+    extra = [k for k in stored if k not in measured]
+    return [f"{name}: decompiled differs from the gold measurement in {', '.join(moved + extra)}"]
+
+
 def check_family(fam: Path) -> list[str]:
     defects: list[str] = []
     name = fam.name
@@ -111,6 +185,7 @@ def check_family(fam: Path) -> list[str]:
     elif fixture is not None and oracle != f"fixtures/{fixture.name}":
         defects.append(f"{name}: oracle {oracle!r} != fixtures/{fixture.name}")
     test_names = fixture_test_names(fixture) if fixture else set()
+    fixture_src = fixture.read_text(encoding="utf-8") if fixture else ""
 
     cands = {c["id"]: c for c in meta.get("candidates", [])}
     if sorted(cands) != sorted(["gold", *MISS_IDS]):
@@ -163,6 +238,8 @@ def check_family(fam: Path) -> list[str]:
             for key in gold_docs.keys() & docs.keys():
                 if docs[key] != gold_docs[key]:
                     defects.append(f"{name}/{cid}: docstring of {key} differs from gold")
+    defects.extend(check_caption(name, meta, sources.get("gold"), fixture_src))
+    defects.extend(check_decompiled(name, meta, sources.get("gold")))
     return defects
 
 
@@ -173,13 +250,17 @@ def main() -> int:
         return 1
     defects: list[str] = []
     modes: Counter[str] = Counter()
-    with_oracle = 0
+    with_oracle = captioned = 0
     for fam in families:
         defects.extend(check_family(fam))
         meta = json.loads((fam / "family.json").read_text(encoding="utf-8"))
         with_oracle += meta.get("oracle") is not None
+        captioned += isinstance(meta.get("caption"), str)
         modes.update(c.get("failure_mode") for c in meta["candidates"] if c["kind"] != "gold")
-    print(f"families: {len(families)}  with oracle: {with_oracle}  near misses: {sum(modes.values())}")
+    print(
+        f"families: {len(families)}  with oracle: {with_oracle}  captioned: {captioned}"
+        f"  near misses: {sum(modes.values())}"
+    )
     for mode, count in modes.most_common():
         print(f"  {mode}: {count}")
     for line in defects:

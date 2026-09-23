@@ -5,11 +5,42 @@
   "capability": "fixture-lifecycle-and-state-isolation",
   "requirement": "Implement a test fixture context manager and state container (TestStateContainer) that guarantees complete state isolation across consecutive test runs. State mutations in test 1 must never bleed into test 2.",
   "skeleton": "TestStateContainer class with set/get/clear/is_pristine methods and managed_state_fixture context manager providing fresh or cleanly reset state.",
+  "caption": "A standard-library test state container and context-manager fixture that guarantees each test starts from an empty state, with no third-party imports. A module-level _GLOBAL_CONTAINER placeholder exists but is never handed out. TestStateContainer keeps a private dictionary store and a history list; set records the value and appends a set entry naming the key, get returns the stored value or a default, clear empties both the store and the history in place, and the is_pristine property is True only when both are empty. managed_state_fixture is a contextlib context manager that takes an optional shared instance; without one it creates a brand-new container for every use, and with one it reuses the caller's container. It yields the container inside a try block and calls clear in the finally clause, so the state is wiped whether the body finishes normally or raises, and a later use of the same shared instance begins pristine. The fixture asserts that two consecutive default uses each start pristine and that a session_user set in the first is absent from the second, that a shared instance is pristine with no token after its block exits while it was dirty inside, that clear resets both the store and the history, and that a RuntimeError reporting a simulated failure inside the block still leaves the shared container pristine.",
   "rationale": {
     "teaches": "A state fixture that hands out a fresh container per test, clears it in a finally block, and uses clear rather than a copy so a second test starts pristine.",
     "why": "State leakage only shows across two consecutive tests where the first mutates and the second inspects. The fixture runs the context manager twice, with and without an exception, and checks is_pristine."
   },
   "oracle": "fixtures/test_81_pytest_fixture_scope_leak.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "_GLOBAL_CONTAINER"
+      },
+      {
+        "kind": "class",
+        "name": "TestStateContainer",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "set",
+          "get",
+          "clear",
+          "is_pristine"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "managed_state_fixture",
+        "params": [
+          "shared_instance"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

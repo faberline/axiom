@@ -5,11 +5,37 @@
   "capability": "threading-lock-order-deadlock",
   "requirement": "Implement SafeTransferManager with account ID-based lock hierarchy to prevent deadlocks, single-lock self-transfer handling, balance validation, and transaction rollback on credit failure.",
   "skeleton": "SafeTransferManager and Account classes with deadlock-free lock acquisition.",
+  "caption": "A threading-based transfer manager with no external dependencies. Account stores an integer account_id, an integer balance, and its own threading.Lock. SafeTransferManager.transfer takes a source, a target, and an amount: it raises ValueError for a zero or negative amount before touching any lock. When source and target are the same account it acquires that single lock once, returns False when the balance is below the amount, and otherwise returns True without moving money, so a self-transfer never tries to enter a non-reentrant lock twice. For two distinct accounts it orders them by account_id with a conditional expression, first being the lower id and second the higher regardless of which was passed as source, and acquires first.lock then second.lock in nested with blocks. Two threads transferring in opposite directions therefore take the locks in the same global order and cannot deadlock, which the fixture proves by joining both threads under a timeout and checking that the combined balances are unchanged. Inside the locks it returns False when the source balance is insufficient, leaving both balances untouched; otherwise it debits the source, then credits the target inside a try block whose except clause restores the debited amount before re-raising, so a credit that fails with a RuntimeError leaves the source balance exactly where it started.",
   "rationale": {
     "teaches": "Deadlock-free transfers through a global lock order by account id, a single-lock path for self-transfers, a balance check, and rollback when the credit fails.",
     "why": "Lock-order bugs pass every sequential test and deadlock only under contention. The fixture drives opposing transfers concurrently with a timeout, turning a hang into a red."
   },
   "oracle": "fixtures/test_24_stdlib_threading_lock_order_deadlock.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Account",
+        "bases": [],
+        "methods": [
+          "__init__"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "SafeTransferManager",
+        "bases": [],
+        "methods": [
+          "transfer"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

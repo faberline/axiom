@@ -5,11 +5,37 @@
   "capability": "jwt-expiration-and-clock-skew",
   "requirement": "JWT validation utility strictly enforcing expiration ('exp') claims, requiring mandatory 'exp' presence, limiting clock skew leeway to safe boundaries (<= 30s), and rejecting expired tokens.",
   "skeleton": "ExpirableTokenManager class with issue_token and decode_token methods using PyJWT.",
+  "caption": "A PyJWT token manager that insists on an expiry claim, enforces it with a small bounded clock-skew allowance, and turns expiry into a hard error. MAX_ALLOWED_LEEWAY is 30 seconds. ExpirableTokenManager takes a secret and leeway_seconds defaulting to 10; it raises ValueError when the secret is shorter than 16 characters and when the leeway is negative or above 30 seconds, so a caller cannot widen the window enough to accept long-expired tokens. issue_token(subject, ttl_seconds) raises ValueError when the time-to-live, defaulting to 300, is not positive, and signs a payload with sub, iat set to the current integer time, and exp set to that time plus the TTL, so every issued token expires in the future. decode_token raises ValueError for an empty or non-string token and calls jwt.decode with HS256 only, the configured leeway, exp and iat marked as required, and expiry verification explicitly on. An ExpiredSignatureError is converted into ValueError reporting that the token has expired rather than returning the claims with a flag the caller might ignore, and any other PyJWTError, including a missing exp claim, becomes ValueError reporting that token validation failed. The fixture asserts that a fresh token returns sub user-active with exp later than now, that a token whose exp is in the past raises ValueError reporting Token has expired, that a token without exp raises ValueError reporting Token validation failed, that a leeway above 30 is rejected with the range message, and that a negative TTL is rejected.",
   "rationale": {
     "teaches": "JWT decoding that requires exp and iat, verifies expiry, caps leeway at 30 seconds, raises on an expired token, and issues tokens that expire in the future.",
     "why": "An expired token has a valid signature, so only the exp check rejects it. The fixture issues a token with a past exp and expects a ValueError, and checks the leeway boundary."
   },
   "oracle": "fixtures/test_77_jwt_expiration_validation.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "MAX_ALLOWED_LEEWAY"
+      },
+      {
+        "kind": "class",
+        "name": "ExpirableTokenManager",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "issue_token",
+          "decode_token"
+        ]
+      }
+    ],
+    "imports": [
+      "jwt"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

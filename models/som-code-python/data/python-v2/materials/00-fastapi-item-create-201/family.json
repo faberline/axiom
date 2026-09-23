@@ -5,11 +5,100 @@
   "capability": "route-status-and-persistence",
   "requirement": "Create a POST /items endpoint that accepts JSON payload with name, price (>0.0), and optional description, validates input, persists to SQLite DB, and returns HTTP 201 Created with the created item.",
   "skeleton": "FastAPI route with Pydantic payload validation and SQLAlchemy in-memory persistence.",
+  "caption": "A single-module FastAPI service that persists items in an in-memory SQLite database through SQLAlchemy. The module builds one engine with StaticPool and check_same_thread disabled so every request shares the same connection, a sessionmaker with autocommit and autoflush off, a DeclarativeBase subclass, and an Item table with an autoincrementing integer id, a non-null name, a non-null float price, and a nullable description. A reset_db helper drops and recreates the tables, and a get_db generator dependency yields one session per request and closes it in a finally block. Two pydantic models frame the contract: ItemCreate requires a name of at least one character, a price strictly greater than zero, and an optional description; ItemOut exposes id, name, price, and description and reads from ORM attributes. The POST /items route declares status code 201, validates the payload, builds an Item from every field the client sent, adds it, commits, refreshes, and returns it. The companion GET /items/{item_id} route selects by primary key and raises HTTPException with 404 when no row exists. Persistence is real: a later read through a fresh session sees the committed row, including the description exactly as the client sent it, and a price such as 0.5 is accepted because only non-positive prices are refused.",
   "rationale": {
     "teaches": "A create endpoint that gets every contract detail right at once: 201 on success, a gt=0 price constraint, a real commit, and faithful passthrough of the client's payload.",
     "why": "A generator assembling a route from snippets usually gets the shape right and the details wrong: the status code, the constraint boundary, flush versus commit. Each detail is observable through one HTTP round trip plus one database read, so the oracle separates code that looks right from code that is right."
   },
   "oracle": "fixtures/test_00_fastapi_item_create_201.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "engine"
+      },
+      {
+        "kind": "assign",
+        "name": "SessionLocal"
+      },
+      {
+        "kind": "class",
+        "name": "Base",
+        "bases": [
+          "DeclarativeBase"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Item",
+        "bases": [
+          "Base"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "get_db",
+        "params": []
+      },
+      {
+        "kind": "class",
+        "name": "ItemCreate",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ItemOut",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "create_item",
+        "params": [
+          "payload",
+          "db"
+        ],
+        "route": "POST /items"
+      },
+      {
+        "kind": "function",
+        "name": "get_item",
+        "params": [
+          "item_id",
+          "db"
+        ],
+        "route": "GET /items/{item_id}"
+      }
+    ],
+    "imports": [
+      "fastapi",
+      "pydantic",
+      "sqlalchemy"
+    ],
+    "raises": [
+      "HTTPException"
+    ],
+    "status_codes": [
+      201,
+      404
+    ]
+  },
   "candidates": [
     {
       "id": "gold",

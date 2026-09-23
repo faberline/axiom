@@ -5,11 +5,37 @@
   "capability": "stream-context-and-truncation-handling",
   "requirement": "Implement an Anthropic message streaming handler that safely manages stream context lifecycle, records text chunks, detects token limit truncation, and handles stream errors.",
   "skeleton": "AnthropicStreamHandler with collect_stream and stream_text_chunks methods returning StreamSummary dataclass.",
+  "caption": "An Anthropic-style message streaming handler written against an injected client, in the standard library with a frozen dataclass and no third-party imports, that keeps every stream inside its context manager so the connection is always closed. StreamSummary holds the joined text, the stop reason, an is_truncated flag, and the chunk count. collect_stream(model, max_tokens, messages) uses a Claude Sonnet model name by default and max_tokens defaulting to 1024, and raises ValueError reporting that messages must not be empty before opening any stream. It opens client.messages.stream with those arguments in a with block, appends every piece of stream.text_stream to a list, and, while still inside the block, calls get_final_message and reads its stop_reason, falling back to end_turn when it is missing. The summary is truncated only when the stop reason is max_tokens, so a normal end_turn completion is never reported as cut off. The summary is built and returned from inside the block, and leaving the block closes the stream. stream_text_chunks applies the same empty-message check and is a generator that opens the stream in a with block and yields each text chunk, so the stream closes when iteration finishes. The fixture asserts that two chunks produce the text Part 1 Part 2 with stop reason end_turn, not truncated, and a closed stream; that a max_tokens stop reason is reported as truncated; that empty messages raise ValueError for both methods; that the stream is opened with max_tokens 1024 by default; that the chunk count is 2; and that the generator yields A, B, and C and leaves the stream closed.",
   "rationale": {
     "teaches": "Streaming through the messages.stream context manager, reading the final message inside it, flagging max_tokens as truncation, refusing empty messages, and defaulting max_tokens to 1024.",
     "why": "A stream used outside its context manager still yields text, but its connection is never closed. The fixture uses a fake stream that records enter and exit and reports stop_reason."
   },
   "oracle": "fixtures/test_94_anthropic_stream_lifecycle.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "StreamSummary",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "AnthropicStreamHandler",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "collect_stream",
+          "stream_text_chunks"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

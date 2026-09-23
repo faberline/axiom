@@ -5,11 +5,42 @@
   "capability": "symmetric-cipher-mode-safety",
   "requirement": "Symmetric encryption utility enforcing authenticated AES-GCM mode with random 12-byte nonces, associated data authentication, and explicit rejection of insecure ECB mode.",
   "skeleton": "AuthenticatedCipher class with encrypt and decrypt methods using cryptography.hazmat.primitives.ciphers.aead.AESGCM.",
+  "caption": "A cryptography AEAD wrapper that encrypts with AES-GCM so every message is both confidential and tamper-evident. VALID_KEY_LENGTHS holds 16 and 32 and NONCE_LENGTH is 12. AuthenticatedCipher raises ValueError when the key length is not one of the valid sizes, so a short key is never padded into a weaker AES key, and builds a single AESGCM instance from it. encrypt(plaintext, associated_data) raises TypeError when the plaintext is not bytes, draws a fresh 12-byte nonce from secrets.token_bytes for every call so a nonce is never reused under the same key, encrypts with the associated data bound into the authentication tag, and returns the ciphertext and nonce. Unlike ECB, which maps equal plaintext blocks to equal ciphertext blocks and carries no integrity check, GCM hides repetition and detects modification. decrypt(ciphertext, nonce, associated_data) raises ValueError when the nonce is not exactly 12 bytes and TypeError when the ciphertext is not bytes, then decrypts with the same associated data; an authentication failure from the library is converted into a ValueError reporting that decryption failed its integrity check, chained from the original. The fixture asserts a 12-byte nonce, ciphertext different from the message, and a successful round trip with associated data, that two identical plaintext blocks encrypt to different ciphertext blocks, that two encryptions use different nonces, that altered associated data and a flipped ciphertext byte each raise ValueError reporting Decryption failed, and that a bad key length and a bad nonce length raise ValueError with their messages.",
   "rationale": {
     "teaches": "AES-GCM with a random 12-byte nonce per message, associated data bound into the tag, 16 or 32 byte keys only, nonce length checked on decrypt, and InvalidTag turned into a ValueError.",
     "why": "ECB and a fixed nonce both encrypt and decrypt round-trip perfectly; the flaw only shows when two ciphertexts are compared. The fixture encrypts the same plaintext twice and expects different bytes and a tag failure when the associated data changes."
   },
   "oracle": "fixtures/test_73_crypto_aes_cipher_mode.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "VALID_KEY_LENGTHS"
+      },
+      {
+        "kind": "assign",
+        "name": "NONCE_LENGTH"
+      },
+      {
+        "kind": "class",
+        "name": "AuthenticatedCipher",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "encrypt",
+          "decrypt"
+        ]
+      }
+    ],
+    "imports": [
+      "cryptography"
+    ],
+    "raises": [
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

@@ -5,11 +5,39 @@
   "capability": "mock-assertion-call-verification",
   "requirement": "Implement an audit dispatch verifier AuditDispatchVerifier that tests an event notifier. Must use exact, valid Mock assertion methods (assert_called_once_with, call_count == 1). Must never use non-existent methods (like assert_not_called_with) or uninvoked attribute accesses (mock.assert_called_once without parentheses).",
   "skeleton": "An event dispatcher EventDispatcher and verifier function verify_single_dispatch(sink, expected_event, expected_payload).",
+  "caption": "A standard-library event dispatcher and verifier built on unittest.mock that uses real Mock assertion methods, called with parentheses, to prove exactly one dispatch with the expected arguments, with no third-party imports. EventDispatcher stores a sink and its dispatch(event_name, payload) calls the sink with the event name and payload. verify_single_dispatch(sink, expected_event, expected_payload) calls sink.assert_called_once_with with the expected event and payload, which fails on zero calls, on more than one call, and on mismatched arguments; it then separately checks that call_count is exactly one and raises AssertionError reporting the actual count otherwise, and returns True. It avoids misspelled assertion names that do not exist on Mock, which merely return a child mock and assert nothing, avoids referencing an assertion method without calling it, and avoids assert_called_with, which inspects only the most recent call. The fixture asserts that one dispatch of order_placed with order_id 42 and amount 99.5 verifies as True, that a mismatched payload raises AssertionError, that dispatching the same event twice raises AssertionError, that a sink that was never called raises AssertionError, that a single valid call still returns True, and that a triple dispatch raises AssertionError.",
   "rationale": {
     "teaches": "A verifier that calls assert_called_once_with with parentheses and the expected arguments, and checks call_count equals exactly one.",
     "why": "A misspelled Mock assertion returns a new child mock instead of asserting, and an un-called method reference does nothing, so a broken verifier passes every test. The fixture dispatches twice and zero times and expects the verifier to fail."
   },
   "oracle": "fixtures/test_86_mock_assertion_spelling_semantics.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "EventDispatcher",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "dispatch"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "verify_single_dispatch",
+        "params": [
+          "sink",
+          "expected_event",
+          "expected_payload"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "AssertionError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

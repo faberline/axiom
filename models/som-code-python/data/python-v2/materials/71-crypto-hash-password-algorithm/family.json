@@ -5,11 +5,39 @@
   "capability": "password-hashing-algorithm",
   "requirement": "Password hashing and verification utility implementing secure PBKDF2-HMAC-SHA256 with cryptographically random 16-byte salt, constant-time verification via hmac.compare_digest, non-empty password validation, and explicit rejection of weak digests (MD5, SHA1).",
   "skeleton": "PasswordHasher class with hash_password and verify_password using hashlib and hmac.",
+  "caption": "A standard-library password hasher built on hashlib, hmac, and secrets that stores slow salted PBKDF2 digests and verifies them in constant time, with no third-party imports. DEFAULT_ITERATIONS is 600,000 and SALT_BYTES is 16. PasswordHasher takes an iteration count defaulting to that value and raises ValueError when it is below 100,000. hash_password(password, salt) raises ValueError for an empty password; when no salt is supplied it draws 16 fresh bytes from secrets.token_bytes, so the same password hashed twice yields different results, and a supplied salt shorter than 16 bytes raises ValueError. It derives the key with hashlib.pbkdf2_hmac using SHA-256, the UTF-8 password, the salt, and the configured iteration count, and returns the 64-character hex digest together with the salt. Fast unsalted digests such as MD5 and SHA1 are never used, because they have no work factor. verify_password returns False when the password, stored hash, or salt is missing, re-derives the digest with the stored salt, returns False if that derivation raises ValueError, and otherwise compares the two hex strings with hmac.compare_digest so the comparison time does not reveal how many characters match. The fixture asserts a 16-byte salt and 64-character digest that verify the right password and reject a wrong one, that two hashes of one password differ in both salt and digest, that the digest differs from the MD5 and SHA1 hex of the same input, that an empty password, a short salt, and too few iterations each raise ValueError with their message, and that verification calls compare_digest.",
   "rationale": {
     "teaches": "PBKDF2-HMAC-SHA256 with a fresh 16-byte random salt per hash, constant-time verification, an empty-password guard, and refusal of MD5 and SHA1.",
     "why": "Any digest function produces a hex string that round-trips through verify, so the algorithm choice is invisible to a verify-only test. The fixture decodes the stored format and re-derives with PBKDF2 to confirm the algorithm and that two hashes of the same password differ."
   },
   "oracle": "fixtures/test_71_crypto_hash_password_algorithm.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "DEFAULT_ITERATIONS"
+      },
+      {
+        "kind": "assign",
+        "name": "SALT_BYTES"
+      },
+      {
+        "kind": "class",
+        "name": "PasswordHasher",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "hash_password",
+          "verify_password"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

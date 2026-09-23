@@ -5,11 +5,31 @@
   "capability": "json-csv-streaming-recursion",
   "requirement": "Implement StreamSafeDataProcessor with max_depth validation to prevent JSON recursion errors, chunk-based CSV streaming without full in-memory read, trailing batch preservation, and safe column summaries.",
   "skeleton": "StreamSafeDataProcessor class with safe_parse_json, stream_csv_records, and compute_column_summary.",
+  "caption": "A standard-library data processor with three methods over csv, io, and json. safe_parse_json scans the raw JSON string character by character before parsing, incrementing a depth counter on every opening brace or bracket and decrementing on every closing one with a floor of zero, and raises ValueError with a message naming the limit as soon as the depth exceeds max_depth, which defaults to 20, so a deeply nested document is rejected at the guard rather than reaching json.loads and hitting the interpreter's recursion limit; a document within the limit is returned from json.loads. stream_csv_records raises ValueError for a batch_size at or below zero, wraps the file object in csv.DictReader, and iterates row by row, copying each row to a plain dict and yielding a batch as soon as it reaches batch_size, so only one batch is ever held in memory and the first batch is available after reading a handful of lines; after the loop it yields the remaining partial batch when it is non-empty, so five rows at a batch size of two produce batches of two, two, and one. compute_column_summary reads the named column through csv.DictReader, skipping missing and blank cells and cells whose float conversion raises ValueError, and tracks count, sum, running minimum, and running maximum in a single pass. When no numeric cell was seen it returns all five keys as 0.0 instead of calling min or max on nothing; otherwise it returns count, sum, mean, min, and max as floats.",
   "rationale": {
     "teaches": "Streaming-safe data handling: a depth pre-scan before json.loads with a sane default, batch-wise CSV iteration that never materializes the file, the trailing partial batch emitted, and an empty-column summary that returns zeros.",
     "why": "A generator that reads the whole file into a list produces identical batches and only differs in memory. The fixture measures peak memory and feeds deeply nested JSON, which is where these misses separate from gold."
   },
   "oracle": "fixtures/test_30_stdlib_json_csv_streaming_recursion.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "StreamSafeDataProcessor",
+        "bases": [],
+        "methods": [
+          "safe_parse_json",
+          "stream_csv_records",
+          "compute_column_summary"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

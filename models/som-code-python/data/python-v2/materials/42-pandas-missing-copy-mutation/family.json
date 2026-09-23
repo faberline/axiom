@@ -5,11 +5,74 @@
   "capability": "missing-copy-mutation",
   "requirement": "Implement CohortFeatureTransformer class that extracts and enriches a slice of a master DataFrame. It must enforce explicit .copy() on sliced subsets to isolate mutations from the master DataFrame, validate cohort existence and positive scaling parameters, compute derived features (normalized_score and risk_tier), and guarantee that the master DataFrame remains unmodified after feature extraction.",
   "skeleton": "Enforce explicit DataFrame .copy() on subset slices to prevent unintended caller DataFrame mutations and feature leakage.",
+  "caption": "A numpy-backed module that carries its own small pandas-like Series and DataFrame and uses them to extract a cohort slice without leaking changes back into the master table. The Series copies its data, supports boolean-mask and label reads and writes, raising KeyError for an unknown key, comparison operators that return mask Series, multiplication, and copy. The DataFrame keeps a dictionary of column arrays, raises KeyError for an unknown column, returns a mask-selected sub-frame that remembers its parent, and raises NotImplementedError for non-string assignment; assigning a new column on an uncopied child deliberately writes a marker into the parent, reproducing the write-through hazard. CohortFeatureTransformer takes cohort_col defaulting to cohort and base_scale defaulting to 1.0. transform_cohort(df, cohort_name, score_col='score', scale=None) raises ValueError when the cohort column or the score column is missing, when an explicit scale is zero or negative, and when the cohort value does not occur in the data. It selects the matching rows and calls copy on that slice before touching it, adds normalized_score as the score times the effective scale, and adds risk_tier as high when the normalized score is at least 50.0 and standard otherwise, so exactly 50 counts as high. The fixture asserts the default scaling to 40.0 and 60.0, the scale and cohort validation, the inclusive tier boundary, and that neither derived column appears in the master DataFrame afterwards.",
   "rationale": {
     "teaches": "Slicing a cohort with an explicit .copy() before adding columns, a positive scale check, a sane base_scale, and an inclusive tier boundary.",
     "why": "Adding columns to a slice may or may not write through to the master frame depending on pandas internals, so the leak is nondeterministic across versions. The fixture asserts the master is byte-identical after extraction."
   },
   "oracle": "fixtures/test_42_pandas_missing_copy_mutation.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Series",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "values",
+          "__len__",
+          "__array__",
+          "__getitem__",
+          "__setitem__",
+          "__ge__",
+          "__gt__",
+          "__le__",
+          "__lt__",
+          "__eq__",
+          "__ne__",
+          "__mul__",
+          "__rmul__",
+          "copy"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "DataFrame",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "copy",
+          "__len__",
+          "__getitem__",
+          "__setitem__"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "pd",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "CohortFeatureTransformer",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "transform_cohort"
+        ]
+      }
+    ],
+    "imports": [
+      "numpy"
+    ],
+    "raises": [
+      "KeyError",
+      "NotImplementedError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

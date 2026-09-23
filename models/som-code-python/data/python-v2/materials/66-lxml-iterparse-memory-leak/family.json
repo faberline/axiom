@@ -5,11 +5,32 @@
   "capability": "streaming-xml-record-extraction",
   "requirement": "Implement StreamXmlRecordExtractor using lxml.etree.iterparse with events=('end',) and target tag filtering to parse arbitrarily large XML streams with constant memory overhead. Ensure both element.clear() and parent detachment (del parent[0]) are executed for each yielded record to prevent dead element accumulation, and validate target_tag inputs.",
   "skeleton": "StreamXmlRecordExtractor class with __init__ and iter_records using lxml.etree.iterparse.",
+  "caption": "An lxml streaming extractor that reads arbitrarily large XML with constant memory by discarding every record once it has been yielded. StreamXmlRecordExtractor takes a target_tag, raises ValueError when it is empty or whitespace only, stores it stripped, and keeps a last_root reference for inspection. iter_records(source) runs etree.iterparse over the binary stream with only end events and a tag filter for the target, so each element is delivered after all of its children have been parsed and unrelated elements are never yielded. For each record it remembers the parent, or the iterator's root when there is none, as last_root, builds a dictionary mapping each child tag to its stripped text, and yields it. After the consumer resumes, it clears the element's children and text and then deletes every earlier sibling from the parent, so the partially built tree never accumulates finished records. When iteration ends, last_root points at the document root. The fixture asserts that three product records come back as id and name dictionaries in order, that after consumption the last record element is empty, that after twenty records the root holds at most one remaining child while every record still carried its id and val, that iterparse is called with the events tuple containing only end, and that empty and blank tags raise ValueError mentioning target_tag.",
   "rationale": {
     "teaches": "Streaming XML with iterparse on end events filtered by tag, clearing each element and detaching it from its parent so memory stays constant, with a validated target tag.",
     "why": "iterparse without clear keeps every parsed element in the tree, so memory grows linearly but the yielded records are correct. The fixture measures memory over a large stream."
   },
   "oracle": "fixtures/test_66_lxml_iterparse_memory_leak.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "StreamXmlRecordExtractor",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "iter_records"
+        ]
+      }
+    ],
+    "imports": [
+      "lxml"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

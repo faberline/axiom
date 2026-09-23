@@ -5,11 +5,35 @@
   "capability": "connection-pooling",
   "requirement": "Implement PooledSessionManager with custom requests HTTPAdapter connection pooling, validating pool_connections > 0, pool_maxsize > 0, and pool_maxsize >= pool_connections. It must configure pool_block, mount adapters to both http:// and https:// schemes, and provide explicit close() and context manager cleanup to prevent connection pool leaks.",
   "skeleton": "PooledSessionManager class with pool size validation, HTTPAdapter mounting, and session lifecycle cleanup.",
+  "caption": "A requests-based session manager that reuses one connection pool instead of opening a fresh connection per call. PooledSessionManager takes pool_connections defaulting to 10, pool_maxsize defaulting to 20, and pool_block defaulting to True; the constructor raises ValueError when either size is zero or negative and when pool_maxsize is smaller than pool_connections. get_session creates the requests.Session lazily on first use and returns the same object on every later call. At creation it builds exactly one HTTPAdapter configured with the three pool parameters and mounts that single adapter on both the http:// and https:// prefixes, so both schemes share the same pool settings. close closes the session when one exists and resets the stored reference to None, so the next get_session builds a new one. The class is also a context manager: __enter__ returns the live session and __exit__ closes it, releasing pooled sockets even when the body raises. The fixture asserts the constructor validation, the lazy and memoized session, the adapter's pool configuration on both prefixes, and that leaving the with block closes and forgets the session.",
   "rationale": {
     "teaches": "A pooled requests Session: pool_block defaults to True, pool sizes validated with pool_maxsize at least pool_connections, both schemes mounted, and close on exit.",
     "why": "Connection-pool misconfiguration only shows as leaked sockets or an unbounded pool under load. The fixture reads the adapter's configuration and checks close is called, since the leak itself is not deterministic."
   },
   "oracle": "fixtures/test_36_requests_connection_pooling.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "PooledSessionManager",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "get_session",
+          "close",
+          "__enter__",
+          "__exit__"
+        ]
+      }
+    ],
+    "imports": [
+      "requests"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

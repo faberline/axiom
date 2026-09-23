@@ -5,11 +5,41 @@
   "capability": "prng-seed-isolation",
   "requirement": "Cryptographic entropy sampler ensuring complete isolation from mutable PRNG seeding (random.seed), enforcing SystemRandom CSPRNG usage, disallowing seed() injection methods, and enforcing valid population and PIN boundaries.",
   "skeleton": "IsolatedEntropySampler class with generate_pin, sample_population, and seed methods using secrets.SystemRandom.",
+  "caption": "A standard-library entropy sampler built on secrets.SystemRandom that no caller can make deterministic by seeding, with no third-party imports. MIN_PIN_DIGITS is 4 and MAX_PIN_DIGITS is 12. IsolatedEntropySampler creates its own SystemRandom instance in the constructor and never reads from or seeds the global random module, so a call to random.seed elsewhere in the process has no effect on its output. generate_pin(length) takes a length defaulting to 6, raises ValueError reporting the allowed range when the length is below 4 or above 12, and joins that many digits each chosen independently by the system generator. sample_population(population, k) raises ValueError for an empty population and when k is zero, negative, or larger than the population, reporting the valid range, and otherwise returns a sample of k distinct items drawn by the system generator. seed(val) exists only to refuse: it raises NotImplementedError stating that seeding is forbidden, so code that tries to reproduce a sequence fails loudly instead of silently weakening it. The fixture seeds the global generator to the same value before two runs and asserts that the pair of PIN and sample differs between them, asserts that seed raises NotImplementedError with its message, that lengths of 3 and 13 raise ValueError reporting PIN length must be between 4 and 12 while a length of 8 returns eight digits, and that k of zero and k above the population size raise ValueError reporting the sample size range.",
   "rationale": {
     "teaches": "An entropy sampler backed by secrets.SystemRandom that refuses seeding, requires at least 4 PIN digits, and validates sample size against the population.",
     "why": "SystemRandom and the global random module expose the same sample and randint API, so the difference is invisible to a shape test. The fixture seeds the global PRNG and checks the sampler's output is not reproducible."
   },
   "oracle": "fixtures/test_80_secrets_prng_seed_injection.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "MIN_PIN_DIGITS"
+      },
+      {
+        "kind": "assign",
+        "name": "MAX_PIN_DIGITS"
+      },
+      {
+        "kind": "class",
+        "name": "IsolatedEntropySampler",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "generate_pin",
+          "sample_population",
+          "seed"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "NotImplementedError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

@@ -5,11 +5,88 @@
   "capability": "apply-vectorization-pitfall",
   "requirement": "Implement TransactionVectorizedScorer class for high-throughput financial transaction risk scoring. It must replace unvectorized row-by-row DataFrame.apply(axis=1) with vectorized pandas and numpy operations (np.where, column arithmetic, and clipping), validate non-empty DataFrames, enforce positive transaction weight parameters, clip scores to a configured max_cap, and preserve DataFrame index integrity.",
   "skeleton": "High-performance vectorized scoring replacing unvectorized .apply(axis=1) and preserving index integrity.",
+  "caption": "A numpy-backed module with its own minimal Series and DataFrame layer, used to score transactions with whole-column arithmetic instead of a row-by-row apply. The Series supports mask and label access with KeyError for unknown keys, comparisons, addition, multiplication, clip, and copy, always carrying its index along; the DataFrame exposes empty, a positional iloc reader, copy, column and mask reads with KeyError for unknown columns, and raises NotImplementedError for non-string assignment. TransactionVectorizedScorer takes weight defaulting to 1.5 and max_cap defaulting to 100.0 and raises ValueError when either is zero or negative. score_transactions(df, amount_col='amount', freq_col='frequency') raises ValueError for an empty frame and for either missing column. It builds a mask where the amount is strictly greater than 1000.0, and with a single np.where call chooses amount times 0.05 plus frequency times the weight for those rows and amount times 0.01 plus frequency times 0.5 for the rest, so an amount of exactly 1000 stays in the low tier. The result is wrapped in a Series built on the DataFrame's own index and clipped at max_cap. The fixture asserts scores such as 7.0 and a capped 100.0, that a default cap still allows 75.0, the boundary score of 12.0 at 1000, the branch values 6.0 and 78.0, the weight validation, and that scores keyed by a custom index like tx_alpha and tx_beta line up with their rows.",
   "rationale": {
     "teaches": "Vectorized scoring with np.where and column arithmetic that keeps the DataFrame index, a positive weight check, a strict high-tier boundary, and a 100.0 cap.",
     "why": "A row-by-row apply returns the same numbers on a default index and only breaks when the frame has a custom index or is large. The fixture uses a non-default index and a size that makes the apply version measurably slow."
   },
   "oracle": "fixtures/test_43_pandas_apply_vectorization_pitfall.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Series",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "values",
+          "__len__",
+          "__array__",
+          "__getitem__",
+          "__setitem__",
+          "__ge__",
+          "__gt__",
+          "__le__",
+          "__lt__",
+          "__eq__",
+          "__ne__",
+          "__mul__",
+          "__rmul__",
+          "__add__",
+          "__radd__",
+          "clip",
+          "copy"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "_ILocIndexer",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "__getitem__"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "DataFrame",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "empty",
+          "iloc",
+          "copy",
+          "__len__",
+          "__getitem__",
+          "__setitem__"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "pd",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "TransactionVectorizedScorer",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "score_transactions"
+        ]
+      }
+    ],
+    "imports": [
+      "numpy"
+    ],
+    "raises": [
+      "KeyError",
+      "NotImplementedError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

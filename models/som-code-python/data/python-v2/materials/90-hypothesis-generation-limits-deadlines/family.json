@@ -5,11 +5,36 @@
   "capability": "property-test-settings-and-health-checks",
   "requirement": "Configure a rigorous, bounded property test suite GraphCycleDetectorTest that tests a cycle detection algorithm. Must declare realistic @settings(max_examples=100, deadline=500) without suppressing HealthCheck.too_slow or setting deadline=None to paper over exponential algorithms.",
   "skeleton": "A graph connectivity checker has_path(graph, src, dst, max_depth) and settings configuration get_test_settings().",
+  "caption": "A Hypothesis settings profile and bounded graph search whose property tests run with a real example budget and deadline instead of hiding slow code. When the library is unavailable, an ImportError fallback defines a HealthCheck stand-in with too_slow and filter_too_much names and a no-op settings decorator. has_path(graph, src, dst, max_depth) returns True immediately when source and destination are equal, then runs a breadth-first search from the source with a depth counter defaulting to a maximum of 10; it returns True when the destination is dequeued, skips expanding nodes at the depth limit, skips nodes already visited, marks each expanded node as visited, and enqueues only neighbours not yet visited, so a cyclic graph terminates promptly, and it returns False when the queue empties. get_test_settings returns a dictionary with max_examples of 100, deadline_ms of 500, and an empty list of suppressed health checks, so neither too_slow nor any other check is silenced and no example may run unbounded. The fixture asserts that the settings allow at least 50 examples, a deadline that is present and at most 1000 milliseconds, and an empty suppression list that does not contain too_slow, and asserts on a small graph with a cycle that 1 reaches 4, that 4 does not reach 1, and that a node reaches itself.",
   "rationale": {
     "teaches": "Hypothesis settings with 100 examples, a 500 ms deadline, and no suppressed health checks, over a bounded path search that skips already-visited nodes.",
     "why": "Suppressing too_slow or removing the deadline hides an exponential algorithm behind a green run. The fixture reads the settings dict and checks the search on a cyclic graph terminates within the budget."
   },
   "oracle": "fixtures/test_90_hypothesis_generation_limits_deadlines.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "function",
+        "name": "has_path",
+        "params": [
+          "graph",
+          "src",
+          "dst",
+          "max_depth"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "get_test_settings",
+        "params": []
+      }
+    ],
+    "imports": [
+      "hypothesis"
+    ],
+    "raises": [],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

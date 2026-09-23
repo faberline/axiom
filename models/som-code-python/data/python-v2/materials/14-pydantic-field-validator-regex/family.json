@@ -5,11 +5,47 @@
   "capability": "field-validator-regex-normalization",
   "requirement": "IoT device profile model with @field_validator enforcing E.164 phone formatting with mode=\"before\" pre-cleaning, strict SemVer 2.0.0 firmware with anchors, and lowercase normalized 64-hex fingerprint in mode=\"after\".",
   "skeleton": "Pydantic v2 BaseModel with pre-compiled regex validators and mode-specific data sanitation.",
+  "caption": "A pydantic v2 model for an IoT device profile whose three string fields are validated by pre-compiled regular expressions. PHONE_REGEX anchors an E.164 number: a plus sign, a leading digit from 1 to 9, and six to fourteen further digits, so a number of up to fifteen digits is accepted. SEMVER_REGEX is the full SemVer 2.0.0 grammar with anchors at both ends: three numeric components without leading zeros, an optional pre-release list after a hyphen, and optional build metadata after a plus sign. FINGERPRINT_REGEX accepts exactly sixty-four hexadecimal characters in either case. DeviceProfile sets extra to forbid and declares device_id, phone with max_length 16, firmware, and fingerprint. validate_phone runs in before mode as a classmethod: when the raw value is a string it first strips spaces, hyphens, and parentheses with re.sub, then requires a string that matches PHONE_REGEX with match, raising ValueError otherwise, and returns the cleaned value; because it runs before type validation, a formatted input with spaces and dashes is cleaned rather than rejected. validate_firmware runs in after mode and raises ValueError when the anchored SemVer pattern does not match, never substituting a default. validate_fingerprint runs in after mode, raises ValueError on a non-matching string, and returns the value lowercased so the same fingerprint written in upper case is stored identically. Every rejection surfaces as a pydantic ValidationError naming the field.",
   "rationale": {
     "teaches": "Anchored regexes with match, a before-mode validator that cleans raw input, an after-mode validator that lowercases, and a validator that raises rather than substituting a default.",
     "why": "Regex validators fail open in quiet ways: a missing anchor accepts junk suffixes, search accepts embedded matches, and a substituted default hides bad input. Each has a payload that exposes it."
   },
   "oracle": "fixtures/test_14_pydantic_field_validator_regex.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "PHONE_REGEX"
+      },
+      {
+        "kind": "assign",
+        "name": "SEMVER_REGEX"
+      },
+      {
+        "kind": "assign",
+        "name": "FINGERPRINT_REGEX"
+      },
+      {
+        "kind": "class",
+        "name": "DeviceProfile",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [
+          "validate_phone",
+          "validate_firmware",
+          "validate_fingerprint"
+        ]
+      }
+    ],
+    "imports": [
+      "pydantic"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

@@ -5,11 +5,39 @@
   "capability": "jwt-claim-sanitization",
   "requirement": "JWT claim sanitizer preventing leakage of plaintext sensitive credentials (passwords, secrets, private keys, API keys, SSNs, credit card numbers) in unencrypted JWT claims, recursively inspecting nested dictionaries and normalizing key casing.",
   "skeleton": "JWTClaimSanitizer class with create_safe_token and decode_token methods using PyJWT.",
+  "caption": "A PyJWT claim sanitizer that refuses to sign any payload carrying credential-like fields, because a JWT body is only base64-encoded and readable by anyone who holds the token. SENSITIVE_KEY_PATTERNS lists password, secret, api_key, token, private_key, ssn, and credit_card. JWTClaimSanitizer raises ValueError when the signing secret is shorter than 16 characters. Its validation helper walks every key of the claims, normalizes it by lowercasing, turning hyphens into underscores, and trimming, and raises ValueError reporting that the named claim is forbidden in an unencrypted JWT payload whenever any sensitive pattern occurs inside the normalized key, so mixed-case and hyphenated spellings are caught. The decision depends only on the key, never on the value's type or length, so short passwords and numeric identifiers are refused too, and values are refused rather than encoded or masked. When a value is itself a dictionary the helper recurses into it, catching secrets nested inside profile objects. create_safe_token raises TypeError when the payload is not a dictionary, validates it, and signs it with HS256. decode_token decodes with HS256 only and converts any PyJWTError into ValueError reporting that token decoding failed. The fixture asserts that a clean payload round-trips with sub user_42 and role analyst, that a top-level password claim is rejected by name, that mixed-case sensitive keys and a password nested inside a dictionary are rejected as forbidden in an unencrypted JWT payload, and that a tampered token fails to decode.",
   "rationale": {
     "teaches": "A claim sanitizer that refuses any claim whose normalized key contains a sensitive pattern, recursing into nested dicts, regardless of value type or length.",
     "why": "A JWT payload is base64, not encrypted, so a password claim is readable by anyone holding the token. The fixture tries mixed-case keys, nested dicts, and short values and expects each to be refused."
   },
   "oracle": "fixtures/test_78_jwt_sensitive_data_leakage.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "SENSITIVE_KEY_PATTERNS"
+      },
+      {
+        "kind": "class",
+        "name": "JWTClaimSanitizer",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "_validate_clean_claims",
+          "create_safe_token",
+          "decode_token"
+        ]
+      }
+    ],
+    "imports": [
+      "jwt"
+    ],
+    "raises": [
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

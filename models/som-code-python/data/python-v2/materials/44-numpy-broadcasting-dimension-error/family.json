@@ -5,11 +5,33 @@
   "capability": "broadcasting-dimension-error",
   "requirement": "Implement SampleMatrixNormalizer class providing per-sample (per-row) mean centering and standard deviation scaling on 2D numerical arrays. It must use explicit dimension preservation (keepdims=True) to prevent silent broadcasting errors, validate 2D shape, enforce strictly positive epsilon, and support optional feature centering.",
   "skeleton": "SampleMatrixNormalizer class with __init__ and normalize_samples methods ensuring 2D keepdims broadcasting.",
+  "caption": "A numpy module that normalizes each sample of a two-dimensional matrix to zero mean and unit spread along its own row. SampleMatrixNormalizer takes epsilon defaulting to 1e-8, raising ValueError unless it is strictly positive, and a center_features flag defaulting to False. normalize_samples(X) raises TypeError when X is not a numpy ndarray, ValueError when it is not a 2D array, and ValueError when it has fewer than two feature columns, so a two-column matrix is the smallest accepted shape. It converts the data to float64; when feature centering is enabled it first subtracts each column's mean computed along axis 0 with keepdims=True. It then computes the per-row mean and standard deviation along axis 1 with keepdims=True, so both statistics keep shape (n, 1) and broadcast correctly against the (n, m) matrix whether or not it is square, and returns the matrix minus the row mean divided by the row standard deviation plus epsilon. The fixture checks a 4 by 5 matrix whose rows come out with mean near 0 and standard deviation near 1, that the default epsilon keeps the scale faithful, that columns are not the normalized axis, that 4 by 7 and 4 by 4 inputs both work, that optional centering still yields normalized rows, and each validation message.",
   "rationale": {
     "teaches": "Per-row normalization with keepdims=True so the (n,1) statistics broadcast against (n,m), a 2D shape check, a minimum of two features, and a small epsilon.",
     "why": "Dropping keepdims makes the statistics (n,) and NumPy raises only when n != m; on square inputs it silently normalizes along the wrong axis. The fixture uses a non-square matrix."
   },
   "oracle": "fixtures/test_44_numpy_broadcasting_dimension_error.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "SampleMatrixNormalizer",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "normalize_samples"
+        ]
+      }
+    ],
+    "imports": [
+      "numpy"
+    ],
+    "raises": [
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

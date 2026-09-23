@@ -5,11 +5,33 @@
   "capability": "asyncio-gather-exception-handling",
   "requirement": "Implement SafeBatchExecutor with execute_batch partitioning successes and failures, using return_exceptions=True or fail-fast sibling cancellation with first-exception semantics.",
   "skeleton": "Asyncio batch task runner partitioning successes, failures, and handling sibling task cancellation.",
+  "caption": "A pure-asyncio batch executor with no third-party imports. BatchExecutionResult is a dataclass with a successes list, a failures list typed as BaseException, and a cancelled_count integer, each list built by default_factory. SafeBatchExecutor.execute_batch takes a list of zero-argument coroutine factories and a cancel_siblings_on_error flag defaulting to False, and returns an empty result for an empty list. In the default mode it awaits asyncio.gather over every factory's coroutine with return_exceptions=True, so a raising task does not abort the gather, then walks the raw results in order: an asyncio.CancelledError instance increments cancelled_count, any other BaseException instance is appended to failures, and everything else is appended to successes. In fail-fast mode it wraps each coroutine in asyncio.create_task, awaits asyncio.wait with return_when set to FIRST_EXCEPTION, and inspects the done set: when some finished task holds an exception and others are still pending, every pending task is cancelled and then gathered with return_exceptions=True so the cancellations settle; when nothing failed, the pending set is awaited to completion instead. The tasks are then classified in submission order by task.cancelled(), task.exception(), and task.result() into the same three buckets. A ValueError or RuntimeError raised by one task therefore lands in failures as an exception object, never in successes, a sibling cancelled after the first failure is counted rather than filed as a failure, and a long-running sibling in fail-fast mode is actually stopped rather than left running in the background.",
   "rationale": {
     "teaches": "Batch execution with gather: return_exceptions=True to partition results, exceptions routed to failures, cancellations counted separately, and pending siblings cancelled in fail-fast mode.",
     "why": "gather's two modes look alike until one task raises. Whether siblings keep running, whether the exception is lost, and whether it is misfiled are only visible with a deliberately failing task."
   },
   "oracle": "fixtures/test_22_stdlib_asyncio_gather_exceptions.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "BatchExecutionResult",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "SafeBatchExecutor",
+        "bases": [],
+        "methods": [
+          "execute_batch"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

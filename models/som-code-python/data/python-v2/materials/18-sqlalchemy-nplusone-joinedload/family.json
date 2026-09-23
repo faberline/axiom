@@ -5,11 +5,119 @@
   "capability": "nplusone-joinedload",
   "requirement": "FastAPI GET /articles endpoint returning articles with author info using SQLAlchemy joinedload with LEFT OUTER JOIN to fetch many-to-1 relationship in exactly 1 SQL SELECT statement while preserving articles with null authors.",
   "skeleton": "FastAPI GET /articles with SQLAlchemy joinedload eager loading.",
+  "caption": "A FastAPI endpoint that loads a many-to-one relationship with one SQL statement and keeps rows whose relationship is empty. The module builds a StaticPool engine over in-memory SQLite, a QueryCounter with class-level count and statements, and a before_cursor_execute listener registered through SQLAlchemy's event API that counts statements beginning with SELECT. Under a DeclarativeBase, Author has id, name, and email; Article has id, title, content, a nullable author_id foreign key to authors, and an author relationship declared lazy select. get_db yields one session per request and closes it in finally. reset_db drops and recreates the schema, inserts two authors, Alice Smith and Bob Jones, and four articles, three attributed to those authors and one, Anonymous Editorial, with author_id None, commits, and resets the counter; it runs once at import. pydantic models AuthorResponse and ArticleResponse read from attributes, and ArticleResponse declares author as an optional AuthorResponse defaulting to None. GET /query-metrics returns the count. GET /articles builds select(Article).options(joinedload(Article.author)), executes it with db.scalars(...).all(), and returns the rows. joinedload emits a LEFT OUTER JOIN by default, so the author columns arrive in the same SELECT as the articles, the request issues exactly one statement, the article without an author is returned with author null rather than dropped, and the loaded author's name and email reach the client unchanged.",
   "rationale": {
     "teaches": "Eager loading a many-to-one relationship with joinedload as a LEFT OUTER JOIN, one SELECT total, and articles with no author preserved.",
     "why": "Inner versus outer join is a one-keyword difference that silently drops rows. Counting statements and counting rows together separates all five variants."
   },
   "oracle": "fixtures/test_18_sqlalchemy_nplusone_joinedload.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "engine"
+      },
+      {
+        "kind": "class",
+        "name": "QueryCounter",
+        "bases": [],
+        "methods": [
+          "reset"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "before_cursor_execute",
+        "params": [
+          "conn",
+          "cursor",
+          "statement",
+          "parameters",
+          "context",
+          "executemany"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "Base",
+        "bases": [
+          "DeclarativeBase"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Author",
+        "bases": [
+          "Base"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Article",
+        "bases": [
+          "Base"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "SessionLocal"
+      },
+      {
+        "kind": "function",
+        "name": "get_db",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "class",
+        "name": "AuthorResponse",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ArticleResponse",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "get_query_metrics",
+        "params": [],
+        "route": "GET /query-metrics"
+      },
+      {
+        "kind": "function",
+        "name": "get_articles",
+        "params": [
+          "db"
+        ],
+        "route": "GET /articles"
+      }
+    ],
+    "imports": [
+      "fastapi",
+      "pydantic",
+      "sqlalchemy"
+    ],
+    "raises": [],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

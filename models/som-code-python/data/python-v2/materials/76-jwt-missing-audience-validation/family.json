@@ -5,11 +5,33 @@
   "capability": "jwt-audience-and-issuer-validation",
   "requirement": "JWT validation service strictly enforcing audience ('aud') and issuer ('iss') claims, rejecting tokens intended for other microservices, requiring explicit 'aud' claims, and preventing substring audience confusion.",
   "skeleton": "AudienceTokenVerifier class with issue_token and verify_token methods using PyJWT.",
+  "caption": "A PyJWT verifier that only accepts tokens minted for this exact service by this exact issuer. AudienceTokenVerifier raises ValueError when the secret is missing or shorter than 16 characters, when the expected audience is empty, and when the expected issuer is empty, so a verifier that silently skips those checks cannot be constructed. issue_token(subject, audience, extra_claims) builds a payload with sub, aud set to the given audience or the expected one, and iss set to the expected issuer, merges any extra claims, and signs it with HS256. verify_token raises ValueError for an empty or non-string token and then calls jwt.decode with HS256 only, the expected audience, the expected issuer, the aud, iss, and sub claims marked as required, and audience and issuer verification explicitly enabled. The library compares the audience as a whole value rather than a substring, so a token addressed to a longer name that merely contains the expected audience is refused. Any PyJWTError, from a foreign audience, a missing aud claim, a different issuer, or a bad signature, is re-raised as ValueError reporting that token verification failed, chained from the original. The fixture asserts that a token for the target audience returns sub user-123 with the expected aud and iss, that tokens for a foreign audience, without an aud claim, for an audience that only contains the expected one as a substring, and from a foreign issuer each raise ValueError reporting verification failed, and that an empty expected audience or issuer raises ValueError in the constructor.",
   "rationale": {
     "teaches": "JWT verification that requires aud, iss, and sub, matches audience and issuer exactly through PyJWT, and refuses empty expected values at construction.",
     "why": "A token minted for another service carries a valid signature, so only the claim checks reject it. The fixture issues tokens for a different audience and issuer and expects rejection."
   },
   "oracle": "fixtures/test_76_jwt_missing_audience_validation.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "AudienceTokenVerifier",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "issue_token",
+          "verify_token"
+        ]
+      }
+    ],
+    "imports": [
+      "jwt"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

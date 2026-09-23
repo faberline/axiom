@@ -5,11 +5,40 @@
   "capability": "mock-patch-cleanup-and-restoration",
   "requirement": "Implement a test isolation runner (run_with_patched_clock) that patches target module attributes for the duration of a test and guarantees 100% restoration of the original target object even when the test raises an exception.",
   "skeleton": "RemoteClockService with staticmethod get_timestamp(), run_with_patched_clock helper, and verify_clock_unpolluted verification.",
+  "caption": "A standard-library patch helper built on unittest.mock that replaces a class attribute only for the duration of one test function and always puts the original back, with no third-party imports. RemoteClockService exposes a static get_timestamp that returns 1000. run_with_patched_clock(target_time, test_fn) creates a patch.object patcher on RemoteClockService.get_timestamp whose return value is the requested target_time, starts it, calls the test function inside a try block, returns its result, and stops the patcher in the finally clause. Because the stop is in finally and paired with exactly one start, the original static method is restored after a passing test and after a failing one, so a patch never leaks into tests that run later. verify_clock_unpolluted returns True when calling the real get_timestamp yields 1000 again. The fixture runs a test function that observes the patched value 5555 and returns ok, then asserts the helper returned ok, that the clock is unpolluted, and that get_timestamp returns 1000; it then runs a test function that observes 9999 before raising ValueError reporting test assertion failed, asserts the error propagates, and asserts that the clock is again unpolluted and returns 1000.",
   "rationale": {
     "teaches": "A patch helper that starts a patcher with the requested value and stops it in a finally block, so the original attribute is restored even when the test raises.",
     "why": "A patch that is never stopped pollutes every later test but passes its own. The fixture runs a raising test and then checks the class attribute is the original."
   },
   "oracle": "fixtures/test_85_mock_patch_leak_pollution.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "RemoteClockService",
+        "bases": [],
+        "methods": [
+          "get_timestamp"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "run_with_patched_clock",
+        "params": [
+          "target_time",
+          "test_fn"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "verify_clock_unpolluted",
+        "params": []
+      }
+    ],
+    "imports": [],
+    "raises": [],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

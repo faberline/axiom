@@ -5,11 +5,118 @@
   "capability": "patch-partial-update",
   "requirement": "PATCH /items/{item_id} endpoint supporting partial updates with exclude_unset=True, preserving existing database fields when omitted in the request and properly updating nullable fields when explicit null is sent.",
   "skeleton": "FastAPI PATCH route with Pydantic ItemUpdate and SQLAlchemy session.",
+  "caption": "A FastAPI item service with create, read, and partial-update routes over SQLAlchemy and in-memory SQLite. The module builds a StaticPool engine, a sessionmaker, a DeclarativeBase, and an Item table with integer id, non-null name, nullable description, and non-null float price; reset_db drops and recreates the schema, and get_db yields one session per request and closes it in finally. Three pydantic models frame the API: ItemCreate with required name and price and optional description, ItemUpdate in which name, description, and price all default to None, and ItemResponse exposing id, name, description, and price from ORM attributes. POST /items answers 201 after adding, committing, and refreshing a new row. GET /items/{item_id} loads by primary key with db.get and raises HTTPException 404 when the row is missing. PATCH /items/{item_id} loads the row the same way and raises the same 404 on absence; then it calls model_dump with exclude_unset=True, so only the fields the client actually included in the body are present in the update mapping. Each present key is applied with setattr, which means a field omitted from the request keeps its stored value while an explicit null for description is applied and clears the column. The session commits and refreshes, so a subsequent GET through a different session observes the updated values.",
   "rationale": {
     "teaches": "PATCH semantics with exclude_unset: omitted fields stay untouched, an explicit null clears a nullable column, the change is committed, and an unknown id is a 404.",
     "why": "The three model_dump variants differ by one keyword and produce three different behaviors that only a database round trip separates. The generator has to know which keyword encodes which semantics."
   },
   "oracle": "fixtures/test_04_fastapi_patch_partial_update.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "engine"
+      },
+      {
+        "kind": "assign",
+        "name": "SessionLocal"
+      },
+      {
+        "kind": "class",
+        "name": "Base",
+        "bases": [
+          "DeclarativeBase"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Item",
+        "bases": [
+          "Base"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "get_db",
+        "params": []
+      },
+      {
+        "kind": "class",
+        "name": "ItemCreate",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ItemUpdate",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ItemResponse",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "create_item",
+        "params": [
+          "payload",
+          "db"
+        ],
+        "route": "POST /items"
+      },
+      {
+        "kind": "function",
+        "name": "get_item",
+        "params": [
+          "item_id",
+          "db"
+        ],
+        "route": "GET /items/{item_id}"
+      },
+      {
+        "kind": "function",
+        "name": "patch_item",
+        "params": [
+          "item_id",
+          "payload",
+          "db"
+        ],
+        "route": "PATCH /items/{item_id}"
+      }
+    ],
+    "imports": [
+      "fastapi",
+      "pydantic",
+      "sqlalchemy"
+    ],
+    "raises": [
+      "HTTPException"
+    ],
+    "status_codes": [
+      201,
+      404
+    ]
+  },
   "candidates": [
     {
       "id": "gold",

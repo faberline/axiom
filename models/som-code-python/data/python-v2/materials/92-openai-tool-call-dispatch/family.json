@@ -5,11 +5,39 @@
   "capability": "tool-call-argument-validation-and-dispatch",
   "requirement": "Implement an OpenAI tool dispatcher that parses serialized tool arguments JSON, validates against Pydantic schemas, handles malformed JSON, verifies argument types, and executes registered tools safely.",
   "skeleton": "OpenAIToolDispatcher with register_tool and execute_tool_call methods returning ToolExecutionResult.",
+  "caption": "A pydantic dispatcher for OpenAI tool calls that turns the serialized arguments string into validated keyword arguments and reports every failure as a structured result instead of raising. ToolExecutionResult is a BaseModel with call_id, name, status, an optional output, and an optional error. OpenAIToolDispatcher keeps a registry mapping a tool name to its function and an optional schema model, filled by register_tool. execute_tool_call reads the call id, defaulting to unknown, and the function's name and arguments, defaulting the arguments to the JSON text of an empty object so a tool with no parameters can be called. An unregistered name returns an error result reporting an unrecognized tool rather than silently succeeding. The arguments are parsed with json.loads; a JSONDecodeError returns an error reporting malformed JSON arguments with the decoder's message, and a parsed value that is not an object returns an error stating that tool arguments must be a JSON object. When a schema is registered, the parsed dictionary is passed to model_validate, not to the JSON-string validator, and its model_dump becomes the keyword arguments; a ValidationError returns an error reporting that argument validation failed, so a wrong type never reaches the tool. Without a schema the parsed dictionary is used directly. The function is then called with those keywords, returning a success result with its output, and any exception it raises becomes an error reporting that tool execution failed. The fixture asserts a success with output 200, call id call_123, and name calculate; an argument validation failure; an unrecognized tool error; a ping tool with missing and with empty arguments both returning pong; and a malformed JSON arguments error.",
   "rationale": {
     "teaches": "A tool dispatcher that parses the arguments JSON string, validates the parsed dict against the registered Pydantic schema, reports unknown tools and validation failures as errors, and defaults missing arguments to an empty object.",
     "why": "Malformed JSON, a wrong argument type, and an unknown tool all reach the dispatcher as strings, so only executing the dispatch shows which path is taken. The fixture sends each malformed input and checks the result status and error text."
   },
   "oracle": "fixtures/test_92_openai_tool_call_dispatch.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "ToolExecutionResult",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "OpenAIToolDispatcher",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "register_tool",
+          "execute_tool_call"
+        ]
+      }
+    ],
+    "imports": [
+      "pydantic"
+    ],
+    "raises": [],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

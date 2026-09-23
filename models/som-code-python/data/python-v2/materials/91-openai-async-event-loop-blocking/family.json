@@ -5,11 +5,31 @@
   "capability": "async-event-loop-concurrency",
   "requirement": "Implement an asynchronous OpenAI chat service that performs non-blocking chat completion and streaming requests without stalling the asyncio event loop, with timeout configuration and empty message validation.",
   "skeleton": "AsyncOpenAIChatService with generate_chat_response and stream_chat_response coroutines.",
+  "caption": "An OpenAI-style asynchronous chat service written against an injected async client, in the standard library with asyncio and no third-party imports, so every network call is awaited and never stalls the event loop. AsyncOpenAIChatService takes a client and a timeout defaulting to 30.0 seconds, and raises ValueError reporting that the timeout must be positive when it is zero or negative, because a zero timeout would mean waiting forever. generate_chat_response(messages, model, temperature) raises ValueError reporting that messages cannot be empty before any request is made, then awaits client.chat.completions.create with the model, the chat-format messages, the temperature, and the configured timeout, and returns the content of the first choice's message, or an empty string when the content is missing. stream_chat_response is an async generator that applies the same empty-message check, awaits the same chat completions endpoint with streaming enabled and the timeout, then iterates the stream asynchronously and yields each chunk's first-choice delta content whenever it is present, skipping chunks with no choices or empty deltas; it reads delta rather than message because streamed chunks carry incremental text. The legacy completions endpoint is never called. The fixture asserts that a fake client's answer Paris is returned, that empty message lists raise ValueError for both the plain and streaming call, that the default timeout is 30.0, that three streamed deltas arrive as Hello, a space, and world, that a timeout of 0 raises ValueError reporting timeout must be positive, and that two concurrent requests both return concurrent response while the event loop keeps running other work.",
   "rationale": {
     "teaches": "An async chat service that awaits chat.completions.create with a positive timeout, refuses empty messages, and yields streaming delta content chunk by chunk.",
     "why": "The wrong endpoint, a zero timeout, or reading message instead of delta all produce a coroutine that runs; only a fake client that records the call and streams chunks tells them apart. The fixture checks the endpoint called, the timeout, and the streamed text."
   },
   "oracle": "fixtures/test_91_openai_async_event_loop_blocking.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "AsyncOpenAIChatService",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "generate_chat_response",
+          "stream_chat_response"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

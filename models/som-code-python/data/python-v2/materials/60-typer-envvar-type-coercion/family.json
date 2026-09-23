@@ -5,11 +5,51 @@
   "capability": "envvar-type-coercion-and-boundary-validation",
   "requirement": "Typer service gateway CLI with environment variable type coercion, whitespace-safe list parsing, and strict boundary validation for workers (>=1) and timeout (>0.0).",
   "skeleton": "Typer app with serve command and parse_endpoints helper function.",
+  "caption": "A Typer service gateway command whose options can come from flags or environment variables and are validated after coercion. The module creates app as a typer.Typer with a no-op callback so serve runs as a subcommand. parse_endpoints(value) returns an empty list for None, empty, or whitespace-only input, and otherwise splits on commas, strips each entry, and drops entries that are empty after stripping. serve takes --workers, short -w, defaulting to 4 and bound to GATEWAY_WORKERS; --timeout, short -t, a float defaulting to 30.0 and bound to GATEWAY_TIMEOUT; --endpoints, short -e, an optional comma-separated string bound to GATEWAY_ENDPOINTS; and a --metrics/--no-metrics flag defaulting to True and bound to GATEWAY_METRICS. When workers is below 1 it prints an error to stderr and raises typer.Exit with code 2, and when timeout is zero or negative it does the same, so exactly 1 worker is allowed while a timeout of 0.0 is refused. Otherwise it echoes one CONFIG line with the worker count, the timeout to one decimal place, the metrics flag, and the number of parsed endpoints. The fixture runs the command through Typer's CliRunner and asserts the default line workers=4 timeout=30.0 metrics=True endpoints=0, that a padded endpoint list with blanks and an empty entry counts as 2, that zero workers and a zero timeout each exit 2 with their messages on stderr, and that GATEWAY_TIMEOUT overrides the timeout to 45.5.",
   "rationale": {
     "teaches": "A Typer serve command whose options bind to environment variables, a list parser that strips whitespace and drops empties, workers at least 1, timeout strictly positive, and metrics on by default.",
     "why": "Environment-driven configuration fails at deploy time, not in a unit test with clean arguments. The fixture sets each variable to a boundary value and runs the command through CliRunner."
   },
   "oracle": "fixtures/test_60_typer_envvar_type_coercion.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "main",
+        "params": [],
+        "route": "command"
+      },
+      {
+        "kind": "function",
+        "name": "parse_endpoints",
+        "params": [
+          "value"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "serve",
+        "params": [
+          "workers",
+          "timeout",
+          "endpoints",
+          "metrics"
+        ],
+        "route": "command"
+      }
+    ],
+    "imports": [
+      "typer"
+    ],
+    "raises": [
+      "Exit"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

@@ -5,11 +5,44 @@
   "capability": "task-shadowing",
   "requirement": "Implement SafeTaskRegistry wrapping Celery with in-memory eager configuration (task_always_eager=True, broker_url=\"memory://\", result_backend=\"cache+memory://\") and duplicate task registration detection. It must enforce explicit non-empty task names, prevent task shadowing by raising TaskCollisionError on duplicates, support task execution and retrieval, and provide clean registry reset.",
   "skeleton": "SafeTaskRegistry class with Celery app configuration, unique task registration decorator, and collision prevention.",
+  "caption": "A Celery task registry that refuses to let two functions silently share one task name. TaskCollisionError subclasses ValueError. SafeTaskRegistry builds a celery application named som_tasks by default with eager execution enabled: task_always_eager follows the eager flag, task_eager_propagates is True so task exceptions surface to the caller, the broker is memory:// and the result backend is cache+memory://, so tests need no running broker. It tracks registered names in a set. register(name, bind=False, max_retries=3) raises ValueError for an empty or whitespace-only name, strips it, and raises TaskCollisionError when the cleaned name is already in its own set or already present in the application's task table; otherwise it returns a decorator that calls the application's task decorator with the explicit name, bind, and max_retries, records the name, and returns the task. get_task looks a name up in the application's task table, list_tasks returns the registered names sorted, and reset deletes each registered task from the application and clears the set. The fixture asserts that an eager task returns 12, that billing.generate_invoice is registered under its explicit name rather than the module path, and that a duplicate registration is rejected instead of shadowing the first task.",
   "rationale": {
     "teaches": "A Celery task registry that is eager and in-memory by default, requires a non-empty explicit name, raises TaskCollisionError on duplicates, and unregisters tasks on reset.",
     "why": "Celery silently replaces a task registered twice under the same name, so a second definition shadows the first with no error. The fixture registers a duplicate and expects the collision to be reported."
   },
   "oracle": "fixtures/test_39_celery_task_shadowing.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "TaskCollisionError",
+        "bases": [
+          "ValueError"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "SafeTaskRegistry",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "register",
+          "get_task",
+          "list_tasks",
+          "reset"
+        ]
+      }
+    ],
+    "imports": [
+      "celery"
+    ],
+    "raises": [
+      "TaskCollisionError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

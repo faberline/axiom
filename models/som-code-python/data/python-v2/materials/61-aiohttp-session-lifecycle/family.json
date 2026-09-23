@@ -5,11 +5,37 @@
   "capability": "session-lifecycle",
   "requirement": "Implement ManagedAiohttpClient with explicit async context manager protocol (__aenter__ and __aexit__), lazy session initialization, active connection tracking, and guaranteed asynchronous session closure via await session.close() on exit or explicit close(). Validate timeout parameters and prevent resource leaks when exceptions occur inside the context.",
   "skeleton": "ManagedAiohttpClient class with async context manager, lazy session creation, timeout validation, and guaranteed cleanup.",
+  "caption": "An aiohttp client wrapper that owns exactly one ClientSession and always closes it with an await. ManagedAiohttpClient takes base_url defaulting to an empty string, stripped of a trailing slash, and timeout_seconds defaulting to 30.0, raising ValueError unless the timeout is positive; it stores an aiohttp.ClientTimeout with that total and starts with no session and a closed flag of False. The is_closed property reports True when the client was closed or its session reports closed. get_session raises RuntimeError when the client has been closed, and otherwise creates a ClientSession lazily, passing the base URL or None and the timeout, and returns the same session on every later call until it closes, so repeated requests share one connection pool. close awaits session.close() when an open session exists, drops the reference, and marks the client closed. The class is an async context manager: __aenter__ creates the session and returns the client, and __aexit__ awaits close, so the session is released even when the block raises. The fixture patches the session's close method and asserts that leaving the async with block awaits close exactly once and marks the client closed, that an explicit close does the same, that asking a closed client for a session raises RuntimeError mentioning closed, that two calls return the identical session, and that zero and negative timeouts are rejected.",
   "rationale": {
     "teaches": "An async context manager around aiohttp.ClientSession: lazy creation, reuse while open, awaited close on exit and on explicit close, a positive timeout, and refusal after close.",
     "why": "A ClientSession that is dropped without an awaited close logs a warning and leaks the connector. The fixture inspects session.closed and counts sessions created, which is where each miss shows."
   },
   "oracle": "fixtures/test_61_aiohttp_session_lifecycle.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "ManagedAiohttpClient",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "is_closed",
+          "get_session",
+          "close",
+          "__aenter__",
+          "__aexit__"
+        ]
+      }
+    ],
+    "imports": [
+      "aiohttp"
+    ],
+    "raises": [
+      "RuntimeError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

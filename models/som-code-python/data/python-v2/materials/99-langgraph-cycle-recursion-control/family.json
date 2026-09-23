@@ -5,11 +5,42 @@
   "capability": "graph-cycle-recursion-safeguards",
   "requirement": "Implement ResilientGraphRunner representing a cyclic agent loop (agent -> tool -> evaluator). The conditional edge router route_next_step(state) must evaluate completion and terminate at 'END' when is_complete == True OR when iteration >= max_iterations. It must prevent infinite recursion loops and enforce a strict recursion_limit safeguard.",
   "skeleton": "Cyclic state graph runner with termination router and recursion limit guard.",
+  "caption": "A LangGraph-style cyclic agent loop written in the standard library with no third-party imports, whose router always reaches an end and whose runner refuses to spin forever. GraphRecursionLimitError subclasses RuntimeError. ResilientGraphRunner takes max_iterations defaulting to 5 and recursion_limit defaulting to 25. The agent node increments the iteration, asks for a tool only during the first two iterations of a task containing solve, and appends an agent step to a copied history. The tool node records that a tool ran and clears the tool request. The evaluator node marks the state complete once two iterations have passed or no tool is needed, and records the verdict in the history. route_next_step returns END when the state is complete, also returns END when the iteration count has reached max_iterations even if the task never completes, and otherwise routes to the tool when one is requested or back to the agent. run starts from an empty state at the agent node and loops until the current node is END, moving from agent to tool or evaluator, from tool to evaluator, and from evaluator to whatever the router returns; before every step it counts the steps taken and raises GraphRecursionLimitError naming the limit once the count exceeds recursion_limit, so a router that never ends still stops. The fixture asserts that a solvable task completes within five iterations with evaluated_complete_True in its history, that a task that can never complete stops by iteration 3 when the cap is 3, that the router returns END for a complete state and for a state at the cap, that a tiny recursion limit raises GraphRecursionLimitError, and that the defaults stay within 10 iterations and a limit of 30.",
   "rationale": {
     "teaches": "A cyclic graph runner whose router returns END on completion or when the iteration count reaches max_iterations, with a recursion limit guard and a default of 5 iterations.",
     "why": "A loop without a termination guard runs forever on a state that never completes. The fixture runs with is_complete never set and expects END after max_iterations and GraphRecursionLimitError past the limit."
   },
   "oracle": "fixtures/test_99_langgraph_cycle_recursion_control.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "GraphRecursionLimitError",
+        "bases": [
+          "RuntimeError"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ResilientGraphRunner",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "agent_node",
+          "tool_node",
+          "evaluator_node",
+          "route_next_step",
+          "run"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "GraphRecursionLimitError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

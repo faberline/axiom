@@ -5,11 +5,29 @@
   "capability": "asyncio-task-cancellation-lifecycle",
   "requirement": "Implement ResilientJobRunner with run_job and cancel_job managing cooperative task cancellation, shielding cleanup coroutines, updating job status to 'cancelled', and ensuring cancel_job awaits task completion within timeout.",
   "skeleton": "Asyncio job runner managing task lifecycle, cancellation propagation, and shielded cleanup.",
+  "caption": "A pure-asyncio job runner class with no third-party imports. ResilientJobRunner keeps a tasks dict mapping job ids to asyncio.Task objects and a statuses dict of job id to state string. run_job takes a job id, a coroutine factory for the work, and an optional coroutine factory for cleanup. It records the current task under the job id, sets the status to running, and awaits the work inside a try block. A normal result sets completed and is returned. An asyncio.CancelledError sets the status to cancelled, awaits the cleanup coroutine wrapped in asyncio.shield so a second cancellation cannot interrupt the cleanup midway, and re-raises the CancelledError so the task finishes in the cancelled state rather than returning None. Any other Exception sets failed, runs the same shielded cleanup, and re-raises. The finally clause removes the job from the tasks dict in every case. cancel_job looks up the task and returns False when there is none or it is already done; otherwise it calls task.cancel(), awaits asyncio.wait_for over a shielded reference to the task with the given wait_timeout, defaulting to half a second, swallows CancelledError and TimeoutError from that wait, and returns task.done(), so the caller only proceeds once the task has actually finished or the timeout elapsed. Cancellation is distinguished from a crash by its own status value, and a job whose work raises a ValueError is recorded as failed with its cleanup run.",
   "rationale": {
     "teaches": "Cooperative cancellation: catch CancelledError, record cancelled, shield the cleanup coroutine, re-raise, and make cancel_job wait for the task to finish within a timeout.",
     "why": "Cancellation handling that swallows the exception or skips the shield still passes a happy-path run. The fixture cancels mid-flight and inspects status, cleanup completion, and task state afterward."
   },
   "oracle": "fixtures/test_21_stdlib_asyncio_task_cancellation.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "ResilientJobRunner",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "run_job",
+          "cancel_job"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

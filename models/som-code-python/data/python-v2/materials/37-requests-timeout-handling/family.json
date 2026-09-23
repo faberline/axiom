@@ -5,11 +5,47 @@
   "capability": "timeout-handling",
   "requirement": "Implement TimeoutHTTPAdapter and create_timeout_session enforcing default connect and read timeouts on all requests. It must validate that timeouts are strictly positive, replace timeout=None with default_timeout in send(), preserve caller-specified positive timeouts, and mount the adapter to both http:// and https:// schemes.",
   "skeleton": "TimeoutHTTPAdapter subclass of HTTPAdapter and create_timeout_session factory enforcing non-null timeouts.",
+  "caption": "A requests transport adapter that guarantees every outgoing call carries a validated timeout. TimeoutValue is a Union of a single number and a connect-and-read pair. TimeoutHTTPAdapter subclasses HTTPAdapter and takes default_timeout, defaulting to the pair 3.05 and 27.0, which it validates at construction. The static _validate_timeout accepts a tuple only when it has exactly two elements, raising ValueError otherwise, requires both elements to be numbers, raising TypeError otherwise, and raises ValueError unless both are strictly positive, returning them as floats; a scalar must also be strictly positive or ValueError is raised, and any other type raises TypeError. send substitutes the adapter default when the caller passes no timeout, and otherwise validates and keeps the caller's own value, so an explicit 12.5 is forwarded unchanged instead of being overwritten, before delegating to the parent send. create_timeout_session(default_timeout) builds a requests.Session and mounts one such adapter on both the http:// and https:// prefixes. The fixture asserts the rejection of malformed, non-numeric, zero, and negative timeouts, the default substitution, the preservation of caller-supplied timeouts, and that a session created with 5.0 and 15.0 carries that default on both schemes.",
   "rationale": {
     "teaches": "An HTTPAdapter subclass that enforces a (connect, read) default timeout, validates positivity, respects a caller's explicit positive timeout, and is mounted on both schemes.",
     "why": "requests has no default timeout, so an unmodified adapter hangs forever on a silent peer. The fixture intercepts send and reads the effective timeout, since a real hang cannot be tested."
   },
   "oracle": "fixtures/test_37_requests_timeout_handling.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "TimeoutValue"
+      },
+      {
+        "kind": "class",
+        "name": "TimeoutHTTPAdapter",
+        "bases": [
+          "HTTPAdapter"
+        ],
+        "methods": [
+          "__init__",
+          "_validate_timeout",
+          "send"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "create_timeout_session",
+        "params": [
+          "default_timeout"
+        ]
+      }
+    ],
+    "imports": [
+      "requests"
+    ],
+    "raises": [
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

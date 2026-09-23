@@ -5,11 +5,34 @@
   "capability": "generator-exhaustion",
   "requirement": "Implement StreamAnalyzer handling single-pass and multi-pass stream processing without generator exhaustion, with chunking and history resets.",
   "skeleton": "StreamAnalyzer class with compute_stats, filter_and_split, chunk_stream, and clear methods.",
+  "caption": "A standard-library stream analyzer that treats every input as a single-pass iterable. StreamAnalyzer keeps a history list of computed results. compute_stats materializes the stream with list() exactly once before any aggregate is taken, raises ValueError with the message stream cannot be empty for an empty list, and raises ValueError when the length exceeds 500, so a stream of exactly 500 items is accepted. It then computes sum, count, min, max, and mean from that one list, returns them as a dict of floats under the keys count, sum, mean, min, and max, and appends the dict to history, so a generator yielding 10, 20, and 30 reports a sum of 60.0 and a max of 30.0 instead of the zeros a second pass over an exhausted generator would produce. filter_and_split also materializes the stream once and walks it, appending items for which the predicate returns True to a passed list and the rest to a failed list, returning the two lists as a tuple in that order. chunk_stream raises ValueError with the message chunk_size must be greater than zero before consuming anything, then materializes the stream and slices it into consecutive chunks of at most chunk_size items. clear empties the history, and record_count returns its length.",
   "rationale": {
     "teaches": "Single-pass iterables: materialize once before computing several aggregates, validate chunk_size, allow exactly 500 items, keep items the predicate accepts, and reset history on clear.",
     "why": "Consuming a generator twice does not raise; the second pass just sees nothing. The fixture passes a generator rather than a list so the exhaustion is observable as wrong statistics."
   },
   "oracle": "fixtures/test_33_syntax_generator_exhaustion.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "StreamAnalyzer",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "compute_stats",
+          "filter_and_split",
+          "chunk_stream",
+          "clear",
+          "record_count"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

@@ -5,11 +5,36 @@
   "capability": "click-envvar-boolean-parsing",
   "requirement": "Click CLI pipeline command with environment variable boolean flag parsing, properly handling truthy/falsy strings ('false', '0', 'no', 'true', '1') and range-bounded integers without truthiness traps.",
   "skeleton": "Click group and sync command with --dry-run/--no-dry-run, --force/--no-force, and bounded --retries options.",
+  "caption": "A click command-line group whose sync command reads its switches from either flags or environment variables and parses boolean strings correctly. cli is a click group acting as a release pipeline controller. The sync subcommand declares a --dry-run/--no-dry-run flag pair defaulting to False and bound to the SYNC_DRY_RUN variable, a --force/--no-force pair defaulting to False and bound to SYNC_FORCE, and a --retries option typed as click.IntRange from 0 to 10, defaulting to 3 and bound to SYNC_RETRIES. Because the switches are declared as real boolean flags, click itself converts environment strings such as false, 0, and no to False and true, 1, yes, and their uppercase forms to True, and it rejects an unrecognized string as a bad parameter instead of treating any non-empty string as truthy. The range type likewise rejects retry counts above 10 or below 0 with a usage error. The command echoes a single STATUS line reporting dry_run, force, and retries and returns them as a dictionary. The fixture invokes the group through click's CliRunner and asserts that a bare invocation exits 0 with dry_run=False force=False retries=3, that falsy environment strings leave dry_run False, that truthy strings turn dry_run and force on, that an unparseable boolean string exits with code 2, and that out-of-range retries from the environment also exit with code 2.",
   "rationale": {
     "teaches": "Click boolean flags with the slash form so environment values like false and 0 parse correctly, a default of False, an envvar binding, and an IntRange for retries.",
     "why": "A string-typed flag converted with bool() treats the string false as True. The fixture sets the environment variable to false and expects dry-run to be off."
   },
   "oracle": "fixtures/test_59_click_envvar_boolean_parsing.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "function",
+        "name": "cli",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "sync_command",
+        "params": [
+          "dry_run",
+          "force",
+          "retries"
+        ],
+        "route": "command"
+      }
+    ],
+    "imports": [
+      "click"
+    ],
+    "raises": [],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

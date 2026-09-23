@@ -25,8 +25,9 @@ code that compiles.
    pass family prefixes such as `08 09 10` to scope it.
 2. Run the curation check with
    `models/som-code-python/.venv/bin/python models/som-code-python/scripts/verify_curation.py`
-   after editing any `family.json`; it reads the rationale fields and never
-   executes a candidate.
+   after editing any `family.json`; it reads the rationale and caption fields,
+   re-measures `decompiled` from the gold source, and never executes a
+   candidate.
 3. Run the snippet ISA verifier with
    `models/som-code-python/.venv/bin/python models/som-code-python/scripts/verify_snippets.py`
    after touching anything under `data/snippets/v1/`.
@@ -49,7 +50,12 @@ oracle is needed, the `oracle` fixture the harness must run, and for every
 near miss a `why_wrong` sentence plus `caught_by`, the fixture tests that
 fail on it, measured by running it. The harness re-measures `caught_by` on
 every run and fails on drift; the curation check reads the fields without
-executing anything. [data/python-v2/README.md](data/python-v2/README.md)
+executing anything. A `caption` describes the gold program at length, the
+way an image model's training caption describes a picture, and is the
+planner's prompt; `decompiled` is what the gold source says about itself
+(components, third-party imports, raised exceptions, status codes), measured
+from its AST, and the check refuses a caption that disagrees with it.
+[data/python-v2/README.md](data/python-v2/README.md)
 explains the shape and the reasoning behind it for anyone who clones the
 corpus to train on it.
 
@@ -78,7 +84,7 @@ module, and compiles it. Version 1 covers FastAPI, Pydantic, and SQLAlchemy.
 | Capability | ID | User promise | Sources |
 |---|---|---|---|
 | Executable oracle corpus | `oracle-corpus` | Every family with a fixture has a gold candidate that exits 0 and near misses that fail on exactly the fixture tests their `caught_by` declares, and the harness exits non-zero on any other outcome, including a declared oracle that is not the fixture it ran. | `models/som-code-python` |
-| Curated rationale | `curated-rationale` | Every family states what it teaches and why its oracle is executable, every near miss states its observable consequence and the fixture tests that catch it, and the check exits non-zero on any missing, trivial, or label-leaking field. | `models/som-code-python` |
+| Curated rationale | `curated-rationale` | Every family states what it teaches and why its oracle is executable, every near miss states its observable consequence and the fixture tests that catch it, every gold program has a long caption grounded in its source, and the check exits non-zero on any missing, trivial, label-leaking, or ungrounded field. | `models/som-code-python` |
 | Snippet ISA v1 | `snippet-isa` | Every required snippet exists with consistent parameters, and the full set assembles in dependency order into a module that compiles. | `models/som-code-python` |
 
 ### Executable oracle corpus
@@ -97,10 +103,11 @@ module, and compiles it. Version 1 covers FastAPI, Pydantic, and SQLAlchemy.
 - ID: `curated-rationale`
 - Promise: Every family states what it teaches and why its oracle is
   executable, every near miss states its observable consequence and the
-  fixture tests that catch it, and the check exits non-zero on any missing,
-  trivial, or label-leaking field.
+  fixture tests that catch it, every gold program has a long caption that
+  names what its source raises and imports, and the check exits non-zero on
+  any missing, trivial, label-leaking, or ungrounded field.
 - Sources:
-  - `models/som-code-python` owns the rationale fields, the corpus README, and the curation check.
+  - `models/som-code-python` owns the rationale and caption fields, the decompiler, the corpus README, and the curation check.
 - Gate: `models/som-code-python/.venv/bin/python models/som-code-python/scripts/verify_curation.py`
 
 ### Snippet ISA v1

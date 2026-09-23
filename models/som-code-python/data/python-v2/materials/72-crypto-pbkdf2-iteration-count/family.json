@@ -5,11 +5,39 @@
   "capability": "pbkdf2-work-factor-tuning",
   "requirement": "Key derivation service enforcing minimum PBKDF2 iteration thresholds (>= 600,000 for SHA-256), cryptographic salt validation (>= 16 bytes), customizable derived key length (>= 16 bytes), and non-empty passphrase validation.",
   "skeleton": "PBKDF2KeyDeriver class with derive_key and generate_salt methods.",
+  "caption": "A standard-library key derivation service built on hashlib and secrets that refuses weak PBKDF2 parameters, with no third-party imports. MIN_RECOMMENDED_ITERATIONS is 600,000 and MIN_SALT_LENGTH is 16. PBKDF2KeyDeriver takes min_iterations defaulting to the recommended value and raises ValueError when a lower floor is requested, so the policy can only be tightened. derive_key(passphrase, salt, iterations, dklen) raises ValueError for an empty passphrase and for a salt shorter than 16 bytes, uses the configured minimum when no iteration count is given, raises ValueError reporting the count below the required value when an explicit count is lower than the instance's own minimum, and raises ValueError when the requested key length is under 16 bytes. It then returns hashlib.pbkdf2_hmac over SHA-256 with the UTF-8 passphrase, the salt, the effective iteration count, and dklen, defaulting to 32 bytes, so the caller receives exactly the key length it asked for rather than a truncated or padded one. generate_salt(nbytes) raises ValueError when fewer than 16 bytes are requested and otherwise returns that many bytes from secrets.token_bytes. The fixture asserts that the recommended constant is at least 600,000 and the default key is 32 bytes, that an iteration count below the floor is rejected as below required, that a short salt is rejected, that 16-byte and 64-byte keys have exactly those lengths, that an empty passphrase is rejected, and that generate_salt refuses a short length while returning 24 bytes when 24 are requested.",
   "rationale": {
     "teaches": "PBKDF2 key derivation that refuses fewer than 600,000 iterations, salts under 16 bytes, key lengths under 16 bytes, and empty passphrases, and honors the requested key length.",
     "why": "A low iteration count derives a key that is bit-for-bit the same shape as a strong one. The fixture derives with the boundary values and checks lengths and the raised errors."
   },
   "oracle": "fixtures/test_72_crypto_pbkdf2_iteration_count.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "MIN_RECOMMENDED_ITERATIONS"
+      },
+      {
+        "kind": "assign",
+        "name": "MIN_SALT_LENGTH"
+      },
+      {
+        "kind": "class",
+        "name": "PBKDF2KeyDeriver",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "derive_key",
+          "generate_salt"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

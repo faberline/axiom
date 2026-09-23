@@ -5,11 +5,37 @@
   "capability": "cryptographically-secure-token-generation",
   "requirement": "Cryptographic token and random value generation service enforcing use of the secrets module (CSPRNG) rather than predictable pseudo-random generators (random module), enforcing minimum token entropy boundaries (>= 16 bytes), and validating positive bounds.",
   "skeleton": "SecureTokenService class with generate_hex_token, generate_url_safe_token, generate_bounded_int, and choose_securely methods using secrets.",
+  "caption": "A standard-library token service built on the secrets module that draws every token, bounded integer, and choice from the operating system's cryptographic generator, with no third-party imports. MIN_TOKEN_BYTES is 16. SecureTokenService takes min_bytes defaulting to 16 and raises ValueError when a smaller floor is requested. generate_hex_token(nbytes) uses the floor when no size is given, raises ValueError when the requested size is below the floor, and returns secrets.token_hex for that many bytes, so the default token is 64 hexadecimal characters. generate_url_safe_token applies the same size rule and returns secrets.token_urlsafe. generate_bounded_int(upper_bound) raises ValueError unless the bound is positive and returns secrets.randbelow of it, a value from zero up to but excluding the bound. choose_securely raises ValueError for an empty sequence and returns secrets.choice from it. None of these paths touches the random module, whose Mersenne Twister output can be predicted after observing enough values even though it looks identical in shape. The fixture asserts that the default hex token is 64 characters and the URL-safe token at least 32, that with the random module's getrandbits, choices, and randint patched to fail a 20-byte hex token of 40 characters, a URL-safe token, and a value between 0 and 100 are still produced, that the constant is at least 16 and undersized requests raise ValueError reporting nbytes must be at least the floor, that zero and negative bounds raise ValueError reporting upper_bound must be positive, and that fifty generated tokens are all distinct.",
   "rationale": {
     "teaches": "Token generation through the secrets module only, a 16-byte minimum, and a positive-bound check for bounded integers.",
     "why": "random and secrets produce the same shape of output; only the module matters. The fixture patches the random module and asserts it is never called, and checks the boundaries."
   },
   "oracle": "fixtures/test_79_secrets_token_generation.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "MIN_TOKEN_BYTES"
+      },
+      {
+        "kind": "class",
+        "name": "SecureTokenService",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "generate_hex_token",
+          "generate_url_safe_token",
+          "generate_bounded_int",
+          "choose_securely"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

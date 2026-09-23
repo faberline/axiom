@@ -5,11 +5,83 @@
   "capability": "background-tasks-dispatch-and-lifecycle",
   "requirement": "Create a POST /orders endpoint returning 202 Accepted, scheduling BackgroundTasks.add_task(process_order, order_id), updating in-memory ORDERS_DB status from pending to processed, recording audit log, and validating quantity > 0 with lowercase email normalization.",
   "skeleton": "FastAPI route with BackgroundTasks parameter, in-memory state transition, and audit logging.",
+  "caption": "A FastAPI order intake service that accepts work with 202 and finishes it in a background task. OrderRequest is a pydantic model with order_id of at least one character, customer_email of at least three characters, item of at least one character, and quantity constrained with gt=0, so a quantity of one is accepted and zero is rejected with 422. Two module-level stores hold state: ORDERS_DB maps order ids to order dicts and AUDIT_LOG is a list of event dicts; reset_db empties both. process_order looks up the order by id, and when it exists sets its status to processed and appends an order_processed event carrying order_id, customer_email, item, and quantity to AUDIT_LOG, for every customer without regard to the email domain. POST /orders declares status 202 and takes a BackgroundTasks parameter: it raises HTTPException 409 when the order id already exists, normalizes the email by stripping whitespace and lowercasing, stores the order with status pending, schedules the work with background_tasks.add_task(process_order, order_id) passing the real callable and the id, and returns an accepted status with the order id and the pending order status. Because the task runs after the response is sent, a subsequent GET /orders/{order_id} observes status processed, and that route raises HTTPException 404 for an unknown id. GET /audit-logs returns a copy of the audit list under a logs key.",
   "rationale": {
     "teaches": "An accept-then-process endpoint: 202 status, add_task with a real callable, a state transition the worker performs, unconditional audit logging, and a quantity constraint that allows one.",
     "why": "Background work is invisible in the response, so a generated route can return 202 while nothing ever runs. The fixture inspects the in-memory state after the request, which is the only way to prove the task was scheduled and completed."
   },
   "oracle": "fixtures/test_12_fastapi_background_tasks.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "OrderRequest",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "ORDERS_DB"
+      },
+      {
+        "kind": "assign",
+        "name": "AUDIT_LOG"
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "process_order",
+        "params": [
+          "order_id"
+        ]
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "async_function",
+        "name": "submit_order",
+        "params": [
+          "order_req",
+          "background_tasks"
+        ],
+        "route": "POST /orders"
+      },
+      {
+        "kind": "async_function",
+        "name": "get_order",
+        "params": [
+          "order_id"
+        ],
+        "route": "GET /orders/{order_id}"
+      },
+      {
+        "kind": "async_function",
+        "name": "get_audit_logs",
+        "params": [],
+        "route": "GET /audit-logs"
+      }
+    ],
+    "imports": [
+      "fastapi",
+      "pydantic"
+    ],
+    "raises": [
+      "HTTPException"
+    ],
+    "status_codes": [
+      202,
+      404,
+      409
+    ]
+  },
   "candidates": [
     {
       "id": "gold",

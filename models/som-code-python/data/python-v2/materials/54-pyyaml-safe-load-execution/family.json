@@ -5,11 +5,49 @@
   "capability": "yaml-safe-load-execution-prevention",
   "requirement": "Parse untrusted YAML configuration files using safe_load to prevent arbitrary Python code execution, verifying schema mappings and wrapping syntax errors.",
   "skeleton": "PipelineManifestParser class and parse_manifest helper with ConfigValidationError.",
+  "caption": "A PyYAML manifest parser that treats configuration text as untrusted and never lets it construct Python objects. ConfigValidationError subclasses Exception. PipelineManifestParser takes a tuple of required keys defaulting to version, pipeline, and steps, and raises ValueError when that tuple is empty. parse_manifest(content) raises TypeError when the content is not a string and ConfigValidationError when it is empty or only whitespace. It parses with yaml.safe_load, which only builds plain mappings, lists, and scalars, and converts any yaml.YAMLError, including the constructor error produced by a python/object or python/name tag, into ConfigValidationError chained from the original. It then raises ConfigValidationError when the document root is not a mapping, so a scalar or list document is refused, and raises ConfigValidationError naming the first required key that is missing. On success it returns the parsed dictionary. The module-level parse_manifest(yaml_text) builds a parser with the default keys and delegates to it. The fixture asserts that a valid manifest yields version 2.0, pipeline deployment, and two steps, that the helper parses a second manifest, that documents carrying code-execution and object-instantiation tags are rejected with a syntax or constructor message instead of running anything, that a scalar root is rejected, that a manifest without steps names the missing key, that empty required keys are refused, and that empty or non-string content is rejected.",
   "rationale": {
     "teaches": "Parsing untrusted YAML with safe_load only, requiring a mapping root, checking every required key is present, and wrapping syntax errors.",
     "why": "yaml.load with the full or unsafe Loader parses every benign document identically and executes arbitrary Python on a crafted one. The fixture feeds a python/object tag and expects it to be rejected."
   },
   "oracle": "fixtures/test_54_pyyaml_safe_load_execution.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "ConfigValidationError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "PipelineManifestParser",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "parse_manifest"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "parse_manifest",
+        "params": [
+          "yaml_text"
+        ]
+      }
+    ],
+    "imports": [
+      "yaml"
+    ],
+    "raises": [
+      "ConfigValidationError",
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

@@ -5,11 +5,33 @@
   "capability": "secure-xml-parsing-xxe",
   "requirement": "Implement SecureXmlParser wrapping lxml.etree.XMLParser with strict XXE protection: resolve_entities=False, no_network=True, and load_dtd=False. Constructor must validate security parameters, reject unsafe entity resolution, and safely parse untrusted XML strings and streams into DOM elements and flat dictionaries.",
   "skeleton": "SecureXmlParser class with __init__, parse_string, and extract_flat_dict using lxml.etree.",
+  "caption": "An lxml XML parser wrapper hardened against external entity attacks, so untrusted documents cannot read local files or reach the network through entity expansion. SecureXmlParser takes resolve_entities defaulting to False, no_network defaulting to True, and load_dtd defaulting to False. The constructor raises ValueError when resolve_entities is True and when no_network is False, so an unsafe configuration cannot even be built, and it creates a single etree.XMLParser with entity resolution off, network access off, and DTD loading off, keeping the flags as attributes. parse_string raises ValueError when the input is empty or whitespace only, encodes a str to UTF-8 bytes, and passes the data to etree.fromstring together with the hardened parser instance, never the library default parser. extract_flat_dict parses the document and returns a mapping from each immediate child tag to its stripped text, using an empty string for elements without text. The fixture feeds a document whose DOCTYPE declares an external entity pointing at a local file and asserts that the name field is still Alice while the data field does not contain the expanded file contents, asserts the three stored flags, patches fromstring to confirm it is called exactly once with the parser's own instance, asserts that enabling entity resolution or disabling the network guard raises ValueError naming the flag, parses a benign document into name Bob and role Admin, and asserts that empty and blank input raise ValueError mentioning empty.",
   "rationale": {
     "teaches": "An lxml parser hardened against XXE: resolve_entities False, no_network True, load_dtd False, enforced in the constructor, used on every parse, with an empty-input check.",
     "why": "XXE protection is a parser flag that every benign document ignores. The fixture parses a document with an external entity pointing at a local file and expects the entity to stay unresolved."
   },
   "oracle": "fixtures/test_65_lxml_xxe_injection.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "SecureXmlParser",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "parse_string",
+          "extract_flat_dict"
+        ]
+      }
+    ],
+    "imports": [
+      "lxml"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

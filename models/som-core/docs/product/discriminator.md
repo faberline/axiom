@@ -36,7 +36,8 @@ This area spans the README capabilities `training-cli-surface` and
 - Promise: `som train` accepts `--data-dir` once per corpus and unions them
   in the order given; every near miss's `why_wrong` and `caught_by` reach its
   training row exactly as the corpus wrote them, and a gold candidate carries
-  neither; an empty corpus and a family id that two corpora both claim are
+  neither; each family's `caption` and `decompiled` block reach the row's
+  `metadata` unchanged, ready for the planner and topology layers; an empty corpus and a family id that two corpora both claim are
   refused with the directories named.
 - Limits today: the training loop reads only the candidate texts and the
   gold id, so the curation fields are loaded and not yet trained on.

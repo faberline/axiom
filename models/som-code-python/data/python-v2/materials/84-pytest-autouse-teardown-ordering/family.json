@@ -5,11 +5,36 @@
   "capability": "autouse-fixture-stack-teardown-ordering",
   "requirement": "Implement a layered test environment manager managing three interdependent resources (LockManager -> DatabaseSession -> AuditRecorder) guaranteeing exact LIFO teardown under normal and exception conditions.",
   "skeleton": "ResourceLifecycleTracker class and layered_test_environment context manager with strict LIFO nesting.",
+  "caption": "A standard-library layered test environment that sets up three dependent resources and always tears them down in exact reverse order, with no third-party imports. ResourceLifecycleTracker takes an optional event list and otherwise creates a fresh list for each instance, so trackers never share history. record appends an event string, and is_clean extracts the resource names from setup and teardown events and returns True only when there are exactly three setups and the setups equal the teardowns reversed. layered_test_environment is a contextlib context manager that records setup of the lock manager, then enters a try block to record setup of the database session, then a nested try to record setup of the audit recorder, then a third nested try that yields the tracker. Each try has its own finally clause, recording teardown of the audit recorder, then the database session, then the lock manager, so the order is last-in first-out and every teardown runs even when the body raises or an inner teardown fails. The fixture asserts that a normal run produces the six events setup lock_manager, db_session, audit_recorder followed by teardown audit_recorder, db_session, lock_manager and is clean, that a ZeroDivisionError raised inside the block propagates while the three teardowns still appear in that reverse order and the tracker is clean, and that a second tracker created afterwards starts with no events.",
   "rationale": {
     "teaches": "Three nested try/finally blocks so teardown always runs in exact reverse setup order, even when the test body raises, with a per-instance event list.",
     "why": "Teardown ordering passes on the happy path with plain sequential code; only an exception inside the body exposes skipped or misordered teardown. The fixture raises inside the context and compares the event list."
   },
   "oracle": "fixtures/test_84_pytest_autouse_teardown_ordering.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "ResourceLifecycleTracker",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "record",
+          "is_clean"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "layered_test_environment",
+        "params": [
+          "tracker"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

@@ -5,11 +5,44 @@
   "capability": "resource-path-traversal-prevention",
   "requirement": "Implement a safe Model Context Protocol (MCP) file resource provider that enforces directory containment, canonical path resolution, regular file verification, and maximum file size limits.",
   "skeleton": "SafeMCPResourceProvider with read_resource and is_path_safe methods returning MCPResourceContent.",
+  "caption": "A pydantic file resource provider for a Model Context Protocol server that only serves regular UTF-8 files lying inside one root directory and under a size limit. MCPResourceContent is a BaseModel with uri, content, mime_type, and size_bytes. SafeMCPResourceProvider resolves the root to a canonical absolute path and takes max_file_size defaulting to 1,000,000 bytes. is_path_safe returns False for a path that starts with a slash or backslash or is absolute, and otherwise resolves the root joined with the path and returns whether the result is_relative_to the root, which compares path components rather than string prefixes, so a sibling directory whose name merely starts with the root's name is outside. read_resource parses the URI with urllib.parse, joins its host and path parts, resolves the candidate under the root, and raises PermissionError reporting access denied for path traversal when the component is absolute or the resolved candidate escapes the root, including through dot-dot segments. A candidate that is a directory raises IsADirectoryError, and one that does not exist raises FileNotFoundError naming it. A file larger than the limit raises ValueError reporting both sizes, while a file exactly at the limit is read. Content is read as UTF-8 text and labeled application/json for a json suffix and text/plain otherwise. The fixture asserts that a sibling directory sharing the root's prefix is not safe, that a dot-dot URI raises PermissionError reporting Access denied, that a 100-byte file with a 100-byte limit is returned intact with size 100, that the default limit is 1000000, that Hello MCP comes back as a str labeled text/plain, and that a directory target raises IsADirectoryError.",
   "rationale": {
     "teaches": "A file resource provider that resolves the candidate path and checks containment with is_relative_to, rejects absolute components, enforces a size limit inclusively, and reads UTF-8 text.",
     "why": "Path traversal only shows with a crafted relative path like ../secret or a sibling directory sharing the root's prefix. The fixture creates both and expects PermissionError."
   },
   "oracle": "fixtures/test_95_fastmcp_safe_resource_provider.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "MCPResourceContent",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "SafeMCPResourceProvider",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "is_path_safe",
+          "read_resource"
+        ]
+      }
+    ],
+    "imports": [
+      "pydantic"
+    ],
+    "raises": [
+      "FileNotFoundError",
+      "IsADirectoryError",
+      "PermissionError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

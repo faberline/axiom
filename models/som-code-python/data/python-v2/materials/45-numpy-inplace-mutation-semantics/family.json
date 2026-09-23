@@ -5,11 +5,33 @@
   "capability": "inplace-mutation-semantics",
   "requirement": "Implement SignalGainProcessor class for signal gain processing. It must enforce pure out-of-place transformations when in_place=False (never mutating the caller's input array buffer or sharing memory), support explicit in-place mutation when in_place=True, validate strictly positive gain factors, apply threshold gating, and reject non-floating-point array inputs.",
   "skeleton": "SignalGainProcessor class with __init__ and process_signal methods enforcing out-of-place copy semantics and in-place gating.",
+  "caption": "A numpy signal processor that applies a gain above a threshold and makes buffer ownership explicit. SignalGainProcessor takes default_gain defaulting to 2.0 and raises ValueError unless it is strictly positive. process_signal(signal, gain=None, threshold=0.0, in_place=False) raises TypeError when the signal is not a numpy ndarray and TypeError when its dtype is not floating point, so integer arrays are refused rather than truncated. The effective gain is the explicit argument or the default, and ValueError is raised unless it is strictly positive. Out-of-place is the default: the method works on signal.copy(), and only when in_place is True does it operate on the caller's own array. It builds a mask of samples greater than or equal to the threshold, multiplies exactly those samples by the gain, leaves quieter samples untouched, and returns the working array. The fixture asserts that the input -1.0, 0.0, 1.0, 2.0 with gain 2.5 becomes -1.0, 0.0, 2.5, 5.0 while the original stays unchanged, that the default result never shares memory with the input, that integer signals are rejected, that a sample exactly at the threshold receives the gain, that negative samples below it keep their value, and that the explicit in-place mode does share memory and mutates the caller's buffer.",
   "rationale": {
     "teaches": "Out-of-place by default with an explicit copy, in-place only when asked, a floating dtype check, and an inclusive threshold gate.",
     "why": "Whether the caller's buffer was touched is invisible in the return value. The fixture keeps a copy of the input and checks both equality and np.shares_memory."
   },
   "oracle": "fixtures/test_45_numpy_inplace_mutation_semantics.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "SignalGainProcessor",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "process_signal"
+        ]
+      }
+    ],
+    "imports": [
+      "numpy"
+    ],
+    "raises": [
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

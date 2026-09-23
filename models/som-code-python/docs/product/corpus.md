@@ -45,7 +45,13 @@ spans the README capabilities `oracle-corpus` and `curated-rationale`.
   differ. The curation check refuses a missing or trivial field, a
   consequence that only repeats the failure mode, a test the fixture does
   not define, a label word in candidate source, and a comment or docstring
-  that differs across the six candidates. The README under `data/python-v2`
+  that differs across the six candidates. Every gold program also carries a
+  `caption`, a long description that is the planner's prompt, and a
+  `decompiled` block measured from its AST; the check refuses a caption
+  outside 80 to 400 words, one that pastes the requirement, one that omits
+  an exception the gold raises, a status code it declares, or a library it
+  imports, and a `decompiled` block that no longer matches the source. The
+  README under `data/python-v2`
   carries the reasoning for a reader who starts from the data.
 - Limits today: families `08-asyncio-concurrency-limiter`,
   `09-pydantic-field-cross-validation`, and

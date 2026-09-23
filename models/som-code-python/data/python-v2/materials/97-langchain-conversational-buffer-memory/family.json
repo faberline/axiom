@@ -5,11 +5,40 @@
   "capability": "conversational-buffer-window-pruning",
   "requirement": "Implement SlidingWindowMemoryBuffer that manages multi-turn conversational history. It must preserve the initial SystemMessage at index 0 while pruning human/AI dialogue turns to a sliding window of max_messages: int = 10. It must enforce a maximum session limit max_sessions: int = 100 with LRU eviction in clear_expired_sessions(), preventing memory leaks from unbounded multi-tenant session accumulation.",
   "skeleton": "Conversational buffer memory manager with sliding window pruning and LRU session eviction.",
+  "caption": "A LangChain-style conversational memory written in the standard library with an OrderedDict and a frozen dataclass and no third-party imports, bounding both each conversation's length and the number of conversations it keeps. Message holds a role and content. SlidingWindowMemoryBuffer takes max_messages defaulting to 10, max_sessions defaulting to 100, and an optional system prompt. Looking up an existing session moves it to the most recently used end; creating a new one first evicts the least recently used session when the cap is already reached, then starts the history with a system message when a prompt is configured. add_user_message and add_ai_message append a human or ai message and prune immediately. get_messages returns an empty list for an unknown session, otherwise marks it recently used and returns role and content dictionaries. prune_history keeps a leading system message at index 0 and trims only the dialogue after it to the last max_messages entries, or trims the whole history when there is no system message, assigning the trimmed list back into storage and returning how many were dropped. clear_expired_sessions pops least recently used sessions until the count is within the given cap or the configured one and returns how many were evicted. The fixture asserts that with a window of 4 after ten exchanges five messages remain, the first being the system prompt You are a helpful tutor., followed by Question 8 through Answer 9; that the default buffer holds between 1 and 10 messages after many turns; that a window of 3 keeps Step 7, Step 8, and Step 9; that with three session slots, touching sess-1 and adding sess-4 evicts sess-2 while sess-1 and sess-4 keep history; and that a window of 2 leaves Two and Three in storage.",
   "rationale": {
     "teaches": "A sliding-window buffer that keeps the system message at index 0, prunes dialogue to the last max_messages turns, evicts the least recently used session at the session cap, and writes the pruned list back.",
     "why": "A window that is one too wide or a session cache that never evicts grows slowly and passes a short test. The fixture fills past both limits and inspects lengths and the first message."
   },
   "oracle": "fixtures/test_97_langchain_conversational_buffer_memory.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Message",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "SlidingWindowMemoryBuffer",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "_ensure_session",
+          "add_user_message",
+          "add_ai_message",
+          "get_messages",
+          "prune_history",
+          "clear_expired_sessions",
+          "get_session_count"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

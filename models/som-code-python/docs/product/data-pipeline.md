@@ -22,9 +22,11 @@ the retirement of tests that read data this tree no longer carries.
 
 ## Decompiler DSL corpus
 
-- Problem: A family is a gold program and five near misses; nothing records
-  which intent, which files and blocks, and which snippet operations produced
-  the gold, so the engine's planner, topology, and optimizer layers have no
+- Problem: A family is a gold program and five near misses. Each
+  `family.json` now carries a `caption` (the planner's prompt) and a
+  `decompiled.surface` measured from the gold AST (the component list), but
+  nothing records which files and blocks and which snippet operations
+  produced the gold, so the engine's topology and optimizer layers have no
   rows to learn from.
 - Who: model trainers; generator authors.
 - Promise: A decompiler turns every family into its L1 intent, L2 component

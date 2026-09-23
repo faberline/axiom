@@ -5,11 +5,47 @@
   "capability": "pipe-deadlock-prevention",
   "requirement": "Safely stream and capture standard output and error from external processes using proc.communicate() without deadlocking OS pipe buffers.",
   "skeleton": "SafeOutputCollector class with run_and_capture method and stream_process helper.",
+  "caption": "A standard-library process runner that captures a child's output through subprocess without deadlocking on full pipe buffers, with no third-party imports. ProcessOutput is a dataclass of stdout, stderr, and exit_code. SafeOutputCollector takes default_timeout defaulting to 5.0. run_and_capture(args, input_text=None, timeout=None) raises ValueError unless args is a non-empty list of strings and ValueError unless the effective timeout is positive. It starts the child with Popen, piping stdin only when input text is given and always piping both stdout and stderr in text mode, then calls communicate with the input and timeout so both output pipes are drained concurrently while the child runs, even when it writes far more than the pipe buffer holds. When the timeout expires it kills the child and calls communicate again to drain and reap it before raising TimeoutError. A non-zero return code raises RuntimeError whose message carries the exit code and the stripped stderr text. stream_process(cmd, input_data=None, timeout=5.0) decodes byte input, delegates to a collector, and returns the exit code with stdout and stderr re-encoded as bytes. The fixture asserts separate OUT and ERR capture, the byte helper, that a 131072-character stdout completes with exit code 0, that exit code 7 and the child's DATABASE_CONNECTION_REFUSED message appear in the RuntimeError, that a timed-out child is killed and reaped with a return code, the timeout validation, and stdin echoing.",
   "rationale": {
     "teaches": "Output capture with communicate so both pipes drain concurrently, stderr captured, a non-zero exit turned into RuntimeError, and a positive timeout.",
     "why": "Reading stdout after wait works for small outputs and deadlocks once the child fills the 64 KiB pipe buffer. The fixture spawns a child that writes more than the buffer."
   },
   "oracle": "fixtures/test_52_subprocess_pipe_deadlock.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "ProcessOutput",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "SafeOutputCollector",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "run_and_capture"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "stream_process",
+        "params": [
+          "cmd",
+          "input_data",
+          "timeout"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "RuntimeError",
+      "TimeoutError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

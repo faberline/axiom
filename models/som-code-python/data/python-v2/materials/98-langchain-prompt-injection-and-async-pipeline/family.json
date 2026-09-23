@@ -5,11 +5,31 @@
   "capability": "secure-prompt-and-async-lcel-execution",
   "requirement": "Implement SecureAsyncLCELPipeline that prevents PromptTemplate injection and executes async LCEL chains without blocking the asyncio event loop. User inputs must be safely encapsulated as human messages without evaluating curly braces {} as template formatting keys. Sync heavy preprocessing must be offloaded via asyncio.to_thread. The pipeline's astream() method must yield token chunks incrementally.",
   "skeleton": "Secure prompt formatter and async LCEL pipeline with non-blocking offload and streaming.",
+  "caption": "A LangChain-style asynchronous prompt pipeline written in the standard library with asyncio and no third-party imports, which keeps user text in its own message role and never blocks the event loop. SecureAsyncLCELPipeline takes a system instruction, a model callable that may return a value or a coroutine, and strict_sanitization defaulting to True. compose_prompt, in strict mode, replaces any newline-prefixed System, system, Human, or Assistant role label inside the user text with a space, and returns exactly two messages: the system instruction in the system role and the user text in a separate human role, so user text is never concatenated into the instruction and braces in it are never treated as template keys. sync_compute_digest is a deliberately slow synchronous step that sleeps briefly and appends the sum of the text's character codes. ainvoke runs that digest through asyncio.to_thread so other coroutines keep running, composes the prompt from the result, calls the model, awaits the result when it is a coroutine, and returns it as text. astream does the same preparation, then splits the model's text on spaces and yields each token followed by a space, awaiting a zero sleep before each so the caller receives tokens one at a time instead of all at the end. The fixture asserts that the prompt has two messages with system content System instructions and a human message containing Hello user, that an injected newline System line is removed from the human message both explicitly and under the default setting, that ainvoke returns a result containing model_done while to_thread was called at least once, and that astream yields four chunks joining to one two three four.",
   "rationale": {
     "teaches": "A pipeline that keeps user input in its own human message, strips role delimiters in strict mode, offloads sync work with asyncio.to_thread, and streams tokens incrementally.",
     "why": "Injection succeeds only when user text is concatenated into the system role, and blocking shows only under a concurrent task. The fixture injects a fake System: line and times a concurrent coroutine during the sync step."
   },
   "oracle": "fixtures/test_98_langchain_prompt_injection_and_async_pipeline.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "SecureAsyncLCELPipeline",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "compose_prompt",
+          "sync_compute_digest",
+          "ainvoke",
+          "astream"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

@@ -5,11 +5,42 @@
   "capability": "jwt-algorithm-enforcement",
   "requirement": "JWT authentication service enforcing strict signature algorithm whitelists, explicitly forbidding and rejecting 'none' algorithm bypass attacks, and validating token signature integrity with secret keys.",
   "skeleton": "JWTAuthService class with create_token and decode_token methods using PyJWT.",
+  "caption": "A PyJWT authentication service that fixes its signing algorithms on the server and never lets a token choose an unsigned algorithm. FORBIDDEN_ALGORITHMS holds none in its common spellings plus the empty string, and ALLOWED_ALGORITHMS defaults to HS256 alone. JWTAuthService raises ValueError when the secret key is missing or shorter than 16 characters, and raises ValueError reporting the algorithm is forbidden when any entry of the requested whitelist lowercases to a forbidden name, so none cannot be enabled even deliberately. create_token raises TypeError when the payload is not a dictionary and signs it with the first allowed algorithm. decode_token raises ValueError for an empty or non-string token, then calls jwt.decode with the secret, the server's own algorithm list rather than the one in the token header, and signature verification explicitly on. Any PyJWTError, whether from an unsigned token, an algorithm outside the list, or a signature made with another secret, is converted into ValueError reporting an invalid token, chained from the original; there is no fallback that decodes without verification. The fixture asserts that a signed token round-trips with user alice and role admin, that a hand-built token whose header declares alg none and whose signature is empty is rejected as Invalid token, that a token signed with a different secret is rejected the same way, that whitelisting none in either lowercase or capitalised form raises ValueError reporting it is forbidden, and that a short secret raises ValueError.",
   "rationale": {
     "teaches": "JWT decoding with a server-side algorithm whitelist, none rejected at construction, signature verification always on, no unverified fallback, and a secret of at least 16 characters.",
     "why": "A token with alg=none and an empty signature decodes to a valid-looking payload if any path skips verification. The fixture forges such a token and one with a wrong secret and expects both to be rejected."
   },
   "oracle": "fixtures/test_75_jwt_algorithm_none_bypass.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "FORBIDDEN_ALGORITHMS"
+      },
+      {
+        "kind": "assign",
+        "name": "ALLOWED_ALGORITHMS"
+      },
+      {
+        "kind": "class",
+        "name": "JWTAuthService",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "create_token",
+          "decode_token"
+        ]
+      }
+    ],
+    "imports": [
+      "jwt"
+    ],
+    "raises": [
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

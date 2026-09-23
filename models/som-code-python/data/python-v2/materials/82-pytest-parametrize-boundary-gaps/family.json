@@ -5,11 +5,33 @@
   "capability": "test-parametrization-equivalence-partitioning",
   "requirement": "Provide a comprehensive test specification table and validation evaluator testing a record filtering function against boundary cases: empty string category, zero, negative bounds, and None.",
   "skeleton": "filter_records(records, min_score, category) and get_boundary_test_cases() function providing full equivalence partitions.",
+  "caption": "A standard-library record filter paired with a boundary-case table that covers every equivalence partition a parametrized test needs, with no third-party imports. filter_records(records, min_score, category) walks the records and, only when min_score is not None, skips a record whose score is missing or strictly below the threshold, so a threshold of zero is a real filter and a score equal to the threshold is kept. Only when category is not None does it skip a record whose category differs, comparing by equality rather than substring, so an empty-string category selects exactly the records whose category is the empty string instead of acting as a wildcard. Records that survive both checks are returned in their original order. get_boundary_test_cases returns five cases, each with a description, min_score, category, and expected count: a standard match at 50.0 in tech expecting 1, a zero boundary with no category expecting 3, a negative boundary at -10.0 expecting 4, an empty-string category with no threshold expecting 1, and an all-None filter expecting 4. Keeping the zero row is what exposes a filter that tests the threshold for truthiness, and keeping the empty-string row exposes one that treats an empty category as absent. The fixture asserts that the table contains the empty_string_category, zero_boundary, and negative_boundary descriptions with the matching values, that a zero threshold returns the scores 0.0 and 25.0 while excluding a negative one, and that exact category matching returns record 1 for tech and record 3 for the empty string.",
   "rationale": {
     "teaches": "A boundary test table covering empty-string category, zero and negative min_score, and None, with a filter that treats 0 as a real threshold, uses strict less-than, and matches category exactly.",
     "why": "A table that drops the zero row cannot tell 'if min_score:' from 'is not None', so the filter bug and the table gap hide each other. The fixture runs the full table and checks each partition is present."
   },
   "oracle": "fixtures/test_82_pytest_parametrize_boundary_gaps.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "function",
+        "name": "filter_records",
+        "params": [
+          "records",
+          "min_score",
+          "category"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "get_boundary_test_cases",
+        "params": []
+      }
+    ],
+    "imports": [],
+    "raises": [],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

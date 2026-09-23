@@ -5,11 +5,33 @@
   "capability": "dtype-overflow-casting",
   "requirement": "Implement SafeImagePixelRescaler class for intensity rescaling. It must prevent silent integer overflow and modulo wraparound by upcasting inputs to float64 prior to arithmetic, clamping output intensities to the target dtype's valid dynamic range ([0, 255] for uint8, [0, 65535] for uint16), validating scale factors and supported dtypes, and safely casting to the target dtype.",
   "skeleton": "SafeImagePixelRescaler class with __init__ and rescale_intensity methods preventing modular integer wraparound via float64 upcasting.",
+  "caption": "A numpy image rescaler that avoids integer wraparound when multiplying pixel intensities. SafeImagePixelRescaler takes target_dtype defaulting to uint8 and raises ValueError for anything other than uint8 or uint16. rescale_intensity(image, scale=1.0, offset=0.0) raises TypeError when the image is not a numpy ndarray and ValueError when the scale is zero or negative. It chooses the ceiling 255.0 for uint8 and 65535.0 for uint16, converts the image to float64 before any arithmetic, computes the value times scale plus offset in that wide type, clips the result into the closed range from 0.0 to the ceiling, rounds, and only then casts to the target dtype. Because the multiplication happens in float64 and the clamp precedes the cast, a bright pixel saturates at the maximum instead of wrapping modulo the integer width, and a result below zero clamps to 0 instead of wrapping upward. The fixture asserts a rescaled and clipped uint8 array matching the expected pixels, that the default target is uint8 with no negative outputs, that zero and negative scales are rejected, that a value landing exactly on the uint8 limit stays 255, that uint16 output reaches 65535, that pixels which would overflow the input type saturate to 255, and the dtype and type validation messages.",
   "rationale": {
     "teaches": "Integer-safe rescaling: upcast to float64 before arithmetic, clamp to the target dtype's range, validate the scale, and support only uint8 and uint16.",
     "why": "Multiplying a uint8 image without upcasting wraps modulo 256 and returns a valid-looking image. The fixture uses pixel values that overflow, where the wrapped result is visibly wrong."
   },
   "oracle": "fixtures/test_46_numpy_dtype_overflow_casting.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "SafeImagePixelRescaler",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "rescale_intensity"
+        ]
+      }
+    ],
+    "imports": [
+      "numpy"
+    ],
+    "raises": [
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

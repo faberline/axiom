@@ -5,11 +5,33 @@
   "capability": "markup-parser-selection-cdata",
   "requirement": "Implement StructuredMarkupParser wrapping BeautifulSoup with explicit parser feature configuration ('lxml-xml' for XML and 'lxml' for HTML), preventing parser guessing warnings, preserving case-sensitive XML tag hierarchies, properly parsing self-closing non-HTML tags, and extracting CDATA section content without entity distortion.",
   "skeleton": "StructuredMarkupParser class with __init__, parse, and extract_tag_values using bs4.BeautifulSoup and bs4.CData.",
+  "caption": "A BeautifulSoup markup parser, from the beautifulsoup package, that always names its parser engine explicitly instead of letting the library guess, so XML keeps its case-sensitive tags and CDATA sections survive intact. StructuredMarkupParser takes a mode defaulting to xml, raises ValueError when the mode is anything other than xml or html, and selects the lxml-xml feature for XML and the lxml feature for HTML. parse raises ValueError when the markup is empty or whitespace only and otherwise returns a BeautifulSoup built with the configured feature, so no guessing warning is emitted and the XML builder is used for XML documents. extract_tag_values raises ValueError for an empty tag name, parses the markup, and finds every tag with exactly the requested name, without lowercasing it. For each match it concatenates the text of its children, taking a CData node verbatim so angle brackets and ampersands inside the section are neither escaped nor stripped, and appends the stripped result. Self-closing elements that are not HTML void tags are parsed as siblings instead of being nested inside one another. The fixture asserts that a CDATA block holding a raw_json element with an ampersand comes back verbatim, that a mixed-case tag and a lowercase tag are looked up independently and return DEV-9901 and lowercase-tag, that two self-closing items share the same parent, that XML mode uses lxml-xml and produces an XML builder while HTML mode uses lxml, and that a bad mode, empty markup, and an empty tag name each raise ValueError naming the argument.",
   "rationale": {
     "teaches": "BeautifulSoup with an explicit parser feature per mode, case-preserving XML tag lookup, CDATA text extracted verbatim, and a validated mode.",
     "why": "Letting BeautifulSoup guess the parser warns and lowercases XML tags, so case-sensitive lookups silently return nothing. The fixture uses mixed-case tags and CDATA containing angle brackets."
   },
   "oracle": "fixtures/test_67_bs4_parser_selection.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "StructuredMarkupParser",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "parse",
+          "extract_tag_values"
+        ]
+      }
+    ],
+    "imports": [
+      "bs4"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

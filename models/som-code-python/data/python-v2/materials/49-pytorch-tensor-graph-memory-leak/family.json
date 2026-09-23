@@ -5,11 +5,33 @@
   "capability": "tensor-graph-memory-leak",
   "requirement": "Implement EpochLossAccumulator class for tracking batch loss history across deep learning epochs, detaching tensors via .item() to eliminate autograd graph memory leaks, validating non-negative losses and positive batch sizes, and computing sample-weighted averages.",
   "skeleton": "EpochLossAccumulator class with record_batch, compute_epoch_average, get_history, and reset methods.",
+  "caption": "A standard-library loss bookkeeper for deep learning training loops that never holds on to tensors, with no third-party imports. EpochLossAccumulator takes record_history defaulting to True and resets on construction; reset zeroes the total weighted loss and total sample count and empties the history list. record_batch(loss, batch_size=1) raises ValueError unless batch_size is a positive integer. When the loss object has an item method it calls item() and converts the result to a plain float, detaching it from any autograd graph; otherwise it converts the value with float directly. It raises ValueError for a negative loss while accepting exactly zero, adds the loss multiplied by batch_size to the weighted total, adds batch_size to the sample count, appends the float to the history when history is enabled, and returns the float. compute_epoch_average raises ValueError when no batches have been recorded and otherwise returns the weighted total divided by the sample count, so uneven batches are weighted by how many samples they carried. get_history returns a copy of the recorded floats. The fixture asserts that losses 1.5 and 2.5 are returned and averaged to 2.1 by sample weight, that reset clears everything, that the default batch size is one, the batch-size validation, that a zero loss is accepted, and that each stored history entry is a plain float with no grad_fn attribute.",
   "rationale": {
     "teaches": "Loss bookkeeping that calls .item() before storing, validates batch_size and non-negative loss, and weights the epoch average by samples.",
     "why": "Appending a loss tensor keeps its whole autograd graph alive; memory grows per batch but nothing raises. The fixture checks that the stored history contains plain floats, which is the observable that rules out the leak."
   },
   "oracle": "fixtures/test_49_pytorch_tensor_graph_memory_leak.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "EpochLossAccumulator",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "reset",
+          "record_batch",
+          "compute_epoch_average",
+          "get_history"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

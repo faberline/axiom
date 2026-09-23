@@ -15,9 +15,12 @@ Rules this module owns:
   ``why_wrong`` and ``caught_by``, ride on :class:`CandidateRecord` unchanged
   and reach the training row through :meth:`CandidateRecord.to_dict`; a gold
   candidate carries neither. The engine never rewrites them.
-- Family-level curation (``rationale``, ``oracle``) reaches the row through
-  ``metadata`` with every other ``family.json`` key that is not a candidate,
-  the requirement, or the skeleton.
+- Family-level curation (``rationale``, ``oracle``, ``caption``,
+  ``decompiled``) reaches the row through ``metadata`` with every other
+  ``family.json`` key that is not a candidate, the requirement, or the
+  skeleton. ``caption`` is the planner's long-form prompt and
+  ``decompiled.surface`` its component list; the corpus project measures
+  and checks both, and the engine passes them through untouched.
 """
 
 from __future__ import annotations

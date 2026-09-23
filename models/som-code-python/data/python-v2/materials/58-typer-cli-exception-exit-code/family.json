@@ -5,11 +5,53 @@
   "capability": "cli-exception-exit-code-propagation",
   "requirement": "Typer CLI pipeline command with strict exception handling and distinct process exit codes (0 for success, 1 for missing artifact, 2 for validation error, 3 for runtime failure), logging errors to stderr.",
   "skeleton": "Typer app with deploy command executing deployment and mapping exceptions to typer.Exit codes and stderr logs.",
+  "caption": "A Typer command-line application that turns each failure class into its own process exit code and writes every error to stderr. The module creates app as a typer.Typer with a no-op callback so it behaves as a multi-command CLI. execute_deployment(artifact_path, target_env) raises FileNotFoundError when the artifact does not exist, ValueError when the environment is neither staging nor production, and RuntimeError when the artifact's text content is empty, and otherwise returns a dictionary with status deployed, the environment, and the artifact file name. The deploy command takes a required --artifact option, short form -a, and an --env option, short form -e, defaulting to staging. It calls execute_deployment and echoes a SUCCESS line naming the artifact and environment, leaving the default exit code 0. A FileNotFoundError is printed as an Error line to stderr in red and converted into typer.Exit with code 1, a ValueError into a Validation Error line and code 2, and a RuntimeError into a Deployment Failed line and code 3; an Exit already in flight is re-raised unchanged, and no raw traceback reaches the user. The fixture drives the command through Typer's CliRunner and asserts exit 0 with SUCCESS: app.tar.gz deployed to staging on stdout, exit 1 with the not-found message on stderr and not on stdout, exit 2 with a Validation Error on stderr, and exit 3 with the empty-payload message on stderr and no Traceback text.",
   "rationale": {
     "teaches": "A Typer command that maps each failure class to a distinct exit code through typer.Exit and writes errors to stderr.",
     "why": "A CLI that prints the error and exits 0 looks fine in a terminal and breaks every script that checks the exit code. The fixture runs the command through CliRunner and asserts the code and the stream."
   },
   "oracle": "fixtures/test_58_typer_cli_exception_exit_code.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "main",
+        "params": [],
+        "route": "command"
+      },
+      {
+        "kind": "function",
+        "name": "execute_deployment",
+        "params": [
+          "artifact_path",
+          "target_env"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "deploy",
+        "params": [
+          "artifact",
+          "env"
+        ],
+        "route": "command"
+      }
+    ],
+    "imports": [
+      "typer"
+    ],
+    "raises": [
+      "Exit",
+      "FileNotFoundError",
+      "RuntimeError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

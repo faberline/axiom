@@ -5,11 +5,28 @@
   "capability": "os-atomic-file-write",
   "requirement": "Implement AtomicFileOps providing write_text_atomic and write_json_atomic with temp file in target parent dir, fsync durability, atomic replacement, and cleanup on failure.",
   "skeleton": "AtomicFileOps class with static methods write_text_atomic and write_json_atomic.",
+  "caption": "A standard-library atomic file writer exposed as two static methods on AtomicFileOps. write_text_atomic resolves the target path, creates its parent directory with mkdir using parents and exist_ok, and opens a tempfile.NamedTemporaryFile in text mode with the requested encoding, with dir set to the target's parent directory and delete=False, so the temporary file lives on the same filesystem as the target and the final rename cannot fail with a cross-device error. Inside a try block it writes the content, flushes, calls os.fsync on the file descriptor so the bytes reach disk before the swap, closes the handle, and then calls os.replace to move the temporary file over the target in one atomic step that also overwrites an existing target on Windows. On any exception it closes the handle, unlinks the temporary file if it still exists while ignoring an OSError from the unlink, and re-raises, so a failure mid-write leaves the original target bytes intact and no stray file next to it. write_json_atomic serializes the data with json.dumps at the given indent, defaulting to 2, and delegates to write_text_atomic. The target is therefore either the complete old file or the complete new file at every instant, a write that fails with an OSError preserves the previous content, fsync runs before replace, and the parent directory holds no leftover temporary files afterwards.",
   "rationale": {
     "teaches": "Atomic file replacement: a temp file in the target's directory, fsync before rename, os.replace for the swap, and temp-file cleanup on failure.",
     "why": "Every miss writes the correct bytes on the happy path. Only a failure injected mid-write shows a truncated target, a leaked temp file, or a cross-device rename error."
   },
   "oracle": "fixtures/test_29_stdlib_os_atomic_file_write.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "AtomicFileOps",
+        "bases": [],
+        "methods": [
+          "write_text_atomic",
+          "write_json_atomic"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

@@ -5,11 +5,71 @@
   "capability": "metaclass-mro",
   "requirement": "Implement ComponentMeta metaclass registration and cooperative multiple inheritance process chain using super() across mixins and BaseComponent.",
   "skeleton": "ComponentMeta metaclass, BaseComponent class, LoggingMixin, ValidationMixin, and ComponentManager class.",
+  "caption": "A standard-library plugin system that uses a metaclass registry together with cooperative multiple inheritance, with no third-party imports. ComponentMeta is a type subclass holding a class-level _registry dictionary; its __new__ skips the abstract BaseComponent itself, and for every other class requires component_name to be a non-empty string, raising AttributeError otherwise, and requires priority, defaulting to 0, to be an int, raising TypeError otherwise, before registering the class under its name. BaseComponent uses the metaclass with component_name base and priority 0, and its process method appends base to context['trail'] created through setdefault. LoggingMixin and ValidationMixin each append their own label, logging and validation, and then delegate with super().process, so a component inheriting both mixins in that order records the trail logging, validation, base, following the method resolution order exactly once per class. ComponentManager keeps an execution history; get_component looks a name up in the registry, and execute_component raises KeyError when the component is not found, otherwise instantiates it, runs process on the context, and appends a record of the name and a copy of the trail. validate_priority raises ValueError for values outside 0 to 100 inclusive. clear empties both the registry and the history, and history_count reports its length. The fixture asserts registration at class-creation time, the rejection of malformed class attributes, and the exact MRO trail.",
   "rationale": {
     "teaches": "A registering metaclass that validates component_name, a cooperative process chain through super() across mixins, an inclusive priority range of 0 to 100, and a lookup that raises only when the class is missing.",
     "why": "Calling the base class directly instead of super() skips the sibling mixin silently; the return value is still a dict. The fixture inspects the order of mixin side effects, which only the MRO chain produces."
   },
   "oracle": "fixtures/test_35_syntax_metaclass_mro.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "ComponentMeta",
+        "bases": [
+          "type"
+        ],
+        "methods": [
+          "__new__"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "BaseComponent",
+        "bases": [],
+        "methods": [
+          "process"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "LoggingMixin",
+        "bases": [],
+        "methods": [
+          "process"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "ValidationMixin",
+        "bases": [],
+        "methods": [
+          "process"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "ComponentManager",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "get_component",
+          "execute_component",
+          "validate_priority",
+          "clear",
+          "history_count"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "AttributeError",
+      "KeyError",
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

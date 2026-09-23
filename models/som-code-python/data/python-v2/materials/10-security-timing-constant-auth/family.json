@@ -5,11 +5,90 @@
   "capability": "timing-safe-token-authorization",
   "requirement": "FastAPI authentication guard implementing timing-safe bearer token and HMAC signature validation via hmac.compare_digest, validating token structure, checking expiration timestamp (exp >= current_timestamp), enforcing required permission scopes (returning 401 Unauthorized for invalid/expired tokens, 403 Forbidden for insufficient scopes), and protecting against timing side channels.",
   "skeleton": "FastAPI security guard with HMAC signature validation and constant-time token comparison.",
+  "caption": "A FastAPI authentication guard built on the standard library hmac and time modules with pydantic for the user model. SECRET_KEY is a module-level bytes constant. AuthenticatedUser carries user_id, a list of scopes, and expires_at. create_token joins user_id, a comma-separated scope string, and an expiry computed as the current time plus ttl_seconds, defaulting to 3600, into a colon-delimited payload, signs it with an HMAC-SHA256 hex digest, and appends the signature as a fourth segment. verify_token takes the raw Authorization header and an optional required scope: it raises HTTPException 401 when the header is missing or does not start with Bearer, slices the token from the seventh character and strips it, splits on colons and rejects anything but four segments with 401, parses the expiry as an integer and answers 401 on a ValueError, recomputes the expected signature over the first three segments, and compares it with hmac.compare_digest so the comparison time does not depend on where the digests differ, answering 401 on mismatch. Only after the signature is verified does it compare the expiry with the current time, answering 401 for an expired token. The scope string splits on commas, and an empty string yields an empty list rather than a list holding one empty scope. When a required scope is given and absent from the list the guard raises HTTPException 403; otherwise it returns the AuthenticatedUser. Two dependency functions, require_read and require_admin, read the Authorization header through Header with that alias and call verify_token with the read or admin scope. GET /api/reports depends on require_read and returns the user id with a classified data marker; POST /api/admin/purge depends on require_admin and reports the purge.",
   "rationale": {
     "teaches": "A bearer-token guard built from hmac.compare_digest, an expiry check, a 401/403 split, exact header slicing, and an empty scope default that grants nothing.",
     "why": "A variable-time comparison or an omitted expiry check passes every functional test with valid input. The family exists so the discriminator learns that the security-relevant call and the boundary check are part of the contract, not decoration."
   },
   "oracle": null,
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "SECRET_KEY"
+      },
+      {
+        "kind": "class",
+        "name": "AuthenticatedUser",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "create_token",
+        "params": [
+          "user_id",
+          "scopes",
+          "ttl_seconds"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "verify_token",
+        "params": [
+          "raw_header",
+          "required_scope"
+        ]
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "require_read",
+        "params": [
+          "authorization"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "require_admin",
+        "params": [
+          "authorization"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "get_reports",
+        "params": [
+          "user"
+        ],
+        "route": "GET /api/reports"
+      },
+      {
+        "kind": "function",
+        "name": "purge_system",
+        "params": [
+          "user"
+        ],
+        "route": "POST /api/admin/purge"
+      }
+    ],
+    "imports": [
+      "fastapi",
+      "pydantic"
+    ],
+    "raises": [
+      "HTTPException"
+    ],
+    "status_codes": [
+      401,
+      403
+    ]
+  },
   "candidates": [
     {
       "id": "gold",

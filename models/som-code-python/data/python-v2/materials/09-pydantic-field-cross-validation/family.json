@@ -5,11 +5,34 @@
   "capability": "model-cross-field-validation",
   "requirement": "Pydantic v2 CampaignPromotion model validating promotional discounts with model_config extra='forbid', start_date and end_date (end_date > start_date), discount_percent (0.0 < discount <= 100.0), minimum_spend (>= 0.0), and a model_validator(mode='after') enforcing that when is_tiered is True, tier_thresholds list must be non-empty and strictly monotonically increasing.",
   "skeleton": "Pydantic v2 model with model_config extra forbidden and multi-field temporal/tiered validators.",
+  "caption": "A single pydantic v2 model, CampaignPromotion, whose model_config sets extra to forbid so any unknown key in the input is rejected. Fields: campaign_id is a string between 3 and 64 characters; start_date and end_date are datetimes; discount_percent is a float constrained with gt=0.0 and le=100.0; minimum_spend is a float defaulting to 0.0 with ge=0.0; is_tiered is a bool defaulting to False; tier_thresholds is a list of floats with an empty-list default_factory. A model_validator in after mode named validate_campaign returns self after its checks: it raises ValueError when end_date is less than or equal to start_date, and when is_tiered is True it raises ValueError for an empty threshold list, for any threshold at or below zero, and for a list that is not strictly increasing, which it detects by comparing the list with its sorted form and its length with the size of its set. When is_tiered is False the thresholds are not inspected at all. A calculate_discount method returns 0.0 when the order amount is below minimum_spend; without tiers it returns the amount times discount_percent over 100 rounded to two decimals; with tiers it counts the thresholds the amount reaches, returns 0.0 when none qualify, scales discount_percent by the fraction of qualifying tiers capped at the full percent, and rounds the result to two decimals.",
   "rationale": {
     "teaches": "Pydantic v2 cross-field validation: extra fields forbidden, end after start, discount and spend ranges, tier thresholds checked only when tiered, and an after-validator that returns self.",
     "why": "A model validator that returns None or checks the inverted flag still imports and even instantiates for happy-path input. Only boundary payloads expose it, so the family exists to supply those payloads."
   },
   "oracle": null,
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "CampaignPromotion",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [
+          "validate_campaign",
+          "calculate_discount"
+        ]
+      }
+    ],
+    "imports": [
+      "pydantic"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

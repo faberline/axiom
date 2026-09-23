@@ -5,11 +5,53 @@
   "capability": "property-based-testing-reproducibility",
   "requirement": "Implement a property-based test harness for a payload serializer TokenPayloadEncoder. All inputs must be supplied exclusively through pure Hypothesis strategies (hypothesis.strategies.integers(), hypothesis.strategies.text()). Mixing standard library random.randint() or time.time() inside test execution breaks deterministic shrinking and is strictly prohibited.",
   "skeleton": "A serializer encode_token_payload(user_id, role, salt) and property verification function check_roundtrip_invariant(user_id, role, salt).",
+  "caption": "A Hypothesis property test for a token payload encoder whose every input comes from declared strategies, never from random or the clock inside the test. When the library is unavailable, an ImportError fallback defines minimal integer, text, and tuple strategy stand-ins with a filter hook and a no-op given decorator so the module still imports. encode_token_payload(user_id, role, salt) raises ValueError when user_id is negative, so zero is a valid id, and when the role is empty, and returns a dictionary with sub as the id string, the role, and a token joining id, role, and the salt XOR 0x5A5A with colons. decode_token_payload returns the integer sub and the role. get_payload_strategy returns a tuple strategy of an integer from 0 to 1,000,000, a text of 1 to 50 characters filtered to exclude the colon separator so a role cannot corrupt the token layout, and an integer salt from 0 to 65535. check_roundtrip_invariant encodes the inputs, decodes them, recovers the salt from the last token field by undoing the XOR, and returns whether id, role, and salt all match the values it was given; it does not remix the salt or catch ValueError, so a broken encoder fails loudly and shrinking stays deterministic. The fixture asserts the invariant for id 0 with admin and 12345, for 100 with operator and salt 0, for 999999 with guest and 65535, for 42 with auditor and 31415, for 10 with analyst and 4096, and for 0 with root and 500, asserts that the role strategy's filter rejects admin:super and accepts admin, and asserts that invalid input raises ValueError.",
   "rationale": {
     "teaches": "A property test whose inputs come only from Hypothesis strategies, a role strategy that filters out the separator, a round-trip check that propagates errors, and a validator that accepts user_id 0.",
     "why": "A property that derives its own randomness or swallows errors passes every example, and a role containing the separator corrupts the encoding only for that input. The fixture runs the property with fixed examples and checks shrinking reproduces."
   },
   "oracle": "fixtures/test_89_hypothesis_flaky_random_in_given.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "function",
+        "name": "encode_token_payload",
+        "params": [
+          "user_id",
+          "role",
+          "salt"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "decode_token_payload",
+        "params": [
+          "payload"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "get_payload_strategy",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "check_roundtrip_invariant",
+        "params": [
+          "user_id",
+          "role",
+          "salt"
+        ]
+      }
+    ],
+    "imports": [
+      "hypothesis"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

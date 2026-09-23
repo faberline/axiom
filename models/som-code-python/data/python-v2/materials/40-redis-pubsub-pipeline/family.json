@@ -5,11 +5,45 @@
   "capability": "pubsub-pipeline",
   "requirement": "Implement RedisTransactionPipeline and RedisPubSubManager classes providing atomic multi/exec pipelines with optimistic locking (watch/unwatch and WatchError retries up to max_retries), transaction rollback/reset on failure, and pubsub channel subscription, publishing, message dispatching, unsubscription, and connection cleanup.",
   "skeleton": "RedisTransactionPipeline with optimistic locking retry logic and RedisPubSubManager with message dispatching and channel lifecycle.",
+  "caption": "A redis helper module with an optimistic-locking transaction runner and a pub/sub dispatcher. RedisTransactionPipeline takes a client and max_retries defaulting to 3, raising ValueError when max_retries is negative. execute_transaction(watch_keys, callback) raises ValueError when watch_keys is empty, then loops up to max_retries plus one times: it opens a transactional pipeline, WATCHes the keys, calls MULTI, runs the callback against the pipeline, and returns the result of EXECUTE. When a WatchError signals that a watched key changed, it retries while attempts remain and re-raises once they are exhausted, and every attempt resets its pipeline in a finally block so the connection returns clean. RedisPubSubManager wraps the client's pubsub object and a dictionary of handler lists per channel. subscribe raises ValueError for an empty channel, strips it, and issues the SUBSCRIBE only for the first handler on a channel; publish validates the channel the same way and returns the client's receiver count. dispatch_message ignores anything whose type is not message and returns 0, otherwise calls every handler for that channel with the channel and data and returns how many ran. unsubscribe and close clear handlers, and close also closes the pubsub. The fixture asserts that one WatchError produces exactly two attempts and that dispatch delivers the pair metrics and cpu_load_80.",
   "rationale": {
     "teaches": "Redis optimistic locking: watch the keys, retry on WatchError up to max_retries with a sane default, reset the pipeline on failure, and dispatch only real pubsub messages.",
     "why": "A pipeline that retries one time too few or never resets still succeeds when nothing races. The fixture injects a WatchError sequence and counts attempts, which is the only way to observe retry arithmetic."
   },
   "oracle": "fixtures/test_40_redis_pubsub_pipeline.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "RedisTransactionPipeline",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "execute_transaction"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "RedisPubSubManager",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "subscribe",
+          "publish",
+          "dispatch_message",
+          "unsubscribe",
+          "close"
+        ]
+      }
+    ],
+    "imports": [
+      "redis"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

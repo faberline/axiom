@@ -40,8 +40,10 @@ def write_family(corpus: Path, name: str, *, domain: str = "python", with_curati
         "capability": "demo",
         "requirement": "do the thing",
         "skeleton": "def run(): ...",
+        "caption": "A demo module whose run function returns its own candidate id.",
         "rationale": {"teaches": "the thing", "why": "the fixture observes it"},
         "oracle": f"fixtures/test_{name}.py" if with_curation else None,
+        "decompiled": {"surface": [{"kind": "function", "name": "run", "params": []}], "imports": [], "raises": [], "status_codes": []},
         "candidates": candidates,
     }
     (fam / "family.json").write_text(json.dumps(meta), encoding="utf-8")
@@ -66,6 +68,8 @@ def test_curation_fields_pass_through_to_the_training_row(tmp_path: Path) -> Non
     assert row["candidates"][1]["caught_by"] == ["test_b", "test_a"]
     assert row["metadata"]["rationale"] == {"teaches": "the thing", "why": "the fixture observes it"}
     assert row["metadata"]["oracle"] == "fixtures/test_00-demo.py"
+    assert row["metadata"]["caption"] == "A demo module whose run function returns its own candidate id."
+    assert row["metadata"]["decompiled"]["surface"][0]["name"] == "run"
 
 
 def test_a_family_without_curation_still_loads(tmp_path: Path) -> None:
@@ -133,5 +137,7 @@ def test_python_v2_corpus_carries_measured_caught_by_on_every_oracle_family() ->
         gold = next(c for c in fam.candidates if c.kind == "gold")
         assert gold.caught_by is None and gold.why_wrong is None
     for fam in families:
+        assert isinstance(fam.metadata.get("caption"), str), fam.family_id
+        assert isinstance(fam.metadata.get("decompiled", {}).get("surface"), list), fam.family_id
         if fam.metadata.get("oracle") is None:
             assert all(c.caught_by is None for c in fam.candidates), fam.family_id

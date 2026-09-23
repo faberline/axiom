@@ -5,11 +5,126 @@
   "capability": "complex-dependency-trees-and-generator-lifecycle",
   "requirement": "Create a multi-tier SaaS dependency tree: get_api_key -> get_tenant_context -> get_scoped_repository with generator yield and finally: repo.close(), admin tenant override guard, and dependency caching.",
   "skeleton": "FastAPI multi-tier dependency hierarchy with generator lifecycle management and role-based tenant routing.",
+  "caption": "A FastAPI service whose request handling is a three-level dependency chain over an in-memory key store. UserAuth and TenantContext are pydantic models; ScopedRepository is a plain class holding a tenant_id, an is_closed flag, and an operations list, whose perform_action raises RuntimeError once the repository is closed and otherwise records the action and returns tenant:action, and whose close sets the flag. API_KEYS_DB maps key-admin-1 to an admin user with home tenant tenant-corp and key-member-1 to a member with home tenant tenant-acme; OPEN_REPOSITORIES collects every repository built, and reset_db empties it. get_api_key reads the X-API-Key header and raises HTTPException 401 when it is missing or unknown, returning the UserAuth record otherwise. get_tenant_context depends on get_api_key and reads an optional X-Tenant-Override header: when the override is present and the role is not admin it raises HTTPException 403, when the caller is admin the override becomes the active tenant, and without an override the home tenant is used. get_scoped_repository depends on get_tenant_context and is a generator: it builds the repository, appends it to OPEN_REPOSITORIES, yields it, and closes it in a finally clause so the close runs even when the route raises. AuditService wraps a repository, and get_audit_service depends on get_scoped_repository with FastAPI's default dependency caching, so a route that depends on both the repository and the audit service receives one shared instance per request. POST /data/action performs the action and returns the tenant id, the result, whether the two repository references are the same object, and the count of repositories opened; GET /tenants/current returns the resolved tenant context.",
   "rationale": {
     "teaches": "A three-level dependency chain where the leaf is a generator with finally-close, an admin-only tenant override, and default dependency caching so one request builds one repository.",
     "why": "Dependency trees are assembled from snippets that each look right in isolation. Whether the repo closes, whether a non-admin can hop tenants, and whether the cache is on can only be seen by exercising the whole chain, which the fixture does."
   },
   "oracle": "fixtures/test_13_fastapi_complex_dependency_trees.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "UserAuth",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "TenantContext",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ScopedRepository",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "perform_action",
+          "close"
+        ]
+      },
+      {
+        "kind": "assign",
+        "name": "API_KEYS_DB"
+      },
+      {
+        "kind": "assign",
+        "name": "OPEN_REPOSITORIES"
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "get_api_key",
+        "params": [
+          "x_api_key"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "get_tenant_context",
+        "params": [
+          "auth",
+          "x_tenant_override"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "get_scoped_repository",
+        "params": [
+          "tenant_ctx"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "AuditService",
+        "bases": [],
+        "methods": [
+          "__init__"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "get_audit_service",
+        "params": [
+          "repo"
+        ]
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "run_action",
+        "params": [
+          "action",
+          "repo",
+          "audit_service"
+        ],
+        "route": "POST /data/action"
+      },
+      {
+        "kind": "function",
+        "name": "get_current_tenant",
+        "params": [
+          "tenant_ctx"
+        ],
+        "route": "GET /tenants/current"
+      }
+    ],
+    "imports": [
+      "fastapi",
+      "pydantic"
+    ],
+    "raises": [
+      "HTTPException",
+      "RuntimeError"
+    ],
+    "status_codes": [
+      401,
+      403
+    ]
+  },
   "candidates": [
     {
       "id": "gold",

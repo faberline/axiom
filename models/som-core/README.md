@@ -55,8 +55,8 @@ component in this repository.
 - Training data is read through `src/som_core/dataset.py`, which expects the
   `data/python-v2/materials/<family>/` layout that
   [`models/som-code-python`](../som-code-python/README.md) documents and
-  passes that project's curation fields (`rationale`, `oracle`, `why_wrong`,
-  `caught_by`) through to the training row; the module docstring states the
+  passes that project's curation fields (`rationale`, `oracle`, `caption`,
+  `decompiled`, `why_wrong`, `caught_by`) through to the training row; the module docstring states the
   loader's rules.
 - The layer contract, including the planner's `SCOPE_TOO_LARGE` refusal and
   the L3 operation vocabulary, is the reference document above; the product

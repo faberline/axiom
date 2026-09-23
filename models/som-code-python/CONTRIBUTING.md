@@ -16,7 +16,12 @@ carries the family's rationale: `rationale.teaches`, `rationale.why`, the
 `oracle` fixture path, and for each near miss `why_wrong` and `caught_by`.
 Write `why_wrong` as the observable consequence of the defect, never the
 failure mode's name; take `caught_by` from the harness, which prints the
-declared and the actual failing tests whenever they differ. A snippet is one JSON file
+declared and the actual failing tests whenever they differ. Write `caption`
+from the gold source, 80 to 400 words, naming every exception it raises and
+library it imports and ending with what the fixture asserts; run
+`scripts/decompile_gold.py --write` after changing a gold candidate so
+`decompiled` matches it, and `--draft <dir>` for a per-family sheet to write
+the caption from. A snippet is one JSON file
 under `data/snippets/v1/<library>/` and is not in the ISA until the verifier's
 required set names it.
 

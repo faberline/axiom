@@ -5,11 +5,40 @@
   "capability": "response-release",
   "requirement": "Implement SafeResponseConsumer that guarantees explicit connection release via await response.release() on non-200 status codes, decoding errors, or early stream termination, preventing connection pool starvation and socket leaks in high-throughput aiohttp applications.",
   "skeleton": "SafeResponseConsumer class with fetch_payload and read_header_value methods enforcing response release.",
+  "caption": "An aiohttp response consumer that always returns the underlying connection to the pool, whatever path the read takes. BadStatusError subclasses Exception. ResponseStreamConsumer.fetch_json_safe(session, url) awaits session.get to obtain the response and, inside a try block, awaits response.release() and raises BadStatusError naming the status when the status is not 200; otherwise it returns the awaited JSON. Any exception raised in that block, including a decoding failure from response.json, awaits release before being re-raised unchanged, so a malformed body cannot leave the connection checked out. Release is awaited rather than merely called, since calling it without await only creates a coroutine that never runs, and release is used rather than close so the connection goes back to the pool instead of being destroyed. read_header_value(session, url, header_key) fetches the response, returns the named header or None, and awaits release in a finally block without ever reading the body, so a header-only probe does not strand its socket. The fixture uses mocked responses and asserts that a 500 raises BadStatusError with at least one awaited release, that a ValueError reporting Invalid JSON from the decoder propagates after release was awaited, that reading the header returns secret-123 with exactly one awaited release, and that a successful fetch returns ok True without ever calling close.",
   "rationale": {
     "teaches": "Guaranteed response release: await release on non-200, on decode errors, on any exception, and after reading a header, so pooled connections return to the pool.",
     "why": "An unreleased response keeps its connection checked out; with a small pool the next request blocks. The fixture counts release calls per path with a fake response."
   },
   "oracle": "fixtures/test_64_aiohttp_response_release.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "BadStatusError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ResponseStreamConsumer",
+        "bases": [],
+        "methods": [
+          "fetch_json_safe",
+          "read_header_value"
+        ]
+      }
+    ],
+    "imports": [
+      "aiohttp"
+    ],
+    "raises": [
+      "BadStatusError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

@@ -5,11 +5,32 @@
   "capability": "datetime-timezone-dst-math",
   "requirement": "Implement TimezoneCalculator supporting aware UTC normalization, elapsed hours between datetimes, ambiguous DST fold resolution, and wall-clock preserving calendar math.",
   "skeleton": "TimezoneCalculator class with datetime and zoneinfo timezone operations.",
+  "caption": "A standard-library timezone helper class built on datetime, timedelta, timezone, and zoneinfo.ZoneInfo. normalize_to_utc treats a datetime whose tzinfo is None or whose utcoffset is None as already UTC and only attaches the UTC tzinfo with replace; an aware datetime is converted with astimezone, so 10:00 in New York on a winter day becomes 17:00 UTC rather than being relabeled. calculate_elapsed_hours raises ValueError when either endpoint is naive, then normalizes both to UTC and returns the difference in total seconds divided by 3600, so a span across midnight or across several days is measured on the absolute timeline rather than from the hour fields, and a fifty-four hour gap comes back as 54.0. resolve_ambiguous_dst builds a ZoneInfo for the named zone, chooses fold 1 when prefer_post_transition is True and fold 0 otherwise, and attaches the zone and fold to a naive wall-clock time with replace, so the two occurrences of a repeated hour during the autumn fallback resolve to instants one hour apart. add_calendar_days_preserving_wall_clock advances the date component by the requested number of days, defaulting to 1, and rebuilds the datetime with replace on year, month, and day while keeping hour and minute, so crossing a DST transition keeps the 3:30 wall-clock reading instead of shifting it by the offset change that UTC arithmetic would introduce.",
   "rationale": {
     "teaches": "Aware-datetime arithmetic: astimezone for conversion, a naive-input guard, fold to resolve ambiguous DST times, and calendar-day math that preserves wall-clock time across a transition.",
     "why": "replace versus astimezone and UTC-based versus calendar-based day math both give the right answer most of the year and the wrong one across a DST boundary. The fixture uses transition dates, where the difference is one hour."
   },
   "oracle": "fixtures/test_27_stdlib_datetime_timezone_dst.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "TimezoneCalculator",
+        "bases": [],
+        "methods": [
+          "normalize_to_utc",
+          "calculate_elapsed_hours",
+          "resolve_ambiguous_dst",
+          "add_calendar_days_preserving_wall_clock"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

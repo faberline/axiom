@@ -5,11 +5,84 @@
   "capability": "settingwithcopy-chained",
   "requirement": "Implement ConditionalRecordUpdater supporting update_records(df, filter_col, threshold, update_col, new_value, inplace=False) using .loc indexing, validating inputs, preventing unexpected caller DataFrame mutations when inplace=False, and verifying matching rows are updated while non-matching rows remain intact.",
   "skeleton": "Vectorized conditional DataFrame updates via .loc indexing preventing SettingWithCopyWarning and chained assignment drops.",
+  "caption": "A numpy-backed module that ships its own minimal pandas-like layer and uses it to show a conditional update done with one indexer call instead of chained indexing. The Series wrapper copies its input array, supports boolean-mask reads and writes, comparison operators that return boolean mask Series, and copy. The _LocIndexer accepts a row mask plus a column name, raises KeyError for an unknown column, upcasts a numeric column to object when a non-number is assigned, and raises NotImplementedError for any single-key form. The DataFrame stores a dictionary of column arrays, exposes loc, supports deep copy, column and mask reads, and column assignment, raising NotImplementedError for non-string keys; a pd class namespace mirrors the familiar entry points. ConditionalRecordUpdater, with default_col status, provides update_records(df, filter_col, threshold, update_col, new_value, inplace=False): it raises TypeError when df is not a DataFrame, ValueError when filter_col or update_col is missing, and ValueError when threshold is negative. It works on df itself when inplace is True and on a deep copy otherwise, builds the mask filter_col greater than or equal to threshold so the boundary row is included, and assigns new_value through a single target.loc[mask, update_col] call before returning the target. The fixture asserts the inclusive threshold, the validation errors, and that the caller's frame is untouched when inplace is False.",
   "rationale": {
     "teaches": "Conditional DataFrame updates through .loc with a boolean mask, a non-negative threshold check, an inclusive comparison, and inplace=False by default so the caller's frame is untouched.",
     "why": "Chained indexing assignment emits a warning and updates a temporary copy, so the frame looks unchanged and no exception is raised. The fixture checks both the returned frame and the caller's original."
   },
   "oracle": "fixtures/test_41_pandas_settingwithcopy_chained.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Series",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "values",
+          "__len__",
+          "__array__",
+          "__getitem__",
+          "__setitem__",
+          "__ge__",
+          "__gt__",
+          "__le__",
+          "__lt__",
+          "__eq__",
+          "__ne__",
+          "copy"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "_LocIndexer",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "__getitem__",
+          "__setitem__"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "DataFrame",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "loc",
+          "copy",
+          "__len__",
+          "__getitem__",
+          "__setitem__"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "pd",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ConditionalRecordUpdater",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "update_records"
+        ]
+      }
+    ],
+    "imports": [
+      "numpy"
+    ],
+    "raises": [
+      "KeyError",
+      "NotImplementedError",
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

@@ -5,11 +5,53 @@
   "capability": "retry-adapter",
   "requirement": "Implement build_retry_strategy and create_retry_session configuring urllib3.util.Retry with exponential backoff on HTTPAdapter. It must configure total retries >= 0, backoff_factor >= 0.0, status_forcelist (429, 500, 502, 503, 504), restrict allowed_methods to safe/idempotent methods excluding POST by default, set raise_on_status=False, and mount the adapter to http:// and https://.",
   "skeleton": "build_retry_strategy helper returning urllib3.util.Retry and create_retry_session factory mounting retry-enabled HTTPAdapter.",
+  "caption": "A requests session factory that retries transient failures through urllib3's Retry policy. DEFAULT_STATUS_FORCELIST names the status codes 429, 500, 502, 503, and 504, and SAFE_METHODS is a frozenset of HEAD, GET, PUT, DELETE, OPTIONS, and TRACE, deliberately leaving POST out because a non-idempotent request must not be replayed. build_retry_strategy takes total defaulting to 3, backoff_factor defaulting to 0.5, an optional status list and method set, and raise_on_status defaulting to False; it raises ValueError when total is negative, while zero is allowed and disables retries, and raises ValueError when backoff_factor is negative. It returns a Retry object carrying total, backoff_factor, the status list as a tuple, the allowed methods as a frozenset, and raise_on_status, so a final retryable status is returned as a response rather than raised. create_retry_session builds a requests.Session, wraps the Retry object in an HTTPAdapter through max_retries, and mounts that adapter on both the http:// and https:// prefixes. The fixture asserts the default status list, that POST is excluded from the retried methods, the validation boundaries on total and backoff, and that both schemes share the configured retry policy.",
   "rationale": {
     "teaches": "urllib3 Retry with exponential backoff: non-negative total and backoff, the 429 and 5xx forcelist, idempotent-only allowed methods, raise_on_status off, and mounted on both schemes.",
     "why": "A retry policy that includes POST or skips a scheme still makes successful requests. The fixture inspects the mounted Retry object, which is how the policy is observable without a flaky server."
   },
   "oracle": "fixtures/test_38_requests_retry_adapter.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "DEFAULT_STATUS_FORCELIST"
+      },
+      {
+        "kind": "assign",
+        "name": "SAFE_METHODS"
+      },
+      {
+        "kind": "function",
+        "name": "build_retry_strategy",
+        "params": [
+          "total",
+          "backoff_factor",
+          "status_forcelist",
+          "allowed_methods",
+          "raise_on_status"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "create_retry_session",
+        "params": [
+          "total",
+          "backoff_factor",
+          "status_forcelist",
+          "allowed_methods"
+        ]
+      }
+    ],
+    "imports": [
+      "requests",
+      "urllib3"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

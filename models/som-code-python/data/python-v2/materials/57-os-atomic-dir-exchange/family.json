@@ -5,11 +5,32 @@
   "capability": "atomic-directory-exchange",
   "requirement": "Safely manage directory provisioning, atomic swaps, and directory-based mutex locking without TOCTOU race conditions or windows of absence.",
   "skeleton": "AtomicDirectoryDeployer class with ensure_directory, safe_remove_directory, acquire_lock, release_lock, and deploy_atomic methods.",
+  "caption": "A standard-library directory manager built on os, shutil, tempfile, and pathlib that performs each filesystem operation as a single atomic attempt instead of checking first and acting afterwards, with no third-party imports. AtomicDirectoryDeployer resolves base_dir and creates it with parents and exist_ok. ensure_directory creates the named directory with parents and exist_ok, so a concurrent creator never causes a failure. safe_remove_directory calls shutil.rmtree directly and returns True, catching FileNotFoundError to return False when another actor removed the directory first. acquire_lock uses os.mkdir on a name.lock directory as a mutex, returning True when the call creates it and False on FileExistsError, because mkdir is atomic and only one caller can win. release_lock calls os.rmdir and returns False when the lock directory is already gone. deploy_atomic(target_name, build_files) creates a temporary directory with tempfile.mkdtemp inside base_dir itself so it shares the target's filesystem, writes every file into it, creates a temporary symbolic link to it, and swaps that link over the target with os.replace, so the target path always exists and is never deleted before the new version appears; on any failure it removes the temporary directory and re-raises. The fixture injects races and asserts that directory creation survives a concurrent creator, that removal returns False after a concurrent delete, that only one of two lock acquirers wins, that redeploying from v1 to v2 never unlinks the target, and that the temporary directory is created under base_dir.",
   "rationale": {
     "teaches": "Race-free directory operations: mkdir with exist_ok, catch FileNotFoundError instead of pre-checking, atomic mkdir as a mutex, os.replace with no delete window, and temp dirs on the same filesystem.",
     "why": "Check-then-act code passes every single-threaded test and fails only when another process acts between the check and the act. The fixture injects that interleaving."
   },
   "oracle": "fixtures/test_57_os_atomic_dir_exchange.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "AtomicDirectoryDeployer",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "ensure_directory",
+          "safe_remove_directory",
+          "acquire_lock",
+          "release_lock",
+          "deploy_atomic"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",

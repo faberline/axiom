@@ -5,11 +5,35 @@
   "capability": "late-binding-closures",
   "requirement": "Implement RulePipeline with proper closure scope binding in generator and scaler loops, boundary validation, and history management.",
   "skeleton": "RulePipeline class with register_threshold_checks, build_indexed_scalers, evaluate, and clear methods.",
+  "caption": "A standard-library rule pipeline whose closures bind loop variables early. RulePipeline holds a rules list of callables and a private history list. register_threshold_checks raises TypeError when thresholds is not a list and ValueError when it holds more than 20 items, so exactly twenty is accepted; for each threshold it appends a lambda that takes the value and a default parameter bound to the current threshold, returning whether the value is at or above that bound. Because the bound is captured through the default argument at definition time, each checker keeps its own threshold instead of all reading the final loop value. build_indexed_scalers raises TypeError for a non-list and ValueError with the message factors cannot be empty for an empty list, then appends one lambda per factor, again binding the factor through a default parameter, so scalers built from factors 2, 3, and 5 multiply 10 into 20, 30, and 50 rather than 50 three times. evaluate raises ValueError for a mode other than all or any, returns True when no rules are registered, applies all() over the rules in all mode and any() in any mode, records the value, mode, and result in the history, and returns the result, so a value that satisfies one threshold but not another fails in all mode. clear empties both the rules and the history, and history_count reports the number of recorded evaluations.",
   "rationale": {
     "teaches": "Late-binding closures in loops: capture the loop variable through a default argument, reject an empty factor list, allow exactly 20 thresholds, require all rules to pass, and clear history fully.",
     "why": "A closure over a loop variable returns the last value for every scaler, a bug that is only visible when more than one closure is called after the loop ends. The fixture builds several and calls each."
   },
   "oracle": "fixtures/test_32_syntax_late_binding_closures.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "RulePipeline",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "register_threshold_checks",
+          "build_indexed_scalers",
+          "evaluate",
+          "clear",
+          "history_count"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": []
+  },
   "candidates": [
     {
       "id": "gold",
