@@ -1,5 +1,6 @@
-# Cloud Build needs the current source for Tape, Defer, Relay, their local dependency
-# closure, and this benchmark harness. The repository also contains a very
+# Cloud Build needs the current source for Tape, Defer, Relay, and this
+# benchmark harness; rig and the shared libraries are faberline git
+# dependencies that cargo fetches. The repository also contains a very
 # large Mamba conformance corpus that is unrelated to this calibration.
 **
 !Cargo.toml
@@ -12,46 +13,6 @@
 !apps/defer/**
 !apps/relay/
 !apps/relay/**
-!apps/rig/
-!apps/rig/**
-
-!libs/
-!libs/build-stamp/
-!libs/build-stamp/**
-!libs/cli-std/
-!libs/cli-std/**
-!libs/metrics-prometheus/
-!libs/metrics-prometheus/**
-!libs/openapi-codegen/
-!libs/openapi-codegen/**
-!libs/peer-tls/
-!libs/peer-tls/**
-!libs/raft-core/
-!libs/raft-core/**
-!libs/raft-runtime/
-!libs/raft-runtime/**
-!libs/server-http/
-!libs/server-http/**
-!libs/server-lifecycle/
-!libs/server-lifecycle/**
-!libs/server-tcp/
-!libs/server-tcp/**
-!libs/service-auth/
-!libs/service-auth/**
-!libs/service-backup/
-!libs/service-backup/**
-!libs/service-executor/
-!libs/service-executor/**
-!libs/service-http/
-!libs/service-http/**
-!libs/service-k8s/
-!libs/service-k8s/**
-!libs/service-observability/
-!libs/service-observability/**
-!libs/storage-durable/
-!libs/storage-durable/**
-!libs/transport-h2c/
-!libs/transport-h2c/**
 
 !vendor/
 !vendor/cranelift-jit/

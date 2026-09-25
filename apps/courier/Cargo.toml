@@ -31,23 +31,23 @@ utoipa = { workspace = true, features = ["axum_extras"] }
 
 # Shared k8s-native HTTP service shell — standard probes, request tracing,
 # h2c serve, graceful drain.
-service-http = { path = "../../libs/service-http" }
+service-http = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 # Shared request-auth plumbing — StaticRoleMapVerifier is exactly the
 # shared-bearer-token shape courier needs; no custom Verifier required.
-service-auth = { path = "../../libs/service-auth" }
+service-auth = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 # Process-level rustls crypto provider install (reqwest's rustls-tls-native-roots
 # backend needs a default provider installed once before the first TLS dial).
-peer-tls = { path = "../../libs/peer-tls" }
+peer-tls = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 # Outbound calls to api.github.com (server-held credential).
 reqwest = { workspace = true }
 # Standard agent-facing CLI ops — llm/upgrade/issue.
-cli-std = { path = "../../libs/cli-std", default-features = false }
+cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.13", default-features = false }
 
 clap = { workspace = true, features = ["env"] }
 
 [build-dependencies]
 # Stamp COURIER_GIT_SHA / COURIER_BUILT_AT / COURIER_TARGET for cli-std's ToolInfo.
-build-stamp = { path = "../../libs/build-stamp" }
+build-stamp = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 
 [features]
 default = []

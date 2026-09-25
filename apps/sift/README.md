@@ -268,7 +268,8 @@ The `apps/sift` source owns the product boundary, Rust binary, signal engines,
 public schemas, deployment files, and end-to-end tests.
 
 An `apps/<name>` source is another Axiom application with its own product
-boundary. A `libs/<name>` source is a shared Rust contract that Sift composes.
+boundary. A `core/<name>` source is a shared Rust contract from
+[faberline/core](https://github.com/faberline/core) that Sift composes.
 An `external:<name>` source is a protocol or file format maintained outside
 this repository. Sift owns the adapter and compatibility tests for every
 external contract that it adopts.
@@ -283,13 +284,13 @@ below is an explicit Cargo test target under `apps/sift/e2e`.
 | Capability | ID | User promise | Sources |
 |---|---|---|---|
 | Signal ingest | `signal-ingest` | Send logs, metrics, and traces through standard telemetry protocols. | `apps/sift`<br>`external:opentelemetry`<br>`external:prometheus` |
-| Unified investigation | `unified-investigation` | Query and correlate every phase-one signal through one product API. | `apps/sift`<br>`libs/index-text` |
-| Durable local data | `durable-local-data` | Keep accepted data in one private and versioned persistent root. | `apps/sift`<br>`libs/storage-durable` |
-| Replicated availability | `replicated-availability` | Keep acknowledged data after one voter fails. | `apps/sift`<br>`libs/raft-core`<br>`libs/raft-runtime`<br>`libs/peer-tls` |
-| Archive and restore | `archive-and-restore` | Commit immutable Parquet archives and restore their exact events. | `apps/sift`<br>`libs/storage-segment`<br>`libs/service-projection`<br>`libs/service-backup`<br>`external:apache-parquet` |
-| Agent and CLI access | `agent-and-cli-access` | Let people and agents use the same read-only product schemas. | `apps/sift`<br>`libs/cli-std`<br>`external:model-context-protocol` |
-| Kubernetes operation | `kubernetes-operation` | Run one Sift product as secure role-based GKE workloads. | `apps/sift`<br>`libs/service-k8s`<br>`libs/service-auth` |
-| Structured log collection | `structured-log-collection` | Resume file and CRI collection without silently skipping bytes. | `apps/sift`<br>`libs/service-observability` |
+| Unified investigation | `unified-investigation` | Query and correlate every phase-one signal through one product API. | `apps/sift`<br>`core/index-text` |
+| Durable local data | `durable-local-data` | Keep accepted data in one private and versioned persistent root. | `apps/sift`<br>`core/storage-durable` |
+| Replicated availability | `replicated-availability` | Keep acknowledged data after one voter fails. | `apps/sift`<br>`core/raft-core`<br>`core/raft-runtime`<br>`core/peer-tls` |
+| Archive and restore | `archive-and-restore` | Commit immutable Parquet archives and restore their exact events. | `apps/sift`<br>`core/storage-segment`<br>`core/service-projection`<br>`core/service-backup`<br>`external:apache-parquet` |
+| Agent and CLI access | `agent-and-cli-access` | Let people and agents use the same read-only product schemas. | `apps/sift`<br>`core/cli-std`<br>`external:model-context-protocol` |
+| Kubernetes operation | `kubernetes-operation` | Run one Sift product as secure role-based GKE workloads. | `apps/sift`<br>`core/service-k8s`<br>`core/service-auth` |
+| Structured log collection | `structured-log-collection` | Resume file and CRI collection without silently skipping bytes. | `apps/sift`<br>`core/service-observability` |
 
 ### Signal ingest
 
@@ -310,7 +311,7 @@ below is an explicit Cargo test target under `apps/sift/e2e`.
 - Promise: Give logs, metrics, and traces one versioned query, correlation, service, and async-job surface.
 - Sources:
   - `apps/sift` owns the public query AST, correlation rules, projections, and response contract.
-  - `libs/index-text` supplies the embedded and rebuildable log index primitives.
+  - `core/index-text` supplies the embedded and rebuildable log index primitives.
 - Gate: `bash apps/sift/test.sh --test text_index_migration`
 - Gate: `bash apps/sift/test.sh --test phase_one_api`
 - Gate: `bash apps/sift/test.sh --test trace_store`
@@ -321,7 +322,7 @@ below is an explicit Cargo test target under `apps/sift/e2e`.
 - Promise: Refuse unsafe roots and recover accepted signal data from private WAL and segments.
 - Sources:
   - `apps/sift` owns the fixed layout, signal WAL, segments, lock, and startup checks.
-  - `libs/storage-durable` supplies framed durable logs and torn-tail recovery behavior.
+  - `core/storage-durable` supplies framed durable logs and torn-tail recovery behavior.
 - Gate: `bash apps/sift/test.sh --test persistent_data_dir`
 - Gate: `bash apps/sift/test.sh --test durable_signal_wal`
 - Gate: `bash apps/sift/test.sh --test local_backpressure`
@@ -333,9 +334,9 @@ below is an explicit Cargo test target under `apps/sift/e2e`.
 - Promise: Acknowledge replicated batches through a three-voter quorum and keep them after leader loss.
 - Sources:
   - `apps/sift` maps Sift batches into the shared Raft state machine and role topology.
-  - `libs/raft-core` supplies the consensus log and quorum rules.
-  - `libs/raft-runtime` supplies durable host, transport, apply, and snapshot behavior.
-  - `libs/peer-tls` supplies required mutual TLS for dedicated peer traffic.
+  - `core/raft-core` supplies the consensus log and quorum rules.
+  - `core/raft-runtime` supplies durable host, transport, apply, and snapshot behavior.
+  - `core/peer-tls` supplies required mutual TLS for dedicated peer traffic.
 - Gate: `bash apps/sift/test.sh --test raft_batch`
 - Gate: `bash apps/sift/test.sh --test raft_failover`
 - Gate: `bash apps/sift/test.sh --test bounded_raft_state`
@@ -347,9 +348,9 @@ below is an explicit Cargo test target under `apps/sift/e2e`.
 - Promise: Write immutable signal segments before the manifest, preserve WAL on archive failure, and make every voter adopt the same retained prefix before Raft compaction.
 - Sources:
   - `apps/sift` owns archive manifests, segment hashes, commit order, WAL compaction, and restore checks.
-  - `libs/storage-segment` supplies immutable paged catalogs and bounded catalog readers.
-  - `libs/service-projection` rebuilds typed projections when the retained source generation changes.
-  - `libs/service-backup` supplies destination, upload, fetch, and retention behavior.
+  - `core/storage-segment` supplies immutable paged catalogs and bounded catalog readers.
+  - `core/service-projection` rebuilds typed projections when the retained source generation changes.
+  - `core/service-backup` supplies destination, upload, fetch, and retention behavior.
   - `external:apache-parquet` defines the immutable columnar segment file format.
 - Gate: `bash apps/sift/test.sh --test gcs_archive`
 - Gate: `bash apps/sift/test.sh --test cold_query_archive`
@@ -364,7 +365,7 @@ below is an explicit Cargo test target under `apps/sift/e2e`.
 - Promise: Expose the same phase-one contracts through HTTP, CLI, and read-only MCP tools.
 - Sources:
   - `apps/sift` owns the CLI commands, OpenAPI schema, MCP tools, and client calls.
-  - `libs/cli-std` supplies common terminal output and operational command behavior.
+  - `core/cli-std` supplies common terminal output and operational command behavior.
   - `external:model-context-protocol` defines the MCP transports and tool exchange contract.
 - Gate: `bash apps/sift/test.sh --test cli_contract`
 - Gate: `bash apps/sift/test.sh --test mcp_surface`
@@ -375,8 +376,8 @@ below is an explicit Cargo test target under `apps/sift/e2e`.
 - Promise: Render durable role workloads with project authorization, peer TLS, and PVC recovery boundaries.
 - Sources:
   - `apps/sift` owns the Sift resource, operator adapter, role images, and network policy.
-  - `libs/service-k8s` supplies the shared reconcile and workload rendering framework.
-  - `libs/service-auth` supplies TokenReview, SubjectAccessReview, projected tokens, and fail-closed decisions.
+  - `core/service-k8s` supplies the shared reconcile and workload rendering framework.
+  - `core/service-auth` supplies TokenReview, SubjectAccessReview, projected tokens, and fail-closed decisions.
 - Gate: `bash apps/sift/test.sh --test deployment_cli`
 - Gate: `bash apps/sift/test.sh --test persistent_deployment`
 - Gate: `bash apps/sift/test.sh --test kubernetes_auth`
@@ -387,7 +388,7 @@ below is an explicit Cargo test target under `apps/sift/e2e`.
 - Promise: Collect JSONL and CRI logs with durable checkpoints, bounded retry, quarantine, and byte-loss evidence.
 - Sources:
   - `apps/sift` owns source discovery, framing, retry, checkpoints, quarantine, and ingest mapping.
-  - `libs/service-observability` defines the structured service-log schema used by Axiom applications.
+  - `core/service-observability` defines the structured service-log schema used by Axiom applications.
 - Gate: `bash apps/sift/test.sh --test collector_cri`
 - Gate: `bash apps/sift/test.sh --test structured_stdout_collector_e2e`
 

@@ -157,8 +157,6 @@ out=${out:-${TMPDIR:-/tmp}/${app}-release-${version}}
 mkdir -p "$out"
 verifier="$(release_app_scripts_dir "$app")/verify-release-artifacts.sh"
 case "$app" in
-  lumen)
-    next="$verifier --repo $RELEASE_REPO --tag $tag --commit $commit --candidate-run-id $run_id --mode public --standalone-gke-receipt $receipt --standalone-gke-receipt-sidecar $sidecar --output $out/public-contract.json" ;;
   tape)
     next="$verifier --repo $RELEASE_REPO --tag $tag --commit $commit --candidate-run-id $run_id --candidate-run-attempt $attempt --mode public --gke-receipt $receipt --gke-receipt-sidecar $sidecar --output $out/public-contract.json" ;;
   *)

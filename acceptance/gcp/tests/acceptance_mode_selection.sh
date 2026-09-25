@@ -42,7 +42,6 @@ ENV_GKE="$ACCEPTANCE_ROOT/environment/gke.tf"
 CLUSTER_TF="$ACCEPTANCE_ROOT/cluster/main.tf"
 SCHEMA="$ACCEPTANCE_ROOT/evidence/schema.json"
 SIFT_TEST_IMAGE_WORKFLOW="$ACCEPTANCE_ROOT/../../.github/workflows/sift-test-image.yml"
-BUILD_STAMP="$ACCEPTANCE_ROOT/../../libs/build-stamp/src/lib.rs"
 SIFT_COMPLIANCE_SCRIPT="$ACCEPTANCE_ROOT/../../apps/sift/e2e/prometheus_compliance.sh"
 SIFT_CANDIDATE_ROOT_TEST="$ACCEPTANCE_ROOT/../../apps/sift/e2e/candidate_root.sh"
 
@@ -655,8 +654,8 @@ present "Sift test-image workflow publishes without the candidate gate" \
   'run: bash apps/sift/test.sh --candidate' "$SIFT_TEST_IMAGE_WORKFLOW"
 present "Sift test-image binaries no longer receive the immutable full SHA" \
   'SIFT_SOURCE_REVISION: ${{ needs.resolve.outputs.sha }}' "$SIFT_TEST_IMAGE_WORKFLOW"
-present "build-stamp no longer accepts an explicit archive source revision" \
-  'source_revision_variable = format!("{prefix}_SOURCE_REVISION")' "$BUILD_STAMP"
+# build-stamp's explicit archive source revision is build-stamp's own contract
+# now, pinned by the faberline/core tag: scripts/faberline-core-test.sh build-stamp.
 [[ "$(rg -F -c 'ref: ${{ needs.resolve.outputs.sha }}' "$SIFT_TEST_IMAGE_WORKFLOW")" == "3" ]] \
   || fail "Sift test-image candidate, build, and publish jobs do not use the same resolved commit"
 candidate_digest_line="$(line_of 'SIFT_IMAGE="$(jq -er' "$RUN_SCRIPT")"

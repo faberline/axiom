@@ -1,6 +1,6 @@
 ---
 name: build-release
-description: "Publish one verified release of lumen, tape, sift, keep, relay, or defer from an immutable, digest-pinned candidate that passed GKE acceptance: candidate workflow → independent verifier → GKE receipt → one annotated <app>@<version> tag at the landed sha → no-rebuild promotion → public verifier. loom gets the GKE acceptance leg only; anything else is refused. Use when the user asks to release, ship, promote, or run release acceptance for an app."
+description: "Publish one verified release of tape, sift, keep, relay, or defer from an immutable, digest-pinned candidate that passed GKE acceptance: candidate workflow → independent verifier → GKE receipt → one annotated <app>@<version> tag at the landed sha → no-rebuild promotion → public verifier. loom gets the GKE acceptance leg only; anything else is refused. Use when the user asks to release, ship, promote, or run release acceptance for an app."
 user-invocable: true
 ---
 
@@ -23,15 +23,15 @@ re-attest after candidate acceptance.
 
 | App | Route |
 |---|---|
-| `lumen`, `tape`, `sift`, `keep`, `relay`, `defer` | the ten steps under "Required order"; `scripts/release/apps.sh` is the per-app table every driver reads |
+| `tape`, `sift`, `keep`, `relay`, `defer` | the ten steps under "Required order"; `scripts/release/apps.sh` is the per-app table every driver reads |
+| `lumen` | released from https://github.com/faberline/lumen by that repository's own `build-release`; say so and stop |
 | `loom` | `scripts/build/release.sh loom` — GKE acceptance only (see "loom"); no candidate, no tag, no GitHub Release |
-| anything else | `scripts/release/apps.sh` refuses with `refused: unknown release app: <app> (known: lumen tape sift keep relay defer)` and `scripts/build/release.sh` with `refused: release route not wired for <app>`; relay the line and stop — never fall back to `cargo build --release`, and never wire a route yourself |
+| anything else | `scripts/release/apps.sh` refuses with `refused: unknown release app: <app> (known: tape sift keep relay defer)` and `scripts/build/release.sh` with `refused: release route not wired for <app>`; relay the line and stop — never fall back to `cargo build --release`, and never wire a route yourself |
 
 Per-app facts, read from `scripts/release/apps.sh` rather than from memory:
 
 | App | Root | Verifiers | GKE gate (step 5) | Receipt maker (step 6) |
 |---|---|---|---|---|
-| lumen | `apps/lumen` | `apps/lumen/scripts/verify-release-{candidate,artifacts}.sh` | `apps/lumen/scripts/standalone-gke-acceptance.sh --mode gke` — its usage is exactly that; it needs `LUMEN_STANDALONE_GKE_MUTATION=1` and a task-local kubeconfig | the gate itself writes `lumen-standalone-gke-receipt.json` and its sidecar |
 | tape | `apps/tape` | `apps/tape/scripts/verify-release-{candidate,artifacts}.sh` | `acceptance/gcp/scripts/run.sh` with `ACCEPTANCE_APPS=tape` and `TAPE_IMAGE=<candidate root digest reference>` | `apps/tape/scripts/make-gke-release-receipt.py` from the run's `run.json`, `images.json`, `acceptance.json`, `cleanup.json` |
 | sift | `projects/sift` | `scripts/release/verify-release-{candidate,artifacts}.sh --app sift` | `acceptance/gcp/scripts/run.sh` with `ACCEPTANCE_APPS="lumen sift"`, `LUMEN_IMAGE=<current lumen release digest reference>`, `SIFT_IMAGE=<candidate root digest reference>` | `scripts/release/make-gke-release-receipt.py --app sift --backend gcp` |
 | keep, relay, defer | `apps/<app>` | `scripts/release/verify-release-{candidate,artifacts}.sh --app <app>` | `scripts/build/release.sh <app> --image ghcr.io/chrischeng-c4/<app>@sha256:<root digest>`, with `main` checked out at the candidate's exact commit (the receipt binds the run's head sha to the candidate) | `scripts/release/make-gke-release-receipt.py --app <app> --backend gke-acceptance` from the `gh run view --json …` record its `--help` names and the downloaded evidence bundle |
@@ -70,13 +70,11 @@ and 7 with `run_in_background` and poll their output.
    above). It is paid, and the human triggers it. Deploy only
    `ghcr.io/chrischeng-c4/<app>@sha256:<root digest>` from the manifest,
    never a rebuilt or retagged image. Keep the evidence the gate leaves
-   behind: the sanitized receipt for lumen; `run.json`, `images.json`,
-   `acceptance.json`, and `cleanup.json` for tape and sift; the
-   `gke-acceptance` run record and evidence bundle for keep, relay, and
-   defer.
+   behind: `run.json`, `images.json`, `acceptance.json`, and
+   `cleanup.json` for tape and sift; the `gke-acceptance` run record and
+   evidence bundle for keep, relay, and defer.
 6. Bind the evidence into the receipt `scripts/release/apps.sh` names for
-   the app (`<app>-gke-receipt.json`; lumen's gate already wrote
-   `lumen-standalone-gke-receipt.json`) with the app's receipt maker, then
+   the app (`<app>-gke-receipt.json`) with the app's receipt maker, then
    write the `.sha256` sidecar as `<sha256>  <receipt name>` next to it. The
    receipt binds the candidate's final manifest bytes, commit, run, attempt,
    and image digests to one passed run. It never carries a kubeconfig,
@@ -94,8 +92,8 @@ and 7 with `run_in_background` and poll their output.
    something to create in the middle of a release.
 8. Dispatch `<app>-release` at that exact tag: the same `promote.sh` run
    continues into the dispatch with `version`, `candidate_run_id`,
-   `candidate_run_attempt` (lumen predates that input), and the receipt and
-   sidecar bytes with their SHA-256s, then watches it. The promotion
+   `candidate_run_attempt`, and the receipt and sidecar bytes with their
+   SHA-256s, then watches it. The promotion
    re-proves the tag, ruleset, candidate run, receipt, signature,
    provenance, and SBOM attestations before any public write; it retags the
    same digest as semver and `latest` and publishes the GitHub Release from
@@ -139,14 +137,6 @@ defer.
 - `scripts/build/release.sh --rerun` needs the human to name what changed; a
   paid re-run "to see if it passes this time" is not evidence.
 
-## Recovery exception
-
-lumen's `lumen-release-recovery.yml`, `lumen-release-0.4.29-recovery.yml`,
-and `lumen-release-0.4.30-recovery.yml` are frozen controllers for the
-releases named in them. None is a generic escape hatch: a recovery cannot
-rebuild, move or recreate a tag, or publish bytes the candidate did not
-produce, and no other app gets one.
-
 ## Controller boundaries
 
 - The controller (the main session) owns Git, tags, workflow dispatch, the
@@ -160,8 +150,8 @@ produce, and no other app gets one.
   yourself.
 - Never call `acceptance/gke-harness/scripts/*.sh`, `terraform`, `kubectl`,
   or `gcloud` by hand for the `gke-acceptance` leg; the workflow owns
-  deploy, verify, and park. The `acceptance/gcp` and lumen standalone gates
-  are controller scripts, invoked exactly as their usage lines say.
+  deploy, verify, and park. The `acceptance/gcp` gates are controller
+  scripts, invoked exactly as their usage lines say.
 - Never edit source, manifests, lockfiles, workflows, or verifiers to make a
   step pass; the failure is the finding.
 - Never put a kubeconfig, token, or cluster credential into a receipt, a

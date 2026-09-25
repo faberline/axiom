@@ -1,12 +1,13 @@
 # Client Transport Policy Example
 
 This repo-root example proves the shared client transport policy with real
-workspace components:
+components:
 
-- `apps/lumen` supplies its actual OpenAPI document.
+- `lumen`, a [faberline/lumen](https://github.com/faberline/lumen) git
+  dependency, supplies its actual OpenAPI document.
 - A real Lumen router is served over the shared HTTP/1.1 + h2c server path.
-- `libs/openapi-codegen` generates TypeScript, Python, and Rust clients.
-- `libs/transport-h2c` supplies the logarithmic HTTP/2 connection-count heuristic.
+- `core/openapi-codegen` generates TypeScript, Python, and Rust clients.
+- `core/transport-h2c` supplies the logarithmic HTTP/2 connection-count heuristic.
 
 Run it:
 

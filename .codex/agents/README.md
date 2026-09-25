@@ -1,7 +1,7 @@
 # Codex agent fleet — projection of `.claude/agents/`
 
 This directory holds the Codex-runtime projection of the Claude agent fleet:
-one `<name>.toml` per `.claude/agents/<name>.md`, 224 in total. The Claude
+one `<name>.toml` per `.claude/agents/<name>.md`, 96 in total. The Claude
 markdown definition is the source of truth; each TOML carries the same
 `name`, `description`, pinned reasoning effort, and the full markdown body as
 `developer_instructions`. The generator is `scripts/agents/render_fleet.py`:
@@ -13,15 +13,15 @@ projection. The per-project markdown itself is rendered from
 `scripts/agents/templates/<tier>/<role>.md` — edit the template, never one
 project's copy.
 
-The fleet has PM, TL, QA, and Dev roles for 25 apps and 30 libs. `aw-dev` is a
+The fleet has PM, TL, QA, and Dev roles for 23 apps. `aw-dev` is a
 tailored project role. The only non-project roles are `cto`, `project-manager`,
 `tech-design`, and `integration-qa`:
 
 | Role | Effort | Owns |
 |---|---|---|
-| `<p>-pm` (55) | `high` | one project's `README.md`, `STATUS.md`, `ROADMAP.md`, and `docs/**` as uncommitted drafts that pass `aw metadoc check` and `aw meta check`; never commits or binds a Milestone |
-| `<p>-qa` (55) | `low` | one frozen executor assignment; the assignment limits E2E paths or a measure-only final check |
-| `<p>-dev` (55) | `low` | one frozen executor assignment; the assignment limits source and colocated unit-test paths |
+| `<p>-pm` (23) | `high` | one project's `README.md`, `STATUS.md`, `ROADMAP.md`, and `docs/**` as uncommitted drafts that pass `aw metadoc check` and `aw meta check`; never commits or binds a Milestone |
+| `<p>-qa` (23) | `low` | one frozen executor assignment; the assignment limits E2E paths or a measure-only final check |
+| `<p>-dev` (23) | `low` | one frozen executor assignment; the assignment limits source and colocated unit-test paths |
 | `cto` | `high` | one cross-project boundary decision draft (shared → `libs/`, app-owned, or a new lib) as a `type:spike` body; writes nothing |
 | `project-manager` | `medium` | one release Milestone description draft, validated with `aw milestone validate --draft`; never creates it |
 | `tech-design` | `xhigh` | one Milestone's GHAN issue-body drafts under `aw change bodydir`, validated with `aw change validate --body-file`; never creates them |

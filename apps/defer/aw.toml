@@ -522,7 +522,7 @@ contract_id = "shared-credential-reload-and-credential-free-audit"
 category = "security"
 td_ref = "apps/defer/external-contracts/behavior/2215.md#defer-security-shared-redacted-audit"
 test_path = "apps/defer/tests/security_defer_security_shared_redacted_audit.rs"
-command = "cargo test -p service-auth -- --nocapture"
+command = 'cargo test --locked --manifest-path "$(bash scripts/faberline-core-test.sh --root)/Cargo.toml" --target-dir "${CARGO_TARGET_DIR:-target}" -p service-auth -- --nocapture'
 required_for_production = false
 assertions = [
     "The shared mechanism used by Defer executes valid rotation, invalid and unreadable replacement preservation, file-watcher adoption, and typed authorization audit cases with non-zero tests.",

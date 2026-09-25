@@ -1,8 +1,0 @@
-# CODEGEN-BEGIN
-# AW-EC-TOOL-BEGIN
-project = "lumen"
-source_contract = "lumen-security-hardening-access-control"
-target = "apps/lumen"
-version = 1
-# AW-EC-TOOL-END
-# CODEGEN-END

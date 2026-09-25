@@ -92,8 +92,8 @@ writer policy.
 
 ## Fleet and permission boundary
 
-The Codex 224-role fleet is active. It has PM/TL/QA/Dev for 25 apps and 30
-libs, with a tailored `aw-dev`, plus `cto`, `project-manager`, `tech-design`,
+The Codex 96-role fleet is active. It has PM/TL/QA/Dev for 23 apps,
+with a tailored `aw-dev`, plus `cto`, `project-manager`, `tech-design`,
 and `integration-qa`. Templates under
 `scripts/agents/templates/` render project Markdown and `.codex` projections
 through `scripts/agents/render_fleet.py`; never hand-edit generated files.

@@ -83,8 +83,8 @@ writer policy.
 
 ## Fleet and safe dispatch
 
-The 226-role fleet is a generated candidate target, not the active fleet. It
-has 25 apps and 30 libs with PM/TL/QA/Dev, custom `aw-dev`, and six singleton
+The 98-role fleet is a generated candidate target, not the active fleet. It
+has 23 apps with PM/TL/QA/Dev, custom `aw-dev`, and six singleton
 roles. Edit templates under
 `scripts/agents/templates/`, not generated fleet copies, then use
 `scripts/agents/render_fleet.py` only from the repository root.

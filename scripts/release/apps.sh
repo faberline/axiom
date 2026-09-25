@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Per-app release table shared by scripts/release/*.sh. Source it; never run it.
 #
-# Six apps ride the candidate-first release path behind `build-release <app>`:
+# Five apps ride the candidate-first release path behind `build-release <app>`:
 # landed main -> immutable candidate -> digest-pinned GKE acceptance ->
-# protected annotated tag -> no-rebuild promotion. lumen and tape keep their
-# own verifiers under apps/<app>/scripts; sift, keep, relay, and defer use the
+# protected annotated tag -> no-rebuild promotion. tape keeps its own
+# verifiers under apps/tape/scripts; sift, keep, relay, and defer use the
 # --app parameterized twins in this directory. Every function prints one
 # value per line and refuses an app it does not know, so a typo cannot fall
 # through to an empty target list.
@@ -15,10 +15,10 @@ RELEASE_COMPATIBILITY_LINE="- Compatibility: no HTTP, CLI, wire format, on-disk 
 release_refuse() { printf 'refused: %s\n' "$*" >&2; exit 2; }
 
 release_app_known() {
-  case "$1" in lumen|tape|sift|keep|relay|defer) return 0 ;; *) return 1 ;; esac
+  case "$1" in tape|sift|keep|relay|defer) return 0 ;; *) return 1 ;; esac
 }
 release_app_require() {
-  release_app_known "${1:-}" || release_refuse "unknown release app: ${1:-<none>} (known: lumen tape sift keep relay defer)"
+  release_app_known "${1:-}" || release_refuse "unknown release app: ${1:-<none>} (known: tape sift keep relay defer)"
 }
 # Where the app's Cargo.toml, build.sh, and Dockerfile.release live.
 release_app_root() {
@@ -28,17 +28,17 @@ release_app_root() {
 # Directory of the app's verify-release-candidate.sh and verify-release-artifacts.sh.
 release_app_scripts_dir() {
   release_app_require "$1"
-  case "$1" in lumen|tape) printf 'apps/%s/scripts\n' "$1" ;; *) printf 'scripts/release\n' ;; esac
+  case "$1" in tape) printf 'apps/%s/scripts\n' "$1" ;; *) printf 'scripts/release\n' ;; esac
 }
 # True for the apps whose verifiers take --app (the shared twins here).
 release_app_uses_shared_scripts() {
   release_app_require "$1"
-  [[ "$1" != lumen && "$1" != tape ]]
+  [[ "$1" != tape ]]
 }
 release_app_targets() {
   release_app_require "$1"
   case "$1" in
-    lumen|tape|sift)
+    tape|sift)
       printf '%s\n' aarch64-apple-darwin x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu x86_64-unknown-linux-musl aarch64-unknown-linux-musl ;;
     keep|relay|defer)
       printf '%s\n' x86_64-unknown-linux-musl aarch64-unknown-linux-musl ;;
@@ -47,15 +47,15 @@ release_app_targets() {
 # Which harness produces the GKE receipt (build-release steps 5 and 6).
 release_app_gke_backend() {
   release_app_require "$1"
-  case "$1" in lumen) printf 'lumen-standalone\n' ;; tape|sift) printf 'gcp\n' ;; keep|relay|defer) printf 'gke-acceptance\n' ;; esac
+  case "$1" in tape|sift) printf 'gcp\n' ;; keep|relay|defer) printf 'gke-acceptance\n' ;; esac
 }
 release_app_receipt_name() {
   release_app_require "$1"
-  case "$1" in lumen) printf 'lumen-standalone-gke-receipt.json\n' ;; *) printf '%s-gke-receipt.json\n' "$1" ;; esac
+  printf '%s-gke-receipt.json\n' "$1"
 }
 release_app_receipt_schema() {
   release_app_require "$1"
-  case "$1" in lumen) printf 'lumen.standalone-gke-receipt/v2\n' ;; *) printf '%s.gke-release-receipt/v1\n' "$1" ;; esac
+  printf '%s.gke-release-receipt/v1\n' "$1"
 }
 # Functional fields every receipt must carry as "passed" (shared-script apps only).
 release_app_functional_fields() {
@@ -66,24 +66,23 @@ release_app_functional_fields() {
     *) release_refuse "$1 keeps its own receipt contract under apps/$1/scripts" ;;
   esac
 }
-# Promotion workflow input names: lumen predates the shared shape.
+# Promotion workflow input names.
 release_app_promotion_input_prefix() {
   release_app_require "$1"
-  case "$1" in lumen) printf 'standalone_gke_receipt\n' ;; *) printf 'gke_receipt\n' ;; esac
+  printf 'gke_receipt\n'
 }
 release_app_promotion_takes_attempt() {
   release_app_require "$1"
-  [[ "$1" != lumen ]]
+  true
 }
 release_app_manifest_schema() {
   release_app_require "$1"
-  case "$1" in lumen) printf 'cclab.lumen.candidate-manifest.v3\n' ;; *) printf 'cclab.%s.candidate-manifest.v1\n' "$1" ;; esac
+  printf 'cclab.%s.candidate-manifest.v1\n' "$1"
 }
 # Candidate job ids bound by the final manifest's `jobs` map.
 release_app_candidate_jobs() {
   release_app_require "$1"
   case "$1" in
-    lumen) printf '%s\n' identity build ghcr-image-and-attest manifest verify-candidate verify-libraries kind-amd64 kind-arm64 result ;;
     tape) printf '%s\n' identity build tape-release-gates ghcr-image-and-attest manifest verify-candidate verify-libraries kind-amd64 kind-arm64 result ;;
     *) printf '%s\n' identity build "$1-release-gates" ghcr-image-and-attest manifest verify-candidate result ;;
   esac

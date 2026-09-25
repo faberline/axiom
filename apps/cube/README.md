@@ -181,7 +181,7 @@ and ingest control state survives failover.
 
 - Root WI: #767
 - Surfaces: Raft: metadata, partition ownership, and rollup job state over
-  `libs/raft-core` and `libs/raft-runtime`.
+  `core/raft-core` and `core/raft-runtime`.
 - Gate — stability: pending raft OLAP failover gate - metadata and partition
   ownership survive failover
 - Source: `pending: apps/cube/tests/raft_metadata.rs`

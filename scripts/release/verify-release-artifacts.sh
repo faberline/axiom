@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Verify a promotion of one shared-script app (sift, keep, relay, defer). This
 # script never creates or changes a tag, image, release, signature,
-# provenance, or attestation. lumen and tape keep their own copies under
-# apps/<app>/scripts; the per-app facts here come from scripts/release/apps.sh.
+# provenance, or attestation. tape keeps its own copies under
+# apps/tape/scripts; the per-app facts here come from scripts/release/apps.sh.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/release/apps.sh

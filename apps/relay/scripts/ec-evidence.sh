@@ -194,7 +194,8 @@ security_boundaries() {
 }
 
 security_reload() {
-  list_suite security-reload cargo test -q -p service-auth --lib reload::tests -- --list
+  list_suite security-reload \
+    bash scripts/faberline-core-test.sh service-auth -q --lib reload::tests -- --list
   require_listed security-reload \
     reload::tests::authorization_events_are_typed_and_credential_free \
     reload::tests::failed_file_reload_emits_read_failure_without_losing_registry \
@@ -202,7 +203,7 @@ security_reload() {
     reload::tests::invalid_replacements_preserve_last_known_good_snapshot \
     reload::tests::valid_rotation_is_immediately_visible_and_advances_revision
   run_suite security-reload 5 - \
-    cargo test -q -p service-auth --lib reload::tests -- --nocapture
+    bash scripts/faberline-core-test.sh service-auth -q --lib reload::tests -- --nocapture
 }
 
 security_stability() {
@@ -235,7 +236,10 @@ security_guard() {
     --test direct_k8s_assets \
     -- --nocapture
   echo ">> meter evidence: service-auth reload"
-  target/debug/meter test -- -p service-auth --lib reload::tests -- --nocapture
+  target/debug/meter test -- \
+    --manifest-path "$(bash scripts/faberline-core-test.sh --root)/Cargo.toml" \
+    --target-dir "${CARGO_TARGET_DIR:-target}" \
+    -p service-auth --lib reload::tests -- --nocapture
 }
 
 cd "$REPO_ROOT"

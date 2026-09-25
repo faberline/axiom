@@ -642,6 +642,11 @@ owns before you open it; the kit tells you which libraries you are
 required to compose; the source layout tells you what a service looks
 like once it has. Skip any one and the other two stop being checkable.
 
+The libraries live in [faberline/core](https://github.com/faberline/core) as
+`crates/<name>` and are git dependencies here, pinned by tag; a `libs/<name>`
+path below means that crate. Change a library in faberline/core, tag it, and
+move this workspace's `tag` in the change that adopts it.
+
 ### Shared-library naming grammar
 
 *(policy-only — a repository authoring policy, not a project capability trait.

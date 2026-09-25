@@ -21,19 +21,19 @@ anyhow = { workspace = true }
 axum = { workspace = true }
 bytes = { workspace = true }
 clap = { workspace = true, features = ["env"] }
-cli-std = { path = "../../libs/cli-std", default-features = false }
+cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.13", default-features = false }
 k8s-openapi = { version = "0.24", features = ["v1_32"] }
 kube = { version = "0.98", features = ["runtime", "derive", "client"] }
-metrics-prometheus = { path = "../../libs/metrics-prometheus" }
+metrics-prometheus = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 mio = { version = "0.8", features = ["net", "os-poll"] }
 schemars = "0.8"
-server-http = { path = "../../libs/server-http" }
-service-k8s = { path = "../../libs/service-k8s" }
+server-http = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
+service-k8s = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
-server-lifecycle = { path = "../../libs/server-lifecycle" }
-server-tcp = { path = "../../libs/server-tcp" }
+server-lifecycle = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
+server-tcp = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-postgres = "0.7"
@@ -45,13 +45,13 @@ tracing = { workspace = true }
 
 [dev-dependencies]
 futures-util = { workspace = true }
-transport-h2c = { path = "../../libs/transport-h2c" }
+transport-h2c = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 http-body-util = "0.1"
 reqwest = { workspace = true }
 tower = { workspace = true }
 
 [build-dependencies]
-build-stamp = { path = "../../libs/build-stamp" }
+build-stamp = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 
 [features]
 default = []

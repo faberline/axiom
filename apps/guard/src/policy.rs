@@ -1,7 +1,7 @@
 // SPEC-MANAGED: apps/guard/tech-design/src/policy.py
 // HANDWRITE-BEGIN gap="python-td-rust-body" tracker="#2866" reason="Guard policy domain behavior remains native Rust"
 // @spec WI #2931: executable Python TD parity baseline.
-use cclab_compass::diagnostic::{DiagnosticCategory, DiagnosticSeverity};
+use compass::diagnostic::{DiagnosticCategory, DiagnosticSeverity};
 
 use crate::report::Severity;
 

@@ -1,9 +1,0 @@
-# Seeds for failure cases proptest has generated in the past. It is
-# automatically read and these particular cases re-run before any
-# novel cases are generated.
-#
-# It is recommended to check this file in to source control so that
-# everyone who runs the test benefits from these saved cases.
-cc 289f80890075c001e1e6e2a86529cb013b097c18fb5059e51e62b1886ed2233a # shrinks to docs = [(Some(-1000.5), None)]
-cc a3786a6f5c0ffe5622b906b114a08201f86c00636691760b8c000b1ad299d5f9 # shrinks to docs = [(Some(20), "a", true), (None, "a", false)], lo = 19, span = 1
-cc 6e93df76bfc5d64e4a6b2c7c87ab370a614bfc638e08c0efd832c7c4a63d1fe9 # shrinks to docs = [(Some(5), "a", [], true, 0, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])], lo = 2, span = 3, qsig = 0, qraw = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0], kw_pick = "a", tag_pick = "red"

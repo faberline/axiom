@@ -58,7 +58,7 @@ debug = [
   "dep:serde_json",
   "dep:serde-wasm-bindgen",
   "dep:js-sys",
-  "cclab-ui-runtime/debug",
+  "ui-runtime/debug",
 ]
 # Placeholder slots for future framework adapters:
 # vue = []
@@ -71,8 +71,8 @@ debug = [
 # extraction) or jet-local reimpls. Browser APIs are pulled in only
 # by host-bridge/debug/webgpu-app features so the pure-Rust test path
 # needs no wasm target.
-cclab-surface = { path = "../../../libs/surface" }
-cclab-ui-runtime = { path = "../../../libs/ui-runtime", default-features = false }
+surface = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
+ui-runtime = { git = "https://github.com/faberline/core", tag = "v0.4.13", default-features = false }
 # taffy: pure-Rust flexbox/block layout engine — see
 # .aw/tech-design/projects/jet/wasm-renderer/layout-runtime.md.
 # Pinned to the Dioxus stable series; pure-Rust, no_std-compatible,

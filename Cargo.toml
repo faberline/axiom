@@ -1,5 +1,4 @@
 [workspace]
-exclude = ["vendor/jieba-rs"]
 members = [
     "apps/relay",
     "apps/defer",
@@ -12,8 +11,6 @@ members = [
     "apps/mamba/mambalibs/pgkit/pg",
     "apps/meter",
     "apps/meter/meter-cli",
-    "apps/rig",
-    "apps/rig/rig-cli",
     "apps/arena",
     "apps/arena/arena-cli",
     "apps/guard",
@@ -32,36 +29,6 @@ members = [
     "apps/mamba/mambalibs/agentkit/backend",
     "apps/jet",
     "apps/jet/wasm",
-    "libs/compass",
-    "libs/raft-core",
-    "libs/claim-token",
-    "libs/openapi-codegen",
-    "libs/server-lifecycle",
-    "libs/server-tcp",
-    "libs/server-http",
-    "libs/transport-h2c",
-    "libs/cli-std",
-    "libs/surface",
-    "libs/ui-runtime",
-    "libs/raft-runtime",
-    "libs/service-k8s",
-    "libs/service-http",
-    "libs/service-observability",
-    "libs/service-auth",
-    "libs/service-backup",
-    "libs/service-executor",
-    "libs/storage-durable",
-    "libs/storage-object",
-    "libs/index-text",
-    "libs/storage-segment",
-    "libs/service-projection",
-    "libs/transport-otlp",
-    "libs/metrics-remote-write",
-    "libs/service-collector",
-    "libs/service-mcp",
-    "libs/peer-tls",
-    "libs/metrics-prometheus",
-    "libs/build-stamp",
     "apps/cap",
     "apps/vat",
     "apps/courier",
@@ -107,7 +74,6 @@ members = [
     "crates/cclab-log",
     "crates/cclab-aurora",
     "crates/cclab-ctx-inf-db",
-    "apps/lumen",
     "apps/sift",
     "apps/keep",
     "examples/client-transport-policy",
@@ -259,6 +225,3 @@ strip = true
 # path is x86_64-only in upstream cranelift-jit 0.116.1.
 [patch.crates-io]
 cranelift-jit = { path = "vendor/cranelift-jit" }
-
-# Preserve jieba-rs 0.7.4 cuts while allowing Lumen to store the no-HMM route on disk.
-jieba-rs = { path = "vendor/jieba-rs" }

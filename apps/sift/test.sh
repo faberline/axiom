@@ -46,7 +46,8 @@ if [[ "${1:-}" == "--candidate" ]]; then
   bash apps/sift/e2e/candidate_root.sh
   cargo build --locked \
     -p vat -p lumen -p tape -p relay -p defer -p sift --bins
-  cargo test --locked -p build-stamp -p sift "$@"
+  bash scripts/faberline-core-test.sh build-stamp
+  cargo test --locked -p sift "$@"
   candidate_bin="${CARGO_TARGET_DIR:-$repo_root/target}/debug/sift"
   [[ -x "$candidate_bin" ]] || {
     echo "candidate Sift binary was not produced at $candidate_bin" >&2

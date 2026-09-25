@@ -86,7 +86,7 @@ cargo build --release -p jet --bin jet
 install_jet release
 
 TAG="${PROJECT_BUILD_RELEASE_TAG}"
-git add Cargo.lock README.md libs/cli-std apps/jet
+git add Cargo.lock README.md apps/jet
 git commit --allow-empty -m "release(jet): ${TAG}"
 
 project_build_print_release_next_steps jet "$TAG"

@@ -179,7 +179,7 @@ domain verbs.
 - Gate — behavior: `cargo test -p pgpool --test cli_contract` -
   llm/upgrade/issue appear in the compiled binary help contract
 - Source: `apps/pgpool/src/bin/pgpool.rs`, `apps/pgpool/tests/cli_contract.rs`,
-  `libs/cli-std/src`
+  `core/cli-std/src`
 - Evidence: apps/pgpool/tests/cli_contract.rs
 
 ### Chainable Output Conformance

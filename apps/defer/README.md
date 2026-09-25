@@ -101,7 +101,7 @@ RSS 41,584 -> 42,192 KiB (1%), FD 18 -> 18, threads 12 -> 12, and task-read p99
   `apps/defer/tests/rate_limits.rs`,
   `apps/defer/tests/raft_scheduler.rs (same-directory node restart, snapshot recovery, and repeated failover)`,
   `apps/defer/scripts/soak.sh`, `apps/defer/scripts/kind-e2e.sh`,
-  `libs/service-observability/scripts/soak-metrics.sh`
+  `core/service-observability/scripts/soak-metrics.sh`
 - Evidence: lifecycle/raft tests plus bounded soak and operator/PVC Kind
   recovery
 
@@ -270,8 +270,8 @@ then removes the current leader and completes another full create/lease/ack
 lifecycle through the surviving quorum.
 
 - Root WI: #766
-- Surfaces: Raft: delayed task state machine over `libs/raft-core` and
-  `libs/raft-runtime`.
+- Surfaces: Raft: delayed task state machine over `core/raft-core` and
+  `core/raft-runtime`.
 - Gate — stability:
   `cargo test -p defer --test raft_scheduler --test raft_peer_mtls` - committed
   task recovery, same-directory recovered-node catch-up followed by a second
@@ -290,8 +290,8 @@ roots. This root is an integration map, not a second implementation of those
 contracts.
 
 - Root WI: #2170
-- Surfaces: Shared mechanisms: `libs/raft-runtime`, `libs/service-backup`,
-  `libs/service-auth`, and `libs/service-k8s`; Defer integration: Raft-backed
+- Surfaces: Shared mechanisms: `core/raft-runtime`, `core/service-backup`,
+  `core/service-auth`, and `core/service-k8s`; Defer integration: Raft-backed
   scheduler state, admin snapshot backup, queue-scoped authorization, and
   operator-managed StatefulSet storage.
 - Gate — behavior: the `stateful_storage` profile resolved its common workload

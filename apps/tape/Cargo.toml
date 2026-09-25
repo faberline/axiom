@@ -30,7 +30,7 @@ path = "src/bin/tape-bench.rs"
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true, features = ["env"] }
-cli-std = { path = "../../libs/cli-std", default-features = false }
+cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.13", default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
@@ -40,19 +40,19 @@ tokio = { workspace = true }
 # Shared service shell (#1325): standard probe routes (/healthz /readyz
 # /metrics /openapi.json /docs), the h2c + HTTP/1.1 one-port serve loop,
 # SIGTERM-aware graceful drain, and the {error, message} ApiErr envelope.
-service-http = { path = "../../libs/service-http" }
+service-http = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 # Prometheus metric primitives (Counter/Latency + text-format render) for
 # TapeMetrics.
-metrics-prometheus = { path = "../../libs/metrics-prometheus" }
+metrics-prometheus = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 # Shared bearer-token auth contract (#1326): StaticRoleMapVerifier, the
 # blanket auth_middleware, and the registry loader.
-service-auth = { path = "../../libs/service-auth" }
+service-auth = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 # Shared raft driver (#1327): RaftHost/RaftStore/RaftStateMachine,
 # ClusterTopology::from_env, OutcomeWindow, SnapshotPolicy/HostConfig, and
 # the shared peer-TLS config adapter.
-raft-runtime = { path = "../../libs/raft-runtime" }
+raft-runtime = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 # Shared peer mTLS material/configuration for the Raft transport.
-peer-tls = { path = "../../libs/peer-tls" }
+peer-tls = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 # K8s operator (feature `operator`) — the shared libs/service-k8s scaffold + render
 # toolkit (#1328), mirroring relay's #1208 slice. tape supplies a TapeSpec CRD +
 # ManagedService and gets the reconcile controller for free. Versions mirror
@@ -62,7 +62,7 @@ peer-tls = { path = "../../libs/peer-tls" }
 kube = { version = "0.98", features = ["runtime", "derive", "client"], optional = true }
 k8s-openapi = { version = "0.24", features = ["v1_32"], optional = true }
 schemars = { version = "0.8", optional = true }
-service-k8s = { path = "../../libs/service-k8s", optional = true }
+service-k8s = { git = "https://github.com/faberline/core", tag = "v0.4.13", optional = true }
 axum = { workspace = true }
 utoipa = { workspace = true }
 # Serve-path tracing init (RUST_LOG wins, else info EnvFilter).
@@ -71,15 +71,15 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 # Shared polyglot OpenAPI client codegen (#1329, relay #1209 pattern): `tape
 # spec gen` generates ts/py/rust clients from tape's own openapi_json()
 # document — offline, no external tool.
-openapi-codegen = { path = "../../libs/openapi-codegen", version = "0.5" }
+openapi-codegen = { git = "https://github.com/faberline/core", tag = "v0.4.13", version = "0.5" }
 # Shared backup contract (#1329, relay #1209 / lumen #808): destination/policy
 # schema, BackupSink, local + s3 sinks, run_backup_once. Unconditional — the
 # schema types and the local sink are cheap; only the HTTP fetch path of
 # `tape backup` needs the `backup` feature (reqwest + the lib's s3 sink).
-service-backup = { path = "../../libs/service-backup" }
+service-backup = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 # Shared durable file replacement for Tape's Raft marker and journal snapshot
 # bytes. Tape retains the domain serialization and recovery ordering.
-storage-durable = { path = "../../libs/storage-durable" }
+storage-durable = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 # WI #3052 AC1: `bench::run_durable_benchmark` drives the real WAL commit
 # coordinator over a real HTTP socket, so it needs a real temp dir and a real
 # HTTP client from the library itself (not just from tests) -- both `tape-bench`
@@ -90,16 +90,16 @@ reqwest = { workspace = true }
 
 [dev-dependencies]
 futures = { workspace = true }
-rig = { path = "../rig" }
+rig = { git = "https://github.com/faberline/rig", rev = "1fbe487eb4a94d745447227dbc974c3eb3e9fbd5" }
 tokio = { workspace = true, features = ["full"] }
-transport-h2c = { path = "../../libs/transport-h2c" }
+transport-h2c = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 http-body-util = "0.1"
 tower = { workspace = true, features = ["util"] }
 chrono = { workspace = true }
 rcgen = "0.13"
 
 [build-dependencies]
-build-stamp = { path = "../../libs/build-stamp" }
+build-stamp = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 
 [features]
 default = []

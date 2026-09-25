@@ -35,7 +35,6 @@ fn jsonl(stdout: &[u8]) -> Vec<Value> {
 #[test]
 fn applications_remain_sift_agnostic() {
     for manifest in [
-        include_str!("../../../apps/lumen/Cargo.toml"),
         include_str!("../../../apps/tape/Cargo.toml"),
         include_str!("../../../apps/relay/Cargo.toml"),
         include_str!("../../../apps/defer/Cargo.toml"),

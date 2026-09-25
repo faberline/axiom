@@ -110,8 +110,8 @@ Loom replicates workflow state through a primary/replica topology so committed
 workflow transitions survive leader failure and replica recovery.
 
 - Root WI: #110
-- Surfaces: Raft: workflow state primary/replica topology over `libs/raft-core`
-  and `libs/raft-runtime`.
+- Surfaces: Raft: workflow state primary/replica topology over `core/raft-core`
+  and `core/raft-runtime`.
 - Gate — stability: pending raft primary/replica gate - leader failover,
   replica catch-up, snapshot restore, and committed-transition safety
 - Source: `pending: apps/loom/tests/primary_replicas.rs`
@@ -163,8 +163,8 @@ Loom persists workflow state before acknowledgement and survives process or
 leader failure without losing committed workflow transitions.
 
 - Root WI: #110
-- Surfaces: Raft: sharded workflow state machine over `libs/raft-core` and
-  `libs/raft-runtime`; Snapshot: service-owned workflow state snapshots.
+- Surfaces: Raft: sharded workflow state machine over `core/raft-core` and
+  `core/raft-runtime`; Snapshot: service-owned workflow state snapshots.
 - Gate — stability: pending raft durability gate - crash recovery, snapshot
   restore, and failover without committed workflow loss
 - Source: `pending: apps/loom/tests/raft_workflow_state.rs`
@@ -245,7 +245,7 @@ linked capability roots.
 
 - Root WI: #110
 - Surfaces: Raft: sharded workflow state primary/replica topology over
-  `libs/raft-core` and `libs/raft-runtime`. K8s: dedicated StatefulSet/operator
+  `core/raft-core` and `core/raft-runtime`. K8s: dedicated StatefulSet/operator
   topology for workflow state under `apps/loom/k8s/`.
 - Gate — behavior: the `stateful_storage` profile had its shared baseline
   resolved by the `aw` capability gate, which was deleted with the binary

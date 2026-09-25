@@ -731,7 +731,9 @@ else
   # query --client-sa`, whose TokenRequest minter is behind that feature. A CLI
   # built without it refuses the flag rather than minting, so the auth leg would
   # fail on a build flag instead of on the contract it exists to check.
-  cargo build --locked --manifest-path "$REPO_ROOT/Cargo.toml" \
+  lumen_src="$REPO_ROOT/target/faberline/lumen"
+  bash "$ACCEPTANCE_ROOT/scripts/faberline-source.sh" lumen "$lumen_src" >/dev/null
+  cargo build --locked --manifest-path "$lumen_src/Cargo.toml" --target-dir "$REPO_ROOT/target" \
     -p lumen --bin lumen --features "operator delegated-auth"
   LUMEN_CLI="${LUMEN_CLI:-$REPO_ROOT/target/debug/lumen}"
   if [[ "$acceptance_mode" != "lumen-auth" ]]; then

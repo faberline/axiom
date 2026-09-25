@@ -151,7 +151,7 @@ Mesh treats its graph index as derived and rebuildable from the replicated log
 at all times; it never becomes the durable owner of relationship data.
 
 - Root WI: #1969
-- Surfaces: Raft/Storage: durable append log via `libs/storage-durable`, folded
+- Surfaces: Raft/Storage: durable append log via `core/storage-durable`, folded
   into a separate rebuildable local graph index; the caller remains system of
   record.
 - Gate — behavior: pending derived-index gate - log replay determinism and full
@@ -194,7 +194,7 @@ state survives failover.
 
 - Root WI: #1969
 - Surfaces: Raft: shard ownership, membership, and rebalance job state over
-  `libs/raft-core` and `libs/raft-runtime`.
+  `core/raft-core` and `core/raft-runtime`.
 - Gate — stability: pending raft graph failover gate - shard ownership and
   derived index survive failover
 - Source: `pending: apps/mesh/tests/raft_shard_ownership.rs`

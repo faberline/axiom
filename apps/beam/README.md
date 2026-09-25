@@ -209,8 +209,8 @@ structured log line. Server-Timing per-response latency attribution (the shared
   adoption batch).
 - Gate — behavior: pending h2c/OpenAPI route-list gate - probes, metrics,
   OpenAPI, and route inventory
-- Gate: passing (trace-context accept/generate): `cargo test -p service-http`
-  (libs/service-http/src/transport.rs) — beam wires
+- Gate: passing (trace-context accept/generate): `bash scripts/faberline-core-test.sh service-http`
+  (faberline/core crates/service-http/src/transport.rs) — beam wires
   `service_http::trace_layer()` in apps/beam/src/service.rs
 - Source: `pending: apps/beam/tests/http_api.rs`,
   `no beam-owned trace-context test exists yet`
@@ -237,7 +237,7 @@ while GPU index bytes remain service-owned data-plane state.
 
 - Root WI: #769
 - Surfaces: Raft: collection metadata, shard ownership, and index lifecycle
-  state over `libs/raft-core` and `libs/raft-runtime`.
+  state over `core/raft-core` and `core/raft-runtime`.
 - Gate — stability: pending raft vector failover gate - metadata and index
   lifecycle state survive failover
 - Source: `pending: apps/beam/tests/raft_metadata.rs`

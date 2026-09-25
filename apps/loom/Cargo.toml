@@ -40,7 +40,7 @@ reqwest = { workspace = true }
 # (/healthz /readyz /metrics /openapi.json /docs), the h2c serve loop, and
 # SIGTERM-aware graceful drain — composed, not hand-rolled. Pulls h2c (server)
 # + utoipa transitively; loom stops hand-rolling the hyper-util accept loop.
-service-http = { path = "../../libs/service-http" }
+service-http = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 # OpenAPI derive on the control-API DTOs — the /openapi.json + /docs source
 # and the `loom spec` offline twin.
 utoipa = { workspace = true }
@@ -49,7 +49,7 @@ utoipa = { workspace = true }
 serde_yaml = { workspace = true }
 # `loom spec gen --lang ts|py|rust` — typed clients from loom's own OpenAPI via
 # the shared polyglot core (never a second codegen path).
-openapi-codegen = { path = "../../libs/openapi-codegen", version = "0.5" }
+openapi-codegen = { git = "https://github.com/faberline/core", tag = "v0.4.13", version = "0.5" }
 
 # --- k8s operator (behind the `operator` feature) ---------------------------
 # The reconcile controller + CRD derivation + backup runner. Kept optional so
@@ -59,24 +59,24 @@ k8s-openapi = { version = "0.24", features = ["v1_32"], optional = true }
 schemars = { version = "0.8", optional = true }
 # Shared operator scaffold: ManagedService, render helpers (sharded StatefulSet
 # with the downward-API env raft-host reads), leader-election, the controller.
-service-k8s = { path = "../../libs/service-k8s", optional = true }
+service-k8s = { git = "https://github.com/faberline/core", tag = "v0.4.13", optional = true }
 # Shared backup contract: destination/policy/sink/runner for `loom backup`.
-service-backup = { path = "../../libs/service-backup", optional = true }
+service-backup = { git = "https://github.com/faberline/core", tag = "v0.4.13", optional = true }
 tracing-subscriber = { workspace = true, optional = true }
 # Shared Raft consensus engine for replicated workflow state (#110). The
 # in-process cluster tests drive `raft_core` directly; production goes through
 # the `raft-host` driver below.
-raft-core = { path = "../../libs/raft-core" }
+raft-core = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 # Shared raft HOST (#546): the tick/pump loop, h2c peer transport,
 # snapshot + log compaction, read-your-write propose, and k8s auto-mode. loom
 # supplies a `RaftStateMachine` (LoomSm) and gets HA + the backup layer for
 # free — replacing loom's two hand-rolled raft stacks.
-raft-runtime = { path = "../../libs/raft-runtime" }
+raft-runtime = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 # Scoped claim-check tokens the schema layer signs for workers (#444).
-claim-token = { path = "../../libs/claim-token" }
+claim-token = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
 # Standard agent-facing CLI ops — llm/upgrade/issue (#475). Offline paths
 # always build; the network paths are gated behind loom's online features below.
-cli-std = { path = "../../libs/cli-std", default-features = false }
+cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.13", default-features = false }
 
 [features]
 default = []

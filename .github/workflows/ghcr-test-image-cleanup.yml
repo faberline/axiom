@@ -1,4 +1,4 @@
-# Prunes stale sha-* dev/test images (the *-test-image.yml workflows: lumen,
+# Prunes stale sha-* dev/test images (the *-test-image.yml workflows:
 # sift, and the gke-acceptance harness apps keep/defer/relay/loom; #2513) so
 # the GHCR container registry doesn't grow unbounded — GHCR has no built-in
 # lifecycle/expiry rules.
@@ -12,7 +12,7 @@
 # defense in depth, so a bug in the listing/ranking logic above still can't
 # reach a protected tag.
 #
-# Policy per package (lumen, sift, keep, defer, relay, loom):
+# Policy per package (sift, keep, defer, relay, loom):
 #   - candidate = every tag on the version matches ^sha-[0-9a-f]{12}$
 #   - keep      = newest 10 versions by created_at, regardless of age
 #   - delete    = candidate AND NOT in the newest 10 AND older than 14 days
@@ -39,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: [lumen, sift, keep, defer, relay, loom]
+        package: [sift, keep, defer, relay, loom]
     env:
       # GITHUB_TOKEN with `packages: write` can list/delete container
       # versions linked to this repository in the common case. If GitHub's

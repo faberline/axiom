@@ -21,12 +21,12 @@
 //! (gap-blocker: meter AST-assisted instrumentation). Gated behind `ast` so the
 //! default lean binary never pulls compass / tree-sitter grammars.
 //!
-//! [`FunctionDef`]: cclab_compass::FunctionDef
+//! [`FunctionDef`]: compass::FunctionDef
 
 use std::path::Path;
 
-use cclab_compass::syntax::Language;
-use cclab_compass::FunctionKind;
+use compass::syntax::Language;
+use compass::FunctionKind;
 use serde::{Deserialize, Serialize};
 
 /// What kind of source construct a probe point sits on.
@@ -108,7 +108,7 @@ pub fn language_for_extension(ext: &str) -> Option<Language> {
 
 /// Discover every probe point in a single source file.
 ///
-/// Reads `path`, delegates parsing/enumeration to [`cclab_compass::outline`],
+/// Reads `path`, delegates parsing/enumeration to [`compass::outline`],
 /// and returns one [`ProbePoint`] per function/method with an exact 1-based line
 /// span, ordered by `start_line`.
 pub fn discover_probe_points(path: impl AsRef<Path>) -> Result<Vec<ProbePoint>, InstrumentError> {
@@ -133,7 +133,7 @@ pub fn discover_probe_points_in_source(
     language: Language,
     file_label: &str,
 ) -> Result<Vec<ProbePoint>, InstrumentError> {
-    let defs = cclab_compass::outline(source, language)
+    let defs = compass::outline(source, language)
         .map_err(|e| InstrumentError::Outline(format!("{file_label}: {e}")))?;
     let lang_str = language.as_str();
 

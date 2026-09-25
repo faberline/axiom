@@ -14,10 +14,11 @@ COPY . .
 # every auth-mode instance the run deploys. This is the default build path:
 # both images at once, taken whenever neither was supplied by digest.
 RUN test -n "${SOURCE_REVISION}" \
- && cargo build --locked --release -p lumen --bin lumen \
+ && bash acceptance/gcp/scripts/faberline-source.sh lumen /src/lumen \
+ && cargo build --locked --release --manifest-path /src/lumen/Cargo.toml -p lumen --bin lumen \
       --features "otel operator raft-wal jieba delegated-auth" \
  && SIFT_SOURCE_REVISION="${SOURCE_REVISION}" cargo build --locked --release -p sift --bin sift \
- && install -D -m 0755 target/release/lumen /out/lumen \
+ && install -D -m 0755 /src/lumen/target/release/lumen /out/lumen \
  && install -D -m 0755 target/release/sift /out/sift
 
 FROM gcr.io/distroless/cc-debian12:nonroot AS lumen

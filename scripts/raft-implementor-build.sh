@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Slow migration gate: compiles every registered RaftStateMachine implementor.
-# Each application uses its bounded package and feature gate.
+# Slow migration gate: compiles every registered RaftStateMachine implementor
+# in this repository. Each application uses its bounded package and feature
+# gate. lumen's implementors build in faberline/lumen, and raft-runtime's
+# implementor_build_coverage inventory lives with raft-runtime in faberline/core.
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
@@ -14,15 +16,6 @@ cargo build -p keep --features raft
 echo "cargo build -p loom"
 cargo build -p loom
 
-echo "cargo build -p lumen --features raft-wal"
-cargo build -p lumen --features raft-wal
-
-echo "cargo test -p lumen --features raft-wal --lib --no-run"
-cargo test -p lumen --features raft-wal --lib --no-run
-
-echo "cargo test -p lumen --features raft-wal --test raft_oversized_committed_apply --no-run"
-cargo test -p lumen --features raft-wal --test raft_oversized_committed_apply --no-run
-
 echo "cargo build -p relay"
 cargo build -p relay
 
@@ -31,9 +24,3 @@ cargo build -p tape
 
 echo "cargo build -p sift"
 cargo build -p sift
-
-echo "cargo test -p raft-runtime --no-run"
-cargo test -p raft-runtime --no-run
-
-echo "cargo test -p raft-runtime --test implementor_build_coverage"
-cargo test -p raft-runtime --test implementor_build_coverage

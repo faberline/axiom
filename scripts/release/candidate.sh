@@ -6,7 +6,7 @@
 # and the final manifest.
 #
 # usage: scripts/release/candidate.sh <app> <version> <commit> [--out <dir>]
-#   app      one of: lumen tape sift keep relay defer
+#   app      one of: tape sift keep relay defer
 #   version  X.Y.Z, equal to <root>/Cargo.toml at <commit>
 #   commit   40-hex sha; must be the head of origin/main (the workflow's
 #            identity job requires the dispatched commit to equal GITHUB_SHA)

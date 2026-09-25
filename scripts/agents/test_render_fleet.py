@@ -70,17 +70,19 @@ class RenderFleetTests(unittest.TestCase):
 
     def test_rendered_population(self) -> None:
         rendered = render_fleet.rendered_agents(REPO)
-        self.assertEqual(len(rendered), 219)
+        self.assertEqual(len(rendered), 91)
         self.assertNotIn("aw-dev", rendered)
         self.assertIn("aw-pm", rendered)
         self.assertIn("aw-tl", rendered)
         self.assertIn("aw-qa", rendered)
         self.assertIn("sift-dev", rendered)
-        self.assertIn("service-collector-tl", rendered)
-        self.assertIn("lumen-qa", rendered)
-        self.assertIn("lumen-pm", rendered)
-        self.assertIn("build-stamp-dev", rendered)
-        self.assertIn("build-stamp-pm", rendered)
+        self.assertIn("tape-tl", rendered)
+        self.assertIn("tape-qa", rendered)
+        self.assertIn("tape-pm", rendered)
+        # lumen, rig, and the shared libraries moved to faberline repositories.
+        self.assertNotIn("lumen-dev", rendered)
+        self.assertNotIn("rig-dev", rendered)
+        self.assertNotIn("build-stamp-dev", rendered)
 
     def test_singletons_are_projected_not_rewritten(self) -> None:
         expected = render_fleet.expected_codex_files(REPO)
@@ -148,13 +150,13 @@ class RenderFleetTests(unittest.TestCase):
             render_fleet.toml_projection(markdown, "demo-dev.md")
 
     def test_role_model_mapping(self) -> None:
-        self.assertEqual(render_fleet.codex_model("lumen-pm"), "gpt-5.6-terra")
-        self.assertEqual(render_fleet.codex_model("lumen-tl"), "gpt-5.6-terra")
-        self.assertEqual(render_fleet.codex_model("lumen-qa"), "gpt-5.6-luna")
-        self.assertEqual(render_fleet.codex_model("lumen-dev"), "gpt-5.6-luna")
+        self.assertEqual(render_fleet.codex_model("tape-pm"), "gpt-5.6-terra")
+        self.assertEqual(render_fleet.codex_model("tape-tl"), "gpt-5.6-terra")
+        self.assertEqual(render_fleet.codex_model("tape-qa"), "gpt-5.6-luna")
+        self.assertEqual(render_fleet.codex_model("tape-dev"), "gpt-5.6-luna")
         self.assertEqual(render_fleet.codex_model("integration-qa"), "gpt-5.6-terra")
-        self.assertEqual(render_fleet.codex_sandbox("lumen-dev"), "workspace-write")
-        self.assertEqual(render_fleet.codex_sandbox("lumen-pm"), "read-only")
+        self.assertEqual(render_fleet.codex_sandbox("tape-dev"), "workspace-write")
+        self.assertEqual(render_fleet.codex_sandbox("tape-pm"), "read-only")
         self.assertEqual(render_fleet.codex_sandbox("integration-qa"), "read-only")
 
     def test_qa_and_dev_are_luna_low_worktree_executors(self) -> None:
@@ -210,9 +212,9 @@ class RenderFleetTests(unittest.TestCase):
             encoding="utf-8",
         )
         findings = render_fleet.check(self.tmp)
-        self.assertIn("differs: .claude/agents/lumen-dev.md", findings)
-        self.assertIn("differs: .codex/agents/lumen-dev.toml", findings)
-        self.assertNotIn("differs: .claude/agents/build-stamp-dev.md", findings)
+        self.assertIn("differs: .claude/agents/tape-dev.md", findings)
+        self.assertIn("differs: .codex/agents/tape-dev.toml", findings)
+        self.assertNotIn("differs: .claude/agents/sift-pm.md", findings)
         result = run_cli(self.tmp, "--check")
         self.assertEqual(result.returncode, 1, result.stdout)
 

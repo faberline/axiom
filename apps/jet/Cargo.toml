@@ -26,7 +26,7 @@ thiserror.workspace = true
 # Shared standard CLI ops (llm / upgrade / issue). `online` is on by
 # default so released binaries can actually self-update + submit issues; jet
 # already pulls reqwest/flate2/tar, so this adds no new heavy deps.
-cli-std = { path = "../../libs/cli-std", features = ["online"] }
+cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.13", features = ["online"] }
 
 # Serialization
 serde = { workspace = true }

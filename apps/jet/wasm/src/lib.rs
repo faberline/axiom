@@ -4,7 +4,7 @@
 //!
 //! Two layers:
 //!
-//! - **Generic substrate** (`cclab-surface` + `renderer`):
+//! - **Generic substrate** (`surface` + `renderer`):
 //!   - `Element` tree, `Props`, `Callback`, `Component`, and semantic
 //!     `SurfaceSnapshot` types that any framework-specific runtime uses.
 //!   - `renderer` module: layout + paint operations consumed by the
@@ -21,7 +21,7 @@
 //!   - `solid` (future): fine-grained reactivity.
 //!
 //! The framework-specific modules are **adapters over the same
-//! generic substrate** — they all produce `cclab-surface` `Element` trees the
+//! generic substrate** — they all produce `surface` `Element` trees the
 //! renderer consumes. Adding a new framework means adding a new
 //! module here + a new compiler front-end in `jet::*_to_rust`.
 //!
@@ -77,7 +77,7 @@ pub mod react;
 #[cfg(feature = "debug")]
 pub mod debug;
 
-pub use cclab_surface::{
+pub use surface::{
     Callback, Component, ComponentFn, Element, Props, SurfaceNode, SurfaceNodeKind, SurfaceProps,
     SurfaceRect, SurfaceSnapshot,
 };

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Verify only a run-scoped release candidate of one shared-script app (sift,
 # keep, relay, defer). This script never creates a Git tag, GitHub Release,
-# semver/latest image tag, signature, or attestation. lumen and tape keep
-# their own copies under apps/<app>/scripts; the per-app facts here come from
+# semver/latest image tag, signature, or attestation. tape keeps its own
+# copies under apps/tape/scripts; the per-app facts here come from
 # scripts/release/apps.sh.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

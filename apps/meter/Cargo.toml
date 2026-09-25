@@ -57,7 +57,7 @@ blake3 = { version = "1.8", optional = true }
 # Optional: AST-assisted instrumentation-point discovery via the compass
 # code-intelligence engine (libs/compass). Heavy (tree-sitter grammars), so it
 # is gated off by default; enable with `--features ast`.
-cclab-compass = { path = "../../libs/compass", optional = true }
+compass = { git = "https://github.com/faberline/core", tag = "v0.4.13", optional = true }
 
 [dev-dependencies]
 reqwest.workspace = true
@@ -88,4 +88,4 @@ embed = []
 # `ast` enables AST-assisted probe-point discovery (src/instrument/) backed by
 # compass. Off by default so the lean capture/release binary stays free of
 # tree-sitter grammars.
-ast = ["dep:cclab-compass"]
+ast = ["dep:compass"]

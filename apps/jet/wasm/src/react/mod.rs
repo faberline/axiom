@@ -2,7 +2,7 @@
 // CODEGEN-BEGIN
 //! Jet WASM host adapters for the shared component runtime.
 //!
-//! The hooks/fiber/mount/flush runtime lives in `cclab-ui-runtime`; Jet keeps
+//! The hooks/fiber/mount/flush runtime lives in `ui-runtime`; Jet keeps
 //! only the WASM host adapters here:
 //!
 //! - `webgpu_app`: the primary path, `Element -> LayoutTree -> PaintOp ->
@@ -14,7 +14,7 @@
 //! reused by Jet WASM and future native desktop apps; concrete host adapters
 //! decide how the element tree is painted.
 
-pub use cclab_ui_runtime::*;
+pub use ui_runtime::*;
 
 #[cfg(all(feature = "webgpu-app", target_arch = "wasm32"))]
 pub mod webgpu_app;

@@ -48,11 +48,7 @@ TAPE_GATES = (
     "bash apps/tape/e2e/raft_soak.sh",
 )
 LIBRARY_GATES = (
-    "cargo test --locked -p service-k8s",
-    "cargo test --locked -p storage-durable",
-    "cargo test --locked -p service-backup",
-    "cargo test --locked -p raft-core",
-    "cargo test --locked -p raft-runtime",
+    "bash scripts/faberline-core-test.sh service-k8s storage-durable service-backup raft-core raft-runtime",
     "cargo test --locked -p relay --test raft_cluster",
     "bash scripts/raft-implementor-build.sh",
 )
@@ -825,7 +821,7 @@ def self_test() -> None:
             promotion,
         ),
         "missing-library-gate": (
-            replace_once(candidate, "          cargo test --locked -p raft-runtime\n", "          # cargo test --locked -p raft-runtime\n", "missing-library-gate"),
+            replace_once(candidate, "          bash scripts/faberline-core-test.sh service-k8s storage-durable service-backup raft-core raft-runtime\n", "          # bash scripts/faberline-core-test.sh service-k8s storage-durable service-backup raft-core raft-runtime\n", "missing-library-gate"),
             promotion,
         ),
         "missing-result-binding": (

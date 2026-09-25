@@ -970,7 +970,7 @@ manager, whose rows are in [STATUS.md](STATUS.md) and whose shipped outcome
 | Py3.12 functional parity | `cpython-312-parity` | Compile a CPython 3.12 program and get the same observable result, under a stated force-typing divergence policy. | `apps/mamba` |
 | Less CPU and memory than CPython | `cpu-and-memory-under-cpython` | Run the compiled program with less CPU time and less memory than CPython 3.12 on the pinned fixtures. | `apps/mamba` |
 | mambalibs end-to-end | `mambalibs-end-to-end` | Replace C-backed stdlib and third-party modules with native mamba implementations that pass their own end-to-end cases. | `apps/mamba` |
-| uv-style package manager | `uv-style-package-manager` | Drive a project's dependencies, environment, and interpreter with `uv`-shaped verbs, offline, on the CPython already installed. | `apps/mamba`, `libs/cli-std` |
+| uv-style package manager | `uv-style-package-manager` | Drive a project's dependencies, environment, and interpreter with `uv`-shaped verbs, offline, on the CPython already installed. | `apps/mamba`, `core/cli-std` |
 
 ### Py3.12 functional parity
 
@@ -1043,7 +1043,7 @@ manager, whose rows are in [STATUS.md](STATUS.md) and whose shipped outcome
   - [`apps/mamba`](./) owns every verb under `src/pkgmanage/`, the `pkgmgr`
     cases under `tests/pkgmgr/`, and the `pkgmgr_*` black-box cases under
     `e2e/`.
-  - [`libs/cli-std`](../../libs/cli-std/README.md) supplies the standard
+  - [`core/cli-std`](https://github.com/faberline/core/blob/v0.4.13/crates/cli-std/README.md) supplies the standard
     command set and shell-completion conventions the binary exposes.
 - Gate: `cargo test -p mamba --test pkgmgr`
 - Gate: `cargo test -p mamba --test pkgmgr_lock_frozen_transitive`

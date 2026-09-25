@@ -6,18 +6,18 @@ fn manifest_uses_canonical_shared_library_names_without_aliases() {
         .unwrap_or_else(|error| panic!("read {}: {error}", manifest_path.display()));
 
     for expected in [
-        r#"service-k8s = { path = "../../libs/service-k8s" }"#,
-        r#"storage-durable = { path = "../../libs/storage-durable" }"#,
-        r#"metrics-prometheus = { path = "../../libs/metrics-prometheus" }"#,
-        r#"raft-runtime = { path = "../../libs/raft-runtime" }"#,
-        r#"index-text = { path = "../../libs/index-text" }"#,
-        r#"metrics-remote-write = { path = "../../libs/metrics-remote-write" }"#,
-        r#"service-collector = { path = "../../libs/service-collector" }"#,
-        r#"service-mcp = { path = "../../libs/service-mcp" }"#,
-        r#"service-projection = { path = "../../libs/service-projection" }"#,
-        r#"storage-object = { path = "../../libs/storage-object" }"#,
-        r#"storage-segment = { path = "../../libs/storage-segment" }"#,
-        r#"transport-otlp = { path = "../../libs/transport-otlp" }"#,
+        r#"service-k8s = { git = "https://github.com/faberline/core", tag = ""#,
+        r#"storage-durable = { git = "https://github.com/faberline/core", tag = ""#,
+        r#"metrics-prometheus = { git = "https://github.com/faberline/core", tag = ""#,
+        r#"raft-runtime = { git = "https://github.com/faberline/core", tag = ""#,
+        r#"index-text = { git = "https://github.com/faberline/core", tag = ""#,
+        r#"metrics-remote-write = { git = "https://github.com/faberline/core", tag = ""#,
+        r#"service-collector = { git = "https://github.com/faberline/core", tag = ""#,
+        r#"service-mcp = { git = "https://github.com/faberline/core", tag = ""#,
+        r#"service-projection = { git = "https://github.com/faberline/core", tag = ""#,
+        r#"storage-object = { git = "https://github.com/faberline/core", tag = ""#,
+        r#"storage-segment = { git = "https://github.com/faberline/core", tag = ""#,
+        r#"transport-otlp = { git = "https://github.com/faberline/core", tag = ""#,
     ] {
         assert!(
             manifest.contains(expected),
@@ -37,16 +37,9 @@ fn manifest_uses_canonical_shared_library_names_without_aliases() {
         );
     }
 
-    for retired_path in [
-        "../../libs/operator",
-        "../../libs/service-durability",
-        "../../libs/service-metrics",
-        "../../libs/raft-host",
-    ] {
-        assert!(
-            !manifest.contains(retired_path),
-            "retired dependency path remains: {retired_path}"
-        );
-    }
+    assert!(
+        !manifest.contains("../../libs/"),
+        "shared libraries are faberline/core git dependencies, not in-tree paths"
+    );
 }
 // HANDWRITE-END

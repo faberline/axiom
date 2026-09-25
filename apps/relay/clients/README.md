@@ -1,6 +1,6 @@
 # relay — generated clients
 
-`relay spec gen` uses the shared in-tree `libs/openapi-codegen` generator;
+`relay spec gen` uses the shared `core/openapi-codegen` generator from faberline/core;
 there is no Makefile, external generator, `node`, or `npx` dependency.
 
 | Command | Output |

@@ -21,7 +21,7 @@ schema field. The subscription, push, and seek outcomes in
 ## Generate
 
 Clients are generated in-binary by `tape spec gen` through the shared
-`libs/openapi-codegen` crate. No Makefile, `node`, or external generator is
+`core/openapi-codegen` crate from faberline/core. No Makefile, `node`, or external generator is
 involved; a `cargo` toolchain is the only requirement.
 
 ```bash

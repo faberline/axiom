@@ -127,7 +127,8 @@ Every entry below is a tape product capability. The list has no primary and
 secondary classes.
 
 A capability can have several sources. `apps/tape` supplies tape-specific
-behaviour and composition. `libs/<name>` supplies a reusable mechanism.
+behaviour and composition. `core/<name>` supplies a reusable mechanism from
+[faberline/core](https://github.com/faberline/core).
 `external:<name>` supplies an outside runtime or provisioned contract. Each
 source below states its direct contribution.
 
@@ -135,15 +136,15 @@ source below states its direct contribution.
 
 | Capability | ID | User promise | Sources |
 |---|---|---|---|
-| Publish and durable write | `topic-publish` | Append one message to a topic and receive its offset only after the write is durable. | `apps/tape`, `libs/storage-durable`, `libs/raft-runtime` |
+| Publish and durable write | `topic-publish` | Append one message to a topic and receive its offset only after the write is durable. | `apps/tape`, `core/storage-durable`, `core/raft-runtime` |
 | Pull subscriptions | `pull-subscriptions` | Create named subscriptions on a topic and pull messages from each subscription's own cursor. | `apps/tape` |
 | Topic retention | `topic-retention` | Bound a topic's journal by an offset floor without dropping messages a protected consumer still needs. | `apps/tape` |
-| Replicated availability | `replicated-availability` | Run a Raft group whose members replicate, forward, fail over, and rejoin over mutually authenticated peer links. | `apps/tape`, `libs/raft-runtime`, `libs/peer-tls` |
-| Backup and seed | `backup-and-seed` | Export a whole-journal snapshot to a sink and restore it into an empty node. | `apps/tape`, `libs/service-backup`, `libs/storage-durable` |
-| Security hardening | `security-hardening` | Gate data-plane routes by per-topic grants, bound request admission, and keep management audit redacted. | `apps/tape`, `libs/service-auth`, `libs/service-http`, `libs/peer-tls` |
-| Kubernetes-native deployment | `kubernetes-native-deployment` | Reconcile a `Tape` custom resource, or apply the direct-install base, into stable Kubernetes workloads. | `apps/tape`, `libs/service-k8s`, `external:kubernetes` |
-| Operations and observability | `operations-observability` | Expose health, readiness, metrics, traces, and graceful drain on one port. | `apps/tape`, `libs/service-http`, `libs/metrics-prometheus` |
-| API, CLI, and clients | `api-cli-clients` | Publish one discoverable HTTP contract and generate typed clients from it. | `apps/tape`, `libs/service-http`, `libs/transport-h2c`, `libs/openapi-codegen`, `libs/cli-std` |
+| Replicated availability | `replicated-availability` | Run a Raft group whose members replicate, forward, fail over, and rejoin over mutually authenticated peer links. | `apps/tape`, `core/raft-runtime`, `core/peer-tls` |
+| Backup and seed | `backup-and-seed` | Export a whole-journal snapshot to a sink and restore it into an empty node. | `apps/tape`, `core/service-backup`, `core/storage-durable` |
+| Security hardening | `security-hardening` | Gate data-plane routes by per-topic grants, bound request admission, and keep management audit redacted. | `apps/tape`, `core/service-auth`, `core/service-http`, `core/peer-tls` |
+| Kubernetes-native deployment | `kubernetes-native-deployment` | Reconcile a `Tape` custom resource, or apply the direct-install base, into stable Kubernetes workloads. | `apps/tape`, `core/service-k8s`, `external:kubernetes` |
+| Operations and observability | `operations-observability` | Expose health, readiness, metrics, traces, and graceful drain on one port. | `apps/tape`, `core/service-http`, `core/metrics-prometheus` |
+| API, CLI, and clients | `api-cli-clients` | Publish one discoverable HTTP contract and generate typed clients from it. | `apps/tape`, `core/service-http`, `core/transport-h2c`, `core/openapi-codegen`, `core/cli-std` |
 | Local performance ceiling | `local-performance-ceiling` | Keep append, replay, and checkpoint latency inside tape's own release-mode budget. | `apps/tape` |
 
 ### Publish and durable write
@@ -155,9 +156,9 @@ source below states its direct contribution.
 - Sources:
   - [`apps/tape`](./) defines the message envelope, the journal, the WAL frame
     format, the group-commit fsync, and the storage-full degraded mode.
-  - [`libs/storage-durable`](../../libs/storage-durable/README.md) provides
+  - [`core/storage-durable`](https://github.com/faberline/core/blob/v0.4.13/crates/storage-durable/README.md) provides
     durable files, atomic replacement, fsync, and framed logs.
-  - [`libs/raft-runtime`](../../libs/raft-runtime/README.md) orders and
+  - [`core/raft-runtime`](https://github.com/faberline/core/blob/v0.4.13/crates/raft-runtime/README.md) orders and
     replicates the append when the node runs in a group.
 - Gate: `cargo test -p tape --test http_transport --test durable_write_path --test durable_crash_recovery`
 - Gate: `cargo test -p tape --lib`
@@ -199,9 +200,9 @@ source below states its direct contribution.
   - [`apps/tape`](./) defines the replicated command set, the applied-floor
     recovery, and the peer mTLS listener that keeps raft routes off the public
     router.
-  - [`libs/raft-runtime`](../../libs/raft-runtime/README.md) hosts the group,
+  - [`core/raft-runtime`](https://github.com/faberline/core/blob/v0.4.13/crates/raft-runtime/README.md) hosts the group,
     the log, snapshots, and forwarding.
-  - [`libs/peer-tls`](../../libs/peer-tls/README.md) provides the mutual TLS
+  - [`core/peer-tls`](https://github.com/faberline/core/blob/v0.4.13/crates/peer-tls/README.md) provides the mutual TLS
     material and verification for peer links.
 - Gate: `cargo test -p tape --test raft_cluster --test raft_persistence --test raft_peer_mtls`
 - Gate: `cargo test -p tape --test raft_failover`
@@ -215,9 +216,9 @@ source below states its direct contribution.
 - Sources:
   - [`apps/tape`](./) defines the snapshot route, the backup verb, the
     seed-only-into-empty rule, and the redacted backup audit.
-  - [`libs/service-backup`](../../libs/service-backup/README.md) provides the
+  - [`core/service-backup`](https://github.com/faberline/core/blob/v0.4.13/crates/service-backup/README.md) provides the
     destination sinks and retention pruning.
-  - [`libs/storage-durable`](../../libs/storage-durable/README.md) provides
+  - [`core/storage-durable`](https://github.com/faberline/core/blob/v0.4.13/crates/storage-durable/README.md) provides
     the atomic restore write.
 - Gate: `cargo test -p tape --features backup --test backup --test backup_destination_docs`
 - Gate: `cargo test -p tape --test bootstrap --test seed_ha_bootstrap`
@@ -231,11 +232,11 @@ source below states its direct contribution.
 - Sources:
   - [`apps/tape`](./) defines the grant model, the admission classification,
     and the audit record.
-  - [`libs/service-auth`](../../libs/service-auth/README.md) provides the
+  - [`core/service-auth`](https://github.com/faberline/core/blob/v0.4.13/crates/service-auth/README.md) provides the
     bearer-token registry and grant evaluation.
-  - [`libs/service-http`](../../libs/service-http/README.md) provides the
+  - [`core/service-http`](https://github.com/faberline/core/blob/v0.4.13/crates/service-http/README.md) provides the
     shared router shell, error envelope, and admission hooks.
-  - [`libs/peer-tls`](../../libs/peer-tls/README.md) provides the peer
+  - [`core/peer-tls`](https://github.com/faberline/core/blob/v0.4.13/crates/peer-tls/README.md) provides the peer
     identity plane.
 - Gate: `cargo test -p tape --test service_auth --test service_admission --test audit_contract`
 - Gate: `cargo test -p tape --test raft_peer_mtls`
@@ -250,7 +251,7 @@ source below states its direct contribution.
 - Sources:
   - [`apps/tape`](./) defines the CRD, defaults, topology policy, conditions,
     render verbs, direct-install base, and provisioning.
-  - [`libs/service-k8s`](../../libs/service-k8s/README.md) provides reusable
+  - [`core/service-k8s`](https://github.com/faberline/core/blob/v0.4.13/crates/service-k8s/README.md) provides reusable
     reconciliation, leader election, workload, Service, and status mechanisms.
   - `external:kubernetes` stores desired state and runs the workload,
     network, lease, RBAC, and Secret contracts.
@@ -273,9 +274,9 @@ evidence; it does not define the current contract.
 - Sources:
   - [`apps/tape`](./) defines the tape metric families, the drain window, and
     the stateful restart behaviour.
-  - [`libs/service-http`](../../libs/service-http/README.md) provides the
+  - [`core/service-http`](https://github.com/faberline/core/blob/v0.4.13/crates/service-http/README.md) provides the
     probe routes, `Server-Timing`, structured logs, and OTLP wiring.
-  - [`libs/metrics-prometheus`](../../libs/metrics-prometheus/README.md)
+  - [`core/metrics-prometheus`](https://github.com/faberline/core/blob/v0.4.13/crates/metrics-prometheus/README.md)
     provides the Prometheus text exposition.
 - Gate: `cargo test -p tape --test http_transport --test shared_otlp_tracing --test long_running_stability`
 - Gate: `cargo test -p tape --test rig_stateful_adapter`
@@ -289,13 +290,13 @@ evidence; it does not define the current contract.
 - Sources:
   - [`apps/tape`](./) defines the route inventory, the OpenAPI document, and
     the CLI verbs.
-  - [`libs/service-http`](../../libs/service-http/README.md) provides the
+  - [`core/service-http`](https://github.com/faberline/core/blob/v0.4.13/crates/service-http/README.md) provides the
     router shell and error envelope.
-  - [`libs/transport-h2c`](../../libs/transport-h2c/README.md) provides the
+  - [`core/transport-h2c`](https://github.com/faberline/core/blob/v0.4.13/crates/transport-h2c/README.md) provides the
     cleartext HTTP/2 listener shared with HTTP/1.1.
-  - [`libs/openapi-codegen`](../../libs/openapi-codegen/README.md) provides
+  - [`core/openapi-codegen`](https://github.com/faberline/core/blob/v0.4.13/crates/openapi-codegen/README.md) provides
     the in-binary client generator.
-  - [`libs/cli-std`](../../libs/cli-std/README.md) provides the standard
+  - [`core/cli-std`](https://github.com/faberline/core/blob/v0.4.13/crates/cli-std/README.md) provides the standard
     command set and output conventions.
 - Gate: `cargo test -p tape --test spec_route_parity --test spec_generated_clients --test cli_contract`
 

@@ -1,8 +1,0 @@
-# CODEGEN-BEGIN
-# AW-EC-TOOL-BEGIN
-delegate_command = "target/debug/meter test -- -p lumen --test disk_scale_proof -- --ignored"
-project = "lumen"
-source_contract = "lumen-long-running-stability-query-resilience"
-version = 1
-# AW-EC-TOOL-END
-# CODEGEN-END

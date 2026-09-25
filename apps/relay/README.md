@@ -56,7 +56,7 @@ idempotent ack, expired-lease reclaim, and redelivery liveness.
 
 #### Raft HA and primary/replica topology
 
-A raft-backed HA path on the shared `libs/raft-runtime` driver: the leader owns
+A raft-backed HA path on the shared `core/raft-runtime` driver: the leader owns
 writes, followers replicate committed state, and failover preserves the
 ordered-log and work-queue API contract. It converges in process, persists hard
 state and the applied-index floor, serves through real h2c nodes, and is
@@ -170,8 +170,8 @@ engine.
 #### Stateful service workload
 
 The stateful production workload composes the shared storage, backup, raft,
-peer-security, and Kubernetes mechanisms — `libs/raft-runtime`,
-`libs/service-backup`, `libs/service-auth`, `libs/service-k8s` — while product
+peer-security, and Kubernetes mechanisms — `core/raft-runtime`,
+`core/service-backup`, `core/service-auth`, `core/service-k8s` — while product
 policy stays in the domain sections above. This is an integration map, not a
 second copy of those contracts.
 

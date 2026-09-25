@@ -1,8 +1,0 @@
-# Terraform working state, written by `terraform init` in the module and the
-# installation example. Same reasoning as acceptance/gcp/.gitignore: the plugin
-# cache is machine-local and large, and a lock file pins provider hashes for the
-# platform that ran init. The gate never uses either -- check.sh initializes a
-# disposable copy of this tree -- so a committed lock would churn per operator
-# while pinning nothing the gate actually reads.
-**/.terraform/
-**/.terraform.lock.hcl

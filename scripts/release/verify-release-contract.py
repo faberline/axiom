@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Static and fixture oracle for the shared candidate-first release contract.
 
-Six apps ride `build-release <app>`: landed main -> immutable candidate ->
+Five apps ride `build-release <app>`: landed main -> immutable candidate ->
 digest-pinned GKE acceptance -> protected annotated tag -> no-rebuild
 promotion. This oracle pins, per app, the two workflows that carry it
 (`<app>-release-candidate.yml`, `<app>-release.yml`), the `gke-acceptance`
-prebuilt-image input that keep/relay/defer use as their GKE gate, and the
+prebuilt-image input that keep/relay/defer use as their GKE gate, the
 agreement between the three copies of the per-app table (this file,
-scripts/release/apps.sh, scripts/release/make-gke-release-receipt.py).
+scripts/release/apps.sh, scripts/release/make-gke-release-receipt.py), and
+the build-release skill itself: both entrypoints byte-identical, their
+bytes digest-pinned, candidate before tag, and no raw Git tag or push.
 
 Usage:
   verify-release-contract.py              every onboarded app + gke-acceptance + tables
@@ -16,9 +18,9 @@ Usage:
                                           controls, and an offline release fixture
                                           per GKE backend (keep, sift)
 
-lumen and tape keep deeper oracles of their own (apps/lumen/e2e,
-apps/tape/scripts/verify-release-contract.py); this one checks the shape
-they share with the shared-script apps and never rewrites a checked file.
+tape keeps a deeper oracle of its own (apps/tape/scripts/verify-release-contract.py);
+this one checks the shape it shares with the shared-script apps and never
+rewrites a checked file. lumen releases from https://github.com/faberline/lumen.
 """
 from __future__ import annotations
 
@@ -47,6 +49,8 @@ RECEIPT_MAKER = RELEASE_DIR / "make-gke-release-receipt.py"
 SHARED_CANDIDATE_VERIFIER = RELEASE_DIR / "verify-release-candidate.sh"
 SHARED_ARTIFACT_VERIFIER = RELEASE_DIR / "verify-release-artifacts.sh"
 BUILD_RELEASE_SH = ROOT / "scripts" / "build" / "release.sh"
+AGENTS_SKILL = ROOT / ".agents" / "skills" / "build-release" / "SKILL.md"
+CLAUDE_SKILL = ROOT / ".claude" / "skills" / "build-release" / "SKILL.md"
 
 REPO = "chrischeng-c4/axiom"
 IMAGE_OWNER = "ghcr.io/chrischeng-c4"
@@ -57,6 +61,23 @@ PREPARE_EVIDENCE_STEP = "Prepare evidence directory"
 HARNESS_STEP = "Run acceptance harness"
 PARK_STEP = "Park node pool (belt and suspenders)"
 FIXTURE_BANNER = "LOCAL FIXTURE ONLY"
+
+# The skill's bytes are pinned: a change that keeps both copies equal (a
+# shell-escaped `g\it tag`, say) still has to be re-read and re-pinned here.
+RELEASE_SKILL_SHA256 = "16bec3f6a894890c0a8312ac38207275d71659598a27b456d504468880fbaeab"
+SKILL_ORDER = (
+    "2. Run `git-land`",
+    "3. Dispatch `<app>-release-candidate`",
+    "Wait for the final candidate manifest.",
+    "4. Independently run the candidate verifier in full mode.",
+    "7. The controller creates one annotated `<app>@<version>` tag",
+    "8. Dispatch `<app>-release`",
+    "9. Run the public verifier.",
+)
+RETIRED_RELEASE_ROUTES = (
+    ".claude/skills/lumen-build-release/scripts/release.sh",
+    "scripts/project-build-monitor-release.sh",
+)
 
 FIVE_TARGETS = (
     "aarch64-apple-darwin",
@@ -134,22 +155,6 @@ def shared_app(name: str, root: str, targets: Tuple[str, ...], backend: str, fun
 
 
 APPS: Dict[str, App] = {
-    "lumen": App(
-        name="lumen",
-        root="apps/lumen",
-        scripts_dir="apps/lumen/scripts",
-        shared_scripts=False,
-        onboarded=True,
-        targets=FIVE_TARGETS,
-        candidate_jobs=("identity", "build", "ghcr-image-and-attest", "manifest", "verify-candidate", "verify-libraries", "kind-amd64", "kind-arm64", "result"),
-        promotion_prefix="standalone_gke_receipt",
-        takes_attempt=False,
-        manifest_schema="cclab.lumen.candidate-manifest.v3",
-        receipt_name="lumen-standalone-gke-receipt.json",
-        receipt_schema="lumen.standalone-gke-receipt/v2",
-        gke_backend="lumen-standalone",
-        functional=(),
-    ),
     "tape": App(
         name="tape",
         root="apps/tape",
@@ -709,6 +714,99 @@ def check_tables(maker) -> None:
         fail("scripts/build/release.sh must forward --image to the workflow's image input")
 
 
+# --- build-release skill -----------------------------------------------------
+
+
+def logical_lines(text: str) -> List[str]:
+    """Non-comment lines with backslash continuations joined, as a shell reads them."""
+    logical: List[str] = []
+    current = ""
+    for raw in text.split("\n"):
+        trimmed = raw.strip()
+        if trimmed.startswith("#"):
+            continue
+        if trimmed.endswith("\\"):
+            current += trimmed[:-1].rstrip() + " "
+            continue
+        current += trimmed
+        if current.strip():
+            logical.append(current.strip())
+        current = ""
+    if current.strip():
+        logical.append(current.strip())
+    return logical
+
+
+def check_no_raw_git_tag_push(text: str) -> None:
+    for line in logical_lines(text):
+        tokens = [token for token in re.split(r"[^A-Za-z0-9_]+", line) if token]
+        if "git" in tokens and {"tag", "push"} & set(tokens[tokens.index("git") + 1:]):
+            fail(f"build-release skill: raw Git tag/push command remains: {line}")
+
+
+def check_skill_order(text: str) -> None:
+    previous = 0
+    for marker in SKILL_ORDER:
+        position = text.find(marker)
+        if position < 0:
+            fail(f"build-release skill is missing {marker!r}")
+        if position <= previous:
+            fail(f"build-release skill order is invalid at {marker!r}")
+        previous = position
+    for retired in RETIRED_RELEASE_ROUTES:
+        if retired in text:
+            fail(f"build-release skill: retired release route remains: {retired}")
+    check_no_raw_git_tag_push(text)
+
+
+def check_skill_pair(agents: str, claude: str) -> None:
+    if agents != claude:
+        fail("build-release skill: the .agents and .claude entrypoints differ")
+    digest = hashlib.sha256(agents.encode("utf-8")).hexdigest()
+    if digest != RELEASE_SKILL_SHA256:
+        fail(f"build-release skill digest changed: expected {RELEASE_SKILL_SHA256}, got {digest}")
+    check_skill_order(agents)
+
+
+def check_release_skill() -> None:
+    check_skill_pair(read(AGENTS_SKILL), read(CLAUDE_SKILL))
+
+
+def skill_controls(text: str) -> List[Tuple[str, Callable[[], None]]]:
+    label = "build-release skill"
+    candidate = "3. Dispatch `<app>-release-candidate`"
+    verifier_step = "4. Independently run the candidate verifier in full mode. Stop on any mismatch.\n"
+    tag_step = "7. The controller creates one annotated `<app>@<version>` tag at the exact\n"
+    receipt = "Wait for the final candidate manifest."
+
+    def before_candidate(line: str) -> str:
+        return replace_once(text, candidate, line + "\n" + candidate, label)
+
+    def escaped_pair() -> None:
+        escaped = before_candidate("g\\it tag -m release tape@<version>; g\\it push --tags")
+        check_skill_pair(escaped, escaped)
+
+    def tag_first() -> str:
+        moved = replace_once(text, verifier_step, "", label)
+        return replace_once(moved, tag_step, tag_step + verifier_step, label)
+
+    def receipt_after_tag() -> str:
+        moved = replace_once(text, receipt, "", label)
+        return replace_once(moved, tag_step, tag_step + receipt + "\n", label)
+
+    return [
+        (f"{label}: same-byte shell-escaped tag and push in both entrypoints", escaped_pair),
+        (f"{label}: entrypoints drift", lambda: check_skill_pair(text, replace_once(text, "Publish one verified release", "Publish a different verified release", label))),
+        (f"{label}: tag before the candidate verifier", lambda: check_skill_order(tag_first())),
+        (f"{label}: candidate manifest awaited after the tag", lambda: check_skill_order(receipt_after_tag())),
+        (f"{label}: raw tag and push before the candidate", lambda: check_skill_order(before_candidate("git tag -m release tape@<version>; git push --tags"))),
+        (f"{label}: raw tag and push behind git -C", lambda: check_skill_order(before_candidate("git -C . tag -m release tape@<version>; git -C . push --tags"))),
+        (f"{label}: raw tag split across continuations", lambda: check_skill_order(before_candidate("git \\\n-C . \\\ntag -m release tape@<version>"))),
+        (f"{label}: raw push split across continuations", lambda: check_skill_order(before_candidate("git \\\n--git-dir=.git \\\npush --tags"))),
+        (f"{label}: retired release route restored", lambda: check_skill_order(text + "\n" + RETIRED_RELEASE_ROUTES[0] + "\n")),
+    ]
+
+
 # --- offline release fixture -------------------------------------------------
 
 
@@ -891,7 +989,7 @@ def run_fixture(app: App, maker) -> Tuple[int, int]:
 
 
 def watched_files() -> List[Path]:
-    paths = [GKE_ACCEPTANCE, APPS_SH, RECEIPT_MAKER, SHARED_CANDIDATE_VERIFIER, SHARED_ARTIFACT_VERIFIER, BUILD_RELEASE_SH]
+    paths = [GKE_ACCEPTANCE, APPS_SH, RECEIPT_MAKER, SHARED_CANDIDATE_VERIFIER, SHARED_ARTIFACT_VERIFIER, BUILD_RELEASE_SH, AGENTS_SKILL, CLAUDE_SKILL]
     for app in APPS.values():
         if app.onboarded:
             paths.extend([app.candidate_workflow, app.promotion_workflow])
@@ -907,7 +1005,8 @@ def check_everything() -> str:
             check_not_onboarded(app)
     check_gke_acceptance(read(GKE_ACCEPTANCE))
     check_tables(load_receipt_maker())
-    return f"release contract passed: {' '.join(app.name for app in onboarded)} ({len(onboarded)} apps), gke-acceptance, shared tables"
+    check_release_skill()
+    return f"release contract passed: {' '.join(app.name for app in onboarded)} ({len(onboarded)} apps), gke-acceptance, shared tables, build-release skill"
 
 
 def candidate_controls(app: App, text: str) -> List[Tuple[str, Callable[[], str]]]:
@@ -991,6 +1090,8 @@ def self_test() -> str:
     maker = load_receipt_maker()
     check_tables(maker)
     positives += 1
+    check_release_skill()
+    positives += 1
     for app in APPS.values():
         if not app.onboarded:
             check_not_onboarded(app)
@@ -1009,6 +1110,9 @@ def self_test() -> str:
         negatives += 1
     expect_static_failure("table: a non-onboarded app is checked as onboarded", lambda: check_app(replace(APPS["keep"], onboarded=False)))
     negatives += 1
+    for label, control in skill_controls(read(AGENTS_SKILL)):
+        expect_static_failure(label, control)
+        negatives += 1
 
     fixture_names = []
     for name in FIXTURE_APPS:
@@ -1041,6 +1145,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             app = APPS[args.app]
             check_app(app)
             check_tables(load_receipt_maker())
+            check_release_skill()
             if app.gke_backend == "gke-acceptance":
                 check_gke_acceptance(read(GKE_ACCEPTANCE))
             summary = f"release contract passed: {app.name}"

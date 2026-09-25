@@ -1,4 +1,4 @@
-// HANDWRITE-BEGIN gap="missing-generator:unit-test:surface-reexport" tracker="standardize-gap-projects-jet-wasm-tests-surface-snapshot-rs" reason="Jet-wasm compatibility test for the cclab-surface re-export and snapshot API."
+// HANDWRITE-BEGIN gap="missing-generator:unit-test:surface-reexport" tracker="standardize-gap-projects-jet-wasm-tests-surface-snapshot-rs" reason="Jet-wasm compatibility test for the surface re-export and snapshot API."
 use jet_wasm::{Callback, Element, Props};
 
 #[test]

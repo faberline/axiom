@@ -37,18 +37,12 @@ from typing import Dict, Iterable, List, Tuple
 
 APPS: Tuple[str, ...] = (
     "arena", "aw", "beam", "cap", "cgdb", "courier", "cube", "defer", "guard",
-    "jet", "keep", "loom", "lumen", "mamba", "mesh", "meter", "pgpool",
-    "pm", "preview", "relay", "rig", "sift", "tape", "vat", "workbench",
+    "jet", "keep", "loom", "mamba", "mesh", "meter", "pgpool", "pm",
+    "preview", "relay", "sift", "tape", "vat", "workbench",
 )
-LIBS: Tuple[str, ...] = (
-    "build-stamp", "claim-token", "cli-std", "compass", "index-text",
-    "metrics-prometheus", "metrics-remote-write", "openapi-codegen", "peer-tls",
-    "raft-core", "raft-runtime", "server-http", "server-lifecycle", "server-tcp",
-    "service-auth", "service-backup", "service-collector", "service-executor",
-    "service-http", "service-k8s", "service-mcp", "service-observability",
-    "service-projection", "storage-durable", "storage-object", "storage-segment",
-    "surface", "transport-h2c", "transport-otlp", "ui-runtime",
-)
+# The shared libraries moved to faberline/core, so no lib-tier project
+# remains here to render roles for.
+LIBS: Tuple[str, ...] = ()
 TIER_ROLES: Dict[str, Tuple[str, ...]] = {
     "app": ("pm", "tl", "qa", "dev"),
     "lib": ("pm", "tl", "qa", "dev"),

@@ -119,6 +119,29 @@ class ReadmeContractTest(unittest.TestCase):
         report = self.validate(text)
         self.assertIn("R7", self.rules(report))
 
+    def test_core_source_must_be_a_locked_faberline_core_package(self) -> None:
+        lock = (
+            'version = 4\n\n[[package]]\nname = "shared"\nversion = "0.1.0"\n'
+            'source = "git+https://github.com/faberline/core?tag=v0.4.13#f7795e760ceea7939aa7cb2b519dd78ff86e3541"\n'
+        )
+        (self.repo / "Cargo.lock").write_text(lock, encoding="utf-8")
+        text = VALID_README.replace("`libs/shared`", "`core/shared`").replace(
+            "../../libs/shared/README.md",
+            "https://github.com/faberline/core/blob/v0.4.13/crates/shared/README.md",
+        )
+        good = self.validate(text)
+        self.assertTrue(good.ok, good.as_dict())
+
+        missing = self.validate(text.replace("`core/shared`", "`core/missing`"))
+        self.assertIn("R7", self.rules(missing))
+
+        # A same-named workspace package is not the faberline/core crate.
+        (self.repo / "Cargo.lock").write_text(
+            'version = 4\n\n[[package]]\nname = "shared"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        local = self.validate(text)
+        self.assertIn("R7", self.rules(local))
+
     def test_rejects_old_hierarchy_status_and_work_item_fields(self) -> None:
         text = VALID_README.replace(
             "### Search\n\n- ID: `search`",

@@ -505,11 +505,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo test --locked -p service-k8s
-          cargo test --locked -p storage-durable
-          cargo test --locked -p service-backup
-          cargo test --locked -p raft-core
-          cargo test --locked -p raft-runtime
+          bash scripts/faberline-core-test.sh service-k8s storage-durable service-backup raft-core raft-runtime
           cargo test --locked -p relay --test raft_cluster
           bash scripts/raft-implementor-build.sh
 

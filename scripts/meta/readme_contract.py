@@ -31,8 +31,10 @@ REQUIRED_H2 = (
 CAPABILITY_HEADER = ("Capability", "ID", "User promise", "Sources")
 ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SOURCE_RE = re.compile(
-    r"`((?:apps|libs)/[a-z0-9][a-z0-9-]*|external:[a-z0-9][a-z0-9-]*)`"
+    r"`((?:apps|libs|core)/[a-z0-9][a-z0-9-]*|external:[a-z0-9][a-z0-9-]*)`"
 )
+# `core/<crate>` names a faberline/core package that Cargo.lock resolves by git.
+CORE_SOURCE = "git+https://github.com/faberline/core?"
 LINK_RE = re.compile(r"\[[^\]]*\]\(\s*([^\s)]+)")
 SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)*?\1")
@@ -267,6 +269,20 @@ def local_package(readme: Path) -> str | None:
     return None
 
 
+def core_crates(repo: Path) -> set[str]:
+    try:
+        lock = tomllib.loads((repo / "Cargo.lock").read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        return set()
+    return {
+        package["name"]
+        for package in lock.get("package", [])
+        if isinstance(package, dict)
+        and isinstance(package.get("name"), str)
+        and str(package.get("source", "")).startswith(CORE_SOURCE)
+    }
+
+
 def validate_cargo_gate(
     command: str,
     line: int,
@@ -385,6 +401,7 @@ def validate_readme(
     warnings: list[str] = []
     capabilities: list[Capability] = []
     product_sections: list[str] = []
+    core_packages: set[str] | None = None
 
     h1 = [(index, line[2:].strip()) for index, line in enumerate(prose) if line.startswith("# ")]
     if len(h1) != 1:
@@ -611,7 +628,7 @@ def validate_readme(
                                 Finding(
                                     "R7",
                                     line_number(lines, block_at),
-                                    "each source bullet must name exactly one apps/, libs/, or external: source",
+                                    "each source bullet must name exactly one apps/, libs/, core/, or external: source",
                                 )
                             )
                             continue
@@ -636,6 +653,17 @@ def validate_readme(
                                     f"source path does not exist: {source}",
                                 )
                             )
+                        if source.startswith("core/"):
+                            if core_packages is None:
+                                core_packages = core_crates(repo)
+                            if source.removeprefix("core/") not in core_packages:
+                                findings.append(
+                                    Finding(
+                                        "R7",
+                                        line_number(lines, block_at),
+                                        f"source crate is not a faberline/core package in Cargo.lock: {source}",
+                                    )
+                                )
                 if detail_sources != capability.sources:
                     findings.append(
                         Finding(
@@ -758,6 +786,7 @@ understand the product and find the detailed contracts. Return JSON only:
     "source_model": {{
       "apps": "<meaning>",
       "libs": "<meaning>",
+      "core": "<meaning>",
       "external": "<meaning>"
     }}
   }},

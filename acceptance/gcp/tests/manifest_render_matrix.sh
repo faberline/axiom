@@ -11,7 +11,9 @@ fail() {
   exit 1
 }
 
-cargo build --locked --manifest-path "$REPO_ROOT/Cargo.toml" \
+lumen_src="$REPO_ROOT/target/faberline/lumen"
+bash "$ACCEPTANCE_ROOT/scripts/faberline-source.sh" lumen "$lumen_src" >/dev/null
+cargo build --locked --manifest-path "$lumen_src/Cargo.toml" --target-dir "$REPO_ROOT/target" \
   -p lumen --bin lumen --features "operator delegated-auth" || fail "failed to build lumen binary"
 LUMEN_CLI="$REPO_ROOT/target/debug/lumen"
 

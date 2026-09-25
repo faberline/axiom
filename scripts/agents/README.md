@@ -2,8 +2,8 @@
 
 The renderer source is `scripts/agents/render_fleet.py`.
 
-The Codex 226-role projection is active. It provides PM/TL/QA/Dev roles for 25 apps
-and 30 libs, custom `aw-dev`, and six singleton roles. Generate it only from
+The Codex 98-role projection is active. It provides PM/TL/QA/Dev roles for 23 apps,
+custom `aw-dev`, and six singleton roles. Generate it only from
 the templates with `scripts/agents/render_fleet.py`; never hand-edit a
 generated role file.
 

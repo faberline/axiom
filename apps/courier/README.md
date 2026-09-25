@@ -48,8 +48,8 @@ stack — that lands in a separate #2490 adoption batch.
 - Gate — behavior: `cargo test -p courier` - proxy forwarding, auth, and repo
   allow-list coverage
 - Gate: `cargo test -p courier`
-- Gate: trace-context accept/generate passing via `cargo test -p service-http`
-  (libs/service-http/src/transport.rs) — courier wires
+- Gate: trace-context accept/generate passing via `bash scripts/faberline-core-test.sh service-http`
+  (faberline/core crates/service-http/src/transport.rs) — courier wires
   `service_http::trace_layer()` in apps/courier/src/http/mod.rs, no
   courier-owned trace-context test exists yet
 - Source: `apps/courier/src/http`

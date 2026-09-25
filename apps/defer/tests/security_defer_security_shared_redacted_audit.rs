@@ -7,7 +7,7 @@
 // @contract shared-credential-reload-and-credential-free-audit
 // @category security
 // @required_for_production false
-// @command cargo test -p service-auth -- --nocapture
+// @command cargo test --locked --manifest-path "$(bash scripts/faberline-core-test.sh --root)/Cargo.toml" --target-dir "${CARGO_TARGET_DIR:-target}" -p service-auth -- --nocapture
 // AW-EC-END
 
 // Contract: The shared mechanism used by Defer executes valid rotation, invalid and unreadable replacement preservation, file-watcher adoption, and typed authorization audit cases with non-zero tests.
@@ -15,7 +15,7 @@
 #[test]
 #[ignore = "AW EC gate: run via `aw health --verify-ec` or `cargo test -- --ignored`"]
 fn defer_security_shared_redacted_audit() {
-    let command = "cargo test -p service-auth -- --nocapture";
+    let command = r#"cargo test --locked --manifest-path "$(bash scripts/faberline-core-test.sh --root)/Cargo.toml" --target-dir "${CARGO_TARGET_DIR:-target}" -p service-auth -- --nocapture"#;
     let id = "defer-security-shared-redacted-audit";
     let mut root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     while !root.join(".aw").is_dir() {

@@ -2,7 +2,7 @@ version = "0.3.60"
 interface = "cli"
 
 [agentic_workflow.projects]
-discover = ["apps/*/aw.toml", "projects/*/aw.toml", "libs/*/aw.toml"]
+discover = ["apps/*/aw.toml", "projects/*/aw.toml"]
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Agentic Workflow platforms
@@ -295,22 +295,6 @@ codegen.profile = "rust/score-crate"
 
 
 [[projects]]
-name = "rig"
-path = "apps/rig"
-td_path = "apps/rig/tech-design"
-cap_path = "apps/rig/README.md"
-label = "app:rig"
-
-[[projects.workspaces]]
-name = "rig"
-paths = ["apps/rig/**"]
-target = "rust"
-test_cmd = "cargo test -p rig"
-verify_cold = true
-codegen.profile = "rust/score-crate"
-
-
-[[projects]]
 name = "mamba"
 path = "apps/mamba"
 td_path = "apps/mamba/tech-design"
@@ -338,30 +322,6 @@ target = "rust"
 test_cmd = "cargo test -p sift --lib --bins"
 verify_cold = true
 codegen.profile = "rust/score-crate"
-
-
-[[projects]]
-name = "lumen"
-path = "apps/lumen"
-cap_path = "apps/lumen/README.md"
-label = "app:lumen"
-# EC tool bindings (contract before implementation). `aw health --verify-ec`
-# dispatches each bound dimension to its external tool; unbound categories
-# (e.g. behavior, security) fall back to the manifest command.
-#   efficiency (效能) -> vat provisions PG/OpenSearch, then meter wraps the
-#                         ratcheted lumen-vs-pg/OpenSearch perf gate.
-#   stability (穩定性) -> vat provisions lumen/toxiproxy, then rig runs the
-#                        resilience scenarios and p99 budgets.
-# behavior (功能) and security (安全) stay cargo gates per the EC-gatekeeper map.
-ec.efficiency = { tool = "meter", meter = "apps/lumen", command = "cd apps/lumen && ../../target/debug/vat run ec-efficiency-meter" }
-ec.stability = { tool = "rig", dir = "apps/lumen/e2e/rig/cases/resilience", command = "cd apps/lumen && ../../target/debug/vat run rig-resilience" }
-
-[[projects.workspaces]]
-name = "lumen"
-paths = ["apps/lumen/**"]
-target = "rust"
-test_cmd = "cargo test -p lumen --all-features"
-verify_cold = true
 
 
 [[projects]]
@@ -798,226 +758,6 @@ path = "projects/sift"
 paths = ["projects/sift/**"]
 target = "rust"
 test_cmd = "cargo test -p sift"
-verify_cold = false
-
-[[projects]]
-name = "build-stamp"
-path = "libs/build-stamp"
-
-[[projects.workspaces]]
-paths = ["libs/build-stamp/**"]
-target = "rust"
-test_cmd = "cargo test -p build-stamp"
-verify_cold = false
-
-[[projects]]
-name = "claim-token"
-path = "libs/claim-token"
-
-[[projects.workspaces]]
-paths = ["libs/claim-token/**"]
-target = "rust"
-test_cmd = "cargo test -p claim-token"
-verify_cold = false
-
-[[projects]]
-name = "cli-std"
-path = "libs/cli-std"
-
-[[projects.workspaces]]
-paths = ["libs/cli-std/**"]
-target = "rust"
-test_cmd = "cargo test -p cli-std"
-verify_cold = false
-
-[[projects]]
-name = "compass"
-path = "libs/compass"
-
-[[projects.workspaces]]
-paths = ["libs/compass/**"]
-target = "rust"
-test_cmd = "cargo test -p cclab-compass"
-verify_cold = false
-
-[[projects]]
-name = "metrics-prometheus"
-path = "libs/metrics-prometheus"
-
-[[projects.workspaces]]
-paths = ["libs/metrics-prometheus/**"]
-target = "rust"
-test_cmd = "cargo test -p metrics-prometheus"
-verify_cold = false
-
-[[projects]]
-name = "openapi-codegen"
-path = "libs/openapi-codegen"
-
-[[projects.workspaces]]
-paths = ["libs/openapi-codegen/**"]
-target = "rust"
-test_cmd = "cargo test -p openapi-codegen"
-verify_cold = false
-
-[[projects]]
-name = "peer-tls"
-path = "libs/peer-tls"
-
-[[projects.workspaces]]
-paths = ["libs/peer-tls/**"]
-target = "rust"
-test_cmd = "cargo test -p peer-tls"
-verify_cold = false
-
-[[projects]]
-name = "raft-core"
-path = "libs/raft-core"
-
-[[projects.workspaces]]
-paths = ["libs/raft-core/**"]
-target = "rust"
-test_cmd = "cargo test -p raft-core"
-verify_cold = false
-
-[[projects]]
-name = "raft-runtime"
-path = "libs/raft-runtime"
-
-[[projects.workspaces]]
-paths = ["libs/raft-runtime/**"]
-target = "rust"
-test_cmd = "cargo test -p raft-runtime"
-verify_cold = false
-
-[[projects]]
-name = "server-http"
-path = "libs/server-http"
-
-[[projects.workspaces]]
-paths = ["libs/server-http/**"]
-target = "rust"
-test_cmd = "cargo test -p server-http"
-verify_cold = false
-
-[[projects]]
-name = "server-lifecycle"
-path = "libs/server-lifecycle"
-
-[[projects.workspaces]]
-paths = ["libs/server-lifecycle/**"]
-target = "rust"
-test_cmd = "cargo test -p server-lifecycle"
-verify_cold = false
-
-[[projects]]
-name = "server-tcp"
-path = "libs/server-tcp"
-
-[[projects.workspaces]]
-paths = ["libs/server-tcp/**"]
-target = "rust"
-test_cmd = "cargo test -p server-tcp"
-verify_cold = false
-
-[[projects]]
-name = "service-auth"
-path = "libs/service-auth"
-
-[[projects.workspaces]]
-paths = ["libs/service-auth/**"]
-target = "rust"
-test_cmd = "cargo test -p service-auth"
-verify_cold = false
-
-[[projects]]
-name = "service-backup"
-path = "libs/service-backup"
-
-[[projects.workspaces]]
-paths = ["libs/service-backup/**"]
-target = "rust"
-test_cmd = "cargo test -p service-backup"
-verify_cold = false
-
-[[projects]]
-name = "service-executor"
-path = "libs/service-executor"
-
-[[projects.workspaces]]
-paths = ["libs/service-executor/**"]
-target = "rust"
-test_cmd = "cargo test -p service-executor"
-verify_cold = false
-
-[[projects]]
-name = "service-http"
-path = "libs/service-http"
-
-[[projects.workspaces]]
-paths = ["libs/service-http/**"]
-target = "rust"
-test_cmd = "cargo test -p service-http"
-verify_cold = false
-
-[[projects]]
-name = "service-k8s"
-path = "libs/service-k8s"
-
-[[projects.workspaces]]
-paths = ["libs/service-k8s/**"]
-target = "rust"
-test_cmd = "cargo test -p service-k8s"
-verify_cold = false
-
-[[projects]]
-name = "service-observability"
-path = "libs/service-observability"
-
-[[projects.workspaces]]
-paths = ["libs/service-observability/**"]
-target = "rust"
-test_cmd = "cargo test -p service-observability"
-verify_cold = false
-
-[[projects]]
-name = "storage-durable"
-path = "libs/storage-durable"
-
-[[projects.workspaces]]
-paths = ["libs/storage-durable/**"]
-target = "rust"
-test_cmd = "cargo test -p storage-durable"
-verify_cold = false
-
-[[projects]]
-name = "surface"
-path = "libs/surface"
-
-[[projects.workspaces]]
-paths = ["libs/surface/**"]
-target = "rust"
-test_cmd = "cargo test -p cclab-surface"
-verify_cold = false
-
-[[projects]]
-name = "transport-h2c"
-path = "libs/transport-h2c"
-
-[[projects.workspaces]]
-paths = ["libs/transport-h2c/**"]
-target = "rust"
-test_cmd = "cargo test -p transport-h2c"
-verify_cold = false
-
-[[projects]]
-name = "ui-runtime"
-path = "libs/ui-runtime"
-
-[[projects.workspaces]]
-paths = ["libs/ui-runtime/**"]
-target = "rust"
-test_cmd = "cargo test -p cclab-ui-runtime"
 verify_cold = false
 
 # END AW SYNC

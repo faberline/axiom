@@ -1,8 +1,10 @@
 FROM rust:1.96-bookworm AS builder
 WORKDIR /workspace
 COPY . .
-RUN cargo build --locked --release -p rig-cli --bin rig \
- && install -D -m 0755 target/release/rig /out/rig
+# rig builds from the faberline/rig commit this checkout's Cargo.lock pins.
+RUN bash acceptance/gcp/scripts/faberline-source.sh rig /src/rig \
+ && cargo build --locked --release --manifest-path /src/rig/Cargo.toml -p rig-cli --bin rig \
+ && install -D -m 0755 /src/rig/target/release/rig /out/rig
 
 FROM gcr.io/distroless/cc-debian12:nonroot
 COPY --from=builder /out/rig /usr/local/bin/rig

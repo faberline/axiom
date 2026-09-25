@@ -14,7 +14,7 @@ crate-type = ["rlib"]
 # The whole point: reuse rig's loadgen (measurement), BaselineStore (ratchet
 # gate), and report envelope (worst-wins + exit ladder). meter is NOT a dep —
 # the deferred runtime flavor will shell out to the `meter` CLI, not link it.
-rig = { path = "../rig", features = ["postgres"] }
+rig = { git = "https://github.com/faberline/rig", rev = "1fbe487eb4a94d745447227dbc974c3eb3e9fbd5", features = ["postgres"] }
 serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true

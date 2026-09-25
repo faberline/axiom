@@ -69,13 +69,6 @@ done <<<"$lumen_build_files"
 for terraform_dir in environment cluster; do
   terraform -chdir="$ACCEPTANCE_ROOT/$terraform_dir" fmt -check -recursive
 done
-# The Lumen PKI module (#3109) is a product artifact, not part of this
-# disposable harness -- an operator composes it into their own installation
-# root, and the final GKE gate applies it against the test environment. It is
-# checked from here because this is where the repo's Terraform gate lives, and a
-# module with no gate is a module that drifts.
-LUMEN_TERRAFORM="$(cd "$ACCEPTANCE_ROOT/../../apps/lumen/terraform" && pwd)"
-terraform -chdir="$LUMEN_TERRAFORM" fmt -check -recursive
 bash "$ACCEPTANCE_ROOT/tests/acceptance_mode_selection.sh"
 bash "$ACCEPTANCE_ROOT/tests/manifest_render_matrix.sh"
 bash "$ACCEPTANCE_ROOT/tests/sift_mvp_evidence_finalization.sh"
@@ -103,8 +96,6 @@ bash "$ACCEPTANCE_ROOT/tests/cleanup_rejects_failed_image_inventory.sh"
 bash "$ACCEPTANCE_ROOT/tests/cleanup_sift_candidate_binding.sh"
 bash "$ACCEPTANCE_ROOT/tests/cleanup_removes_owned_sift_binding_before_finalizer.sh"
 bash "$ACCEPTANCE_ROOT/tests/source_prefix_scope.sh"
-bash "$ACCEPTANCE_ROOT/tests/lumen_pki_ownership.sh"
-bash "$ACCEPTANCE_ROOT/tests/lumen_capacity_ownership.sh"
 
 # Validate in a disposable copy so provider initialization never writes a
 # lock/cache artifact into the source tree.
@@ -121,33 +112,6 @@ for terraform_dir in environment cluster; do
     -chdir="$validate_root/$terraform_dir" init -backend=false -input=false
   TF_DATA_DIR="$validate_root/.terraform-$terraform_dir" terraform \
     -chdir="$validate_root/$terraform_dir" validate
-done
-
-# The PKI tree is copied with its structure intact rather than by *.tf glob: the
-# installation example reaches the module through a relative source, and its
-# accept/reject fixtures live in tests/ subdirectories. A flat copy would
-# silently validate a root with no module and run no fixtures at all.
-#
-# Any working state an operator's own `terraform init` left behind is excluded,
-# not carried along -- it is a few hundred megabytes of provider cache, and
-# copying it would make this gate slower than the cloud run it precedes.
-mkdir -p "$validate_root/lumen-terraform"
-tar -C "$LUMEN_TERRAFORM" -cf - \
-  --exclude='.terraform' --exclude='.terraform.lock.hcl' . |
-  tar -C "$validate_root/lumen-terraform" -xf -
-for pki_dir in modules/lumen-pki modules/lumen-capacity examples/installation; do
-  pki_slug="${pki_dir//\//-}"
-  TF_DATA_DIR="$validate_root/.terraform-$pki_slug" terraform \
-    -chdir="$validate_root/lumen-terraform/$pki_dir" init -backend=false -input=false
-  TF_DATA_DIR="$validate_root/.terraform-$pki_slug" terraform \
-    -chdir="$validate_root/lumen-terraform/$pki_dir" validate
-  # `terraform test` is the executable half of the issuance-policy, IAM,
-  # hierarchy, and retirement contracts. It runs against a mocked provider, so
-  # it needs no GCP project, no credential, and creates nothing billable --
-  # which is why these rejects can be a per-commit gate instead of something
-  # only a cloud run would notice.
-  TF_DATA_DIR="$validate_root/.terraform-$pki_slug" terraform \
-    -chdir="$validate_root/lumen-terraform/$pki_dir" test
 done
 
 # A gate that says nothing when it passes is indistinguishable from one that

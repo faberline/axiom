@@ -6,10 +6,10 @@ use std::path::Path;
 
 use serde::Deserialize;
 
-use cclab_compass::checker::{check_paths, LintConfig};
-use cclab_compass::diagnostic::DiagnosticSeverity;
-use cclab_compass::lint::detect_sql_injection;
-use cclab_compass::syntax::Language;
+use compass::checker::{check_paths, LintConfig};
+use compass::diagnostic::DiagnosticSeverity;
+use compass::lint::detect_sql_injection;
+use compass::syntax::Language;
 
 use crate::evidence::{run_evidence_commands, EvidenceCommand};
 use crate::policy::{include_diagnostic, map_severity, PolicyProfile};

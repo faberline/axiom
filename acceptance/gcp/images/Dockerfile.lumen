@@ -1,4 +1,5 @@
-# Source candidate only.  Published Lumen releases use apps/lumen/Dockerfile.release.
+# Source candidate only; lumen builds from the faberline/lumen commit this
+# checkout's Cargo.lock pins. Published Lumen releases come from faberline/lumen.
 FROM rust:1.96-bookworm AS builder
 WORKDIR /workspace
 COPY . .
@@ -7,9 +8,10 @@ COPY . .
 # without it refuses to start rather than serve unauthenticated -- correct
 # behaviour that nonetheless makes every auth-mode instance crash-loop. The
 # release line (lumen-release.yml) has always built with it; this image did not.
-RUN cargo build --locked --release -p lumen --bin lumen \
+RUN bash acceptance/gcp/scripts/faberline-source.sh lumen /src/lumen \
+ && cargo build --locked --release --manifest-path /src/lumen/Cargo.toml -p lumen --bin lumen \
       --features "otel operator raft-wal jieba delegated-auth" \
- && install -D -m 0755 target/release/lumen /out/lumen
+ && install -D -m 0755 /src/lumen/target/release/lumen /out/lumen
 
 FROM gcr.io/distroless/cc-debian12:nonroot
 COPY --from=builder /out/lumen /usr/local/bin/lumen

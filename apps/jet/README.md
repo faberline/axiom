@@ -457,7 +457,7 @@ is the discoverable, README-linked home for that guidance;
 ### Jet Agent-Facing CLI Standard Commands
 
 jet ships the shared `llm` / `upgrade` / `issue` agent-facing CLI convention
-via `libs/cli-std`. `jet issue` covers `search`, `view`, `create` (auto-tagged
+via `core/cli-std`. `jet issue` covers `search`, `view`, `create` (auto-tagged
 `app:jet`), and `comment`: `jet issue comment <number> [message...]` wires to
 `cli_std::issue::comment(CommentOptions)`, which ensures the target issue is
 open (auto-reopening if closed) before posting a diagnostics-rich follow-up
@@ -473,7 +473,7 @@ comment, without duplicating GitHub API logic in jet's own CLI.
   subcommand parsing/dispatch, including comment auto-reopen and dry-run
   preview.
 - Gate: `cargo test -p jet --lib`
-- Gate: `cargo test -p cli-std`
+- Gate: `bash scripts/faberline-core-test.sh cli-std`
 - Evidence: `jet issue --help` lists `comment`;
   `jet issue comment 123 --dry-run` prints target issue + state open +
   diagnostics comment with no network mutation — see

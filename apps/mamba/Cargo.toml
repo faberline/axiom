@@ -70,7 +70,7 @@ clap.workspace = true
 clap_complete = "4"
 tokio.workspace = true
 reqwest.workspace = true
-cli-std = { path = "../../libs/cli-std", default-features = false }
+cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.13", default-features = false }
 
 # Native module registry (MambaModule trait, MAMBA_MODULES slice, MbValue)
 cclab-mamba-registry = { path = "../../crates/cclab-mamba-registry" }

@@ -1,7 +1,7 @@
 FROM rust:1-bookworm AS build
 WORKDIR /src
 COPY --chown=root:root . .
-RUN sed -i '/^members = \[/,/^\]/c\members = ["apps/relay", "apps/defer", "apps/tape", "apps/rig", "libs/build-stamp", "libs/cli-std", "libs/metrics-prometheus", "libs/openapi-codegen", "libs/peer-tls", "libs/raft-core", "libs/raft-runtime", "libs/server-http", "libs/server-lifecycle", "libs/server-tcp", "libs/service-auth", "libs/service-backup", "libs/service-executor", "libs/service-http", "libs/service-k8s", "libs/service-observability", "libs/storage-durable", "libs/transport-h2c"]' Cargo.toml \
+RUN sed -i '/^members = \[/,/^\]/c\members = ["apps/relay", "apps/defer", "apps/tape"]' Cargo.toml \
     && cargo build --release -p tape --bin tape --features operator \
     && cargo build --release -p defer --bin defer --features operator \
     && cargo build --release -p relay --bin relay --features operator
