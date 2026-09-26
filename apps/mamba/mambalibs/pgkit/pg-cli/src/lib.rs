@@ -16,8 +16,8 @@ pub mod migrate;
 
 pub use migrate::{run_migrate, MigrateAction};
 
-use cli_std::registry::{CliModule, CLI_MODULES};
 use clap::{ArgMatches, Command, FromArgMatches, Subcommand};
+use cli_std::registry::{CliModule, CLI_MODULES};
 use linkme::distributed_slice;
 
 /// Top-level `pg` subcommand that hosts `migrate` and legacy migration commands.

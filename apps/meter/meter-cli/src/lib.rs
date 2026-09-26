@@ -24,8 +24,8 @@ pub mod dispatch;
 
 pub use dispatch::{dispatch, print_report, Dispatched, MeterCommand, OutputOpts, Verb};
 
-use cli_std::registry::{CliModule, CLI_MODULES};
 use clap::{ArgMatches, CommandFactory, FromArgMatches};
+use cli_std::registry::{CliModule, CLI_MODULES};
 use linkme::distributed_slice;
 
 /// The `meter` CLI module: name, clap command tree, and execute hook.

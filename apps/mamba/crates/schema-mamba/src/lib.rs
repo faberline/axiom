@@ -21,8 +21,8 @@
 pub mod methods;
 pub mod types;
 
-use mamba_registry::{rt_sym, MambaModule, ModuleRegistrar, MAMBA_MODULES};
 use linkme::distributed_slice;
+use mamba_registry::{rt_sym, MambaModule, ModuleRegistrar, MAMBA_MODULES};
 
 fn register_schema_surface(r: &mut ModuleRegistrar) {
     use crate::methods::{
@@ -199,10 +199,8 @@ fn register_schema_surface(r: &mut ModuleRegistrar) {
     );
 }
 
-type NativeGetter = unsafe extern "C" fn(
-    *const mamba_registry::MbValue,
-    usize,
-) -> mamba_registry::MbValue;
+type NativeGetter =
+    unsafe extern "C" fn(*const mamba_registry::MbValue, usize) -> mamba_registry::MbValue;
 
 fn register_getter(type_name: &str, attr: &str, getter: NativeGetter) {
     if let Some(o) = mamba_registry::ops::OBJECT_OPS.get() {

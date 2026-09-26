@@ -12,17 +12,17 @@ use agentkit_binding as _;
 #[cfg(feature = "native-modules")]
 use log_mamba as _;
 #[cfg(feature = "native-modules")]
-use mcp_mamba as _;
-#[cfg(feature = "native-modules")]
-use qc_mamba as _;
-#[cfg(feature = "native-modules")]
-use schema_mamba as _;
-#[cfg(feature = "native-modules")]
 use mambalibs_di_binding as _;
 #[cfg(feature = "native-modules")]
 use mambalibs_http_binding as _;
 #[cfg(feature = "native-modules")]
+use mcp_mamba as _;
+#[cfg(feature = "native-modules")]
 use pgkit_binding as _;
+#[cfg(feature = "native-modules")]
+use qc_mamba as _;
+#[cfg(feature = "native-modules")]
+use schema_mamba as _;
 
 /// Canonical Python-level module names every force-linked kit registers via
 /// `MambaModule::name()`. Kept in lockstep with the `use … as _;` block above.

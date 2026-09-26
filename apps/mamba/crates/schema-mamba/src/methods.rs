@@ -24,9 +24,7 @@
 //! | `mb_schema_field_validator`| `@field_validator(field, fn)`            |
 //! | `mb_schema_to_json_schema` | `model.__json_schema__()`                |
 
-use mamba_registry::convert::{
-    mb_unwrap_native_mut, mb_unwrap_native_ref, mb_wrap_native_typed,
-};
+use mamba_registry::convert::{mb_unwrap_native_mut, mb_unwrap_native_ref, mb_wrap_native_typed};
 use mamba_registry::MbValue;
 
 use schema::coercion::{apply_coercion, CoercionMode};

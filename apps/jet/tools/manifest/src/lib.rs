@@ -13,8 +13,8 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
-use cli_std::registry::{CliModule, CLI_MODULES};
 use clap::{Arg, ArgMatches, Command};
+use cli_std::registry::{CliModule, CLI_MODULES};
 use jet_wasm::manifest::{parse_manifest, ExportKind, JetImpl, ParsedManifest};
 use linkme::distributed_slice;
 

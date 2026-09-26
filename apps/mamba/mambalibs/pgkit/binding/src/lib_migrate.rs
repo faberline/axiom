@@ -4,8 +4,8 @@
 //! (Alembic equivalent) — `MigrationRunner` with 7 verbs plus the
 //! `Migration` value-object constructor.
 
-use mamba_registry::{rt_sym, MambaModule, ModuleRegistrar, MAMBA_MODULES};
 use linkme::distributed_slice;
+use mamba_registry::{rt_sym, MambaModule, ModuleRegistrar, MAMBA_MODULES};
 
 /// Migrate surface mounted under `mambalibs.pg.migrate`.
 pub struct PgMigrateMambaModule;

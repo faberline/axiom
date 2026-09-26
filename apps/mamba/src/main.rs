@@ -38,13 +38,13 @@ use agentkit_binding as _;
 #[cfg(feature = "native-modules")]
 use log_mamba as _;
 #[cfg(feature = "native-modules")]
-use mcp_mamba as _;
-#[cfg(feature = "native-modules")]
-use qc_mamba as _;
-#[cfg(feature = "native-modules")]
 use mambalibs_http_binding as _;
 #[cfg(feature = "native-modules")]
+use mcp_mamba as _;
+#[cfg(feature = "native-modules")]
 use pgkit_binding as _;
+#[cfg(feature = "native-modules")]
+use qc_mamba as _;
 
 fn cli() -> Command {
     Command::new("mamba")

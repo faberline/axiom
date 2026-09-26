@@ -10,11 +10,11 @@
 //!
 //! Requires a PostgreSQL database to be available.
 
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use pg::{
     Connection, ExtractedValue, JoinCondition, JoinType, Operator, OrderDirection, PoolConfig,
     QueryBuilder, Row,
 };
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use std::time::Duration;
 
 /// Setup test database connection

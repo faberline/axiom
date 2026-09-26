@@ -19,8 +19,8 @@
 use std::path::PathBuf;
 
 use anyhow::{anyhow, bail, Context, Result};
-use cli_std::registry::{CliModule, CLI_MODULES};
 use clap::{Arg, ArgMatches, Command};
+use cli_std::registry::{CliModule, CLI_MODULES};
 use linkme::distributed_slice;
 use serde::Deserialize;
 

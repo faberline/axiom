@@ -1,7 +1,7 @@
 //! Mamba interface for `mongokit`.
 
-use mamba_registry::{MambaModule, ModuleRegistrar, MAMBA_MODULES};
 use linkme::distributed_slice;
+use mamba_registry::{MambaModule, ModuleRegistrar, MAMBA_MODULES};
 
 pub struct MongokitMambaModule;
 

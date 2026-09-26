@@ -5,8 +5,8 @@
 //!
 //! Run with: cargo test -p cclab-titan --test test_types
 
-use pg::{Connection, ExtractedValue, PoolConfig};
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
+use pg::{Connection, ExtractedValue, PoolConfig};
 use rust_decimal::Decimal;
 use serde_json::json;
 use sqlx::Row;

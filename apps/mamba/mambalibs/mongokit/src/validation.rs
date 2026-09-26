@@ -394,9 +394,7 @@ fn bson_to_validation_value(bson: &Bson) -> schema::Value {
     match bson {
         Bson::Double(f) => schema::Value::Float(*f),
         Bson::String(s) => schema::Value::String(s.clone()),
-        Bson::Array(arr) => {
-            schema::Value::List(arr.iter().map(bson_to_validation_value).collect())
-        }
+        Bson::Array(arr) => schema::Value::List(arr.iter().map(bson_to_validation_value).collect()),
         Bson::Document(doc) => schema::Value::Object(
             doc.iter()
                 .map(|(k, v)| (k.clone(), bson_to_validation_value(v)))
@@ -604,17 +602,11 @@ pub fn validate_field(field_path: &str, value: &Bson, expected: &BsonTypeDescrip
                 // Use cclab-shield for common string validation
                 if let Some(ref string_constraints) = constraints.string {
                     let validation_value = schema::Value::String(s.clone());
-                    let type_desc =
-                        schema::TypeDescriptor::String(string_constraints.clone());
+                    let type_desc = schema::TypeDescriptor::String(string_constraints.clone());
                     let mut ctx = schema::ValidationContext::with_location(field_path);
                     let mut errors = schema::ValidationErrors::new();
 
-                    schema::validate_value(
-                        &validation_value,
-                        &type_desc,
-                        &mut ctx,
-                        &mut errors,
-                    );
+                    schema::validate_value(&validation_value, &type_desc, &mut ctx, &mut errors);
 
                     if !errors.is_empty() {
                         return Err(DataBridgeError::Validation(errors.to_string()));
@@ -646,12 +638,7 @@ pub fn validate_field(field_path: &str, value: &Bson, expected: &BsonTypeDescrip
                     let mut ctx = schema::ValidationContext::with_location(field_path);
                     let mut errors = schema::ValidationErrors::new();
 
-                    schema::validate_value(
-                        &validation_value,
-                        &type_desc,
-                        &mut ctx,
-                        &mut errors,
-                    );
+                    schema::validate_value(&validation_value, &type_desc, &mut ctx, &mut errors);
 
                     if !errors.is_empty() {
                         return Err(DataBridgeError::Validation(errors.to_string()));
@@ -674,12 +661,7 @@ pub fn validate_field(field_path: &str, value: &Bson, expected: &BsonTypeDescrip
                     let mut ctx = schema::ValidationContext::with_location(field_path);
                     let mut errors = schema::ValidationErrors::new();
 
-                    schema::validate_value(
-                        &validation_value,
-                        &type_desc,
-                        &mut ctx,
-                        &mut errors,
-                    );
+                    schema::validate_value(&validation_value, &type_desc, &mut ctx, &mut errors);
 
                     if !errors.is_empty() {
                         return Err(DataBridgeError::Validation(errors.to_string()));
@@ -699,17 +681,11 @@ pub fn validate_field(field_path: &str, value: &Bson, expected: &BsonTypeDescrip
                 // Use cclab-shield for common numeric validation
                 if let Some(ref numeric_constraints) = constraints.numeric {
                     let validation_value = schema::Value::Float(*n);
-                    let type_desc =
-                        schema::TypeDescriptor::Float64(numeric_constraints.clone());
+                    let type_desc = schema::TypeDescriptor::Float64(numeric_constraints.clone());
                     let mut ctx = schema::ValidationContext::with_location(field_path);
                     let mut errors = schema::ValidationErrors::new();
 
-                    schema::validate_value(
-                        &validation_value,
-                        &type_desc,
-                        &mut ctx,
-                        &mut errors,
-                    );
+                    schema::validate_value(&validation_value, &type_desc, &mut ctx, &mut errors);
 
                     if !errors.is_empty() {
                         return Err(DataBridgeError::Validation(errors.to_string()));

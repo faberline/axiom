@@ -4,8 +4,8 @@
 //! owns the Mamba import namespace `mambalibs.crypto` and the native binding
 //! surface. Symbol/value registration is deferred to the dedup pass.
 
-use mamba_registry::{MambaModule, ModuleRegistrar, MAMBA_MODULES};
 use linkme::distributed_slice;
+use mamba_registry::{MambaModule, ModuleRegistrar, MAMBA_MODULES};
 
 pub struct CryptokitMambaModule;
 

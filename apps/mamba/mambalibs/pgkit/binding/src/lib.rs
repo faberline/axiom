@@ -21,8 +21,8 @@ pub mod methods;
 pub mod session;
 pub mod types;
 
-use mamba_registry::{rt_sym, MambaModule, ModuleRegistrar, MAMBA_MODULES};
 use linkme::distributed_slice;
+use mamba_registry::{rt_sym, MambaModule, ModuleRegistrar, MAMBA_MODULES};
 
 // ── PgMambaModule — `mambalibs.pg` ───────────────────────────────────────────
 

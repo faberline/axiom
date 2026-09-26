@@ -16,10 +16,8 @@ pub mod types;
 
 use mamba_registry::{rt_sym, ModuleRegistrar};
 
-type NativeFn = unsafe extern "C" fn(
-    *const mamba_registry::MbValue,
-    usize,
-) -> mamba_registry::MbValue;
+type NativeFn =
+    unsafe extern "C" fn(*const mamba_registry::MbValue, usize) -> mamba_registry::MbValue;
 
 fn register_getter(type_name: &str, attr: &str, getter: NativeFn) {
     if let Some(o) = mamba_registry::ops::OBJECT_OPS.get() {

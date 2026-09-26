@@ -3,8 +3,8 @@
 //! Core source and logic live in the sibling `httpkit` crate. This crate owns
 //! the Mamba import namespace `mambalibs.http` and the native binding surface.
 
-use mamba_registry::{MambaModule, ModuleRegistrar, MAMBA_MODULES};
 use linkme::distributed_slice;
+use mamba_registry::{MambaModule, ModuleRegistrar, MAMBA_MODULES};
 
 pub mod app;
 pub mod client;

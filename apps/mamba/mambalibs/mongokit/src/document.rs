@@ -5,8 +5,8 @@
 
 use async_trait::async_trait;
 use bson::{doc, oid::ObjectId, Document as BsonDocument};
-use mamba_core::{DataBridgeError, Result};
 use futures::TryStreamExt;
+use mamba_core::{DataBridgeError, Result};
 use mongodb::{Collection, Database};
 use serde::{de::DeserializeOwned, Serialize};
 

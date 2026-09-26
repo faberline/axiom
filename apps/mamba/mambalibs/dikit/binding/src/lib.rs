@@ -3,11 +3,11 @@
 //! The core DI container lives in the sibling `mambalibs-di` crate. This
 //! binding crate owns the Mamba import namespace `mambalibs.di`.
 
+use linkme::distributed_slice;
 use mamba_registry::{
     convert::{mb_unwrap_native_ref, mb_wrap_native_typed},
     rt_sym, FromMbValue, IntoMbValue, MambaModule, MbValue, ModuleRegistrar, MAMBA_MODULES,
 };
-use linkme::distributed_slice;
 use mambalibs_di::{Container, DependencyMarker, ProviderKey, RequestScope, ScopeKind};
 use std::collections::HashMap;
 
