@@ -6,7 +6,7 @@
 //! flat representation reqwest can consume directly.
 
 pub use crate::http::{Auth, MultipartField, Request, RequestBody};
-pub use cclab_core::http::HttpMethod;
+pub use mamba_core::http::HttpMethod;
 
 use super::error::{HttpError, HttpResult};
 use std::time::Duration;

@@ -3,9 +3,9 @@
 //! Tests BulkExecutor for parallel insert, update, and delete operations
 //! with various configurations and edge cases.
 //!
-//! Run with: cargo test -p cclab-pg --test test_bulk_ops
+//! Run with: cargo test -p pg --test test_bulk_ops
 
-use cclab_pg::{BulkConfig, BulkExecutor, Connection, ExtractedValue, PoolConfig};
+use pg::{BulkConfig, BulkExecutor, Connection, ExtractedValue, PoolConfig};
 use std::collections::HashMap;
 
 fn get_database_url() -> Option<String> {

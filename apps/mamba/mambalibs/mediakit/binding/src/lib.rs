@@ -1,6 +1,6 @@
 //! Mamba interface for `mediakit`.
 
-use cclab_mamba_registry::{MambaModule, ModuleRegistrar, MAMBA_MODULES};
+use mamba_registry::{MambaModule, ModuleRegistrar, MAMBA_MODULES};
 use linkme::distributed_slice;
 
 pub struct MediakitMambaModule;

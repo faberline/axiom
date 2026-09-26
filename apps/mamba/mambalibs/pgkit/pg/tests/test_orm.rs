@@ -7,7 +7,7 @@
 //!
 //! Run with: cargo test -p cclab-titan --test test_orm
 
-use cclab_pg::{
+use pg::{
     BulkConfig, BulkExecutor, Connection, ExtractedValue, IsolationLevel, JoinCondition, Operator,
     OrderDirection, PoolConfig, QueryBuilder, Transaction, WindowSpec,
 };

@@ -26,8 +26,8 @@ bson.workspace = true
 chrono.workspace = true
 
 # Shared utilities
-cclab-core = { path = "../../../../crates/cclab-core", features = ["mongodb-errors"] }
-cclab-schema = { path = "../../../../crates/cclab-schema", features = ["bson"] }
+mamba-core = { path = "../../crates/core", features = ["mongodb-errors"] }
+schema = { path = "../../crates/schema", features = ["bson"] }
 
 [dev-dependencies]
 tokio-test = "0.4"

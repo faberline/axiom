@@ -52,7 +52,7 @@ tempfile = "3"
 
 # Shared agent-facing CLI commands (llm / upgrade / issue); offline paths build
 # without features, the `online` HTTPS path is pulled by self-update/issue.
-cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.13", default-features = false }
+cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.14", default-features = false }
 
 # Emulator stack (feature-gated).
 tokio = { workspace = true, optional = true }

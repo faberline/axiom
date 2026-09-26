@@ -12,5 +12,5 @@ crate-type = ["rlib"]
 
 [dependencies]
 mambalibs-di = { path = ".." }
-cclab-mamba-registry = { path = "../../../../../crates/cclab-mamba-registry" }
+mamba-registry = { path = "../../../crates/mamba-registry" }
 linkme.workspace = true

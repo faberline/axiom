@@ -20,8 +20,8 @@ chrono = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-raft-runtime = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-storage-durable = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
+raft-runtime = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+storage-durable = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
 anyhow = { workspace = true }
 axum = { workspace = true }
 tracing = { workspace = true }
@@ -31,24 +31,24 @@ base64 = { workspace = true }
 hmac = "0.12"
 sha2 = "0.10"
 clap = { workspace = true, features = ["env"] }
-cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.13", default-features = false }
-service-http = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-service-auth = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-metrics-prometheus = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
+cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.14", default-features = false }
+service-http = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+service-auth = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+metrics-prometheus = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
 utoipa = { workspace = true }
 serde_yaml = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
-openapi-codegen = { git = "https://github.com/faberline/core", tag = "v0.4.13", version = "0.5" }
-service-backup = { git = "https://github.com/faberline/core", tag = "v0.4.13", features = ["http-client"] }
-service-executor = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
+openapi-codegen = { git = "https://github.com/faberline/core", tag = "v0.4.14", version = "0.5" }
+service-backup = { git = "https://github.com/faberline/core", tag = "v0.4.14", features = ["http-client"] }
+service-executor = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
 kube = { version = "0.98", features = ["runtime", "derive", "client"], optional = true }
 k8s-openapi = { version = "0.24", features = ["v1_32"], optional = true }
 schemars = { version = "0.8", optional = true }
-service-k8s = { git = "https://github.com/faberline/core", tag = "v0.4.13", optional = true }
-peer-tls = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
+service-k8s = { git = "https://github.com/faberline/core", tag = "v0.4.14", optional = true }
+peer-tls = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
 
 [build-dependencies]
-build-stamp = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
+build-stamp = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
 
 [features]
 default = []
@@ -64,4 +64,4 @@ rcgen = "0.13"
 tower = { workspace = true, features = ["util"] }
 redis = { version = "0.27", features = ["tokio-comp"] }
 relay = { path = "../relay" }
-service-observability = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
+service-observability = { git = "https://github.com/faberline/core", tag = "v0.4.14" }

@@ -9,7 +9,7 @@
 //! that delegate to `arraykit::array` types and reuse mamba's `MbValue` /
 //! `RuntimeValue` definitions instead of redefining them here.
 
-use cclab_mamba_registry::{MambaModule, ModuleRegistrar, MAMBA_MODULES};
+use mamba_registry::{MambaModule, ModuleRegistrar, MAMBA_MODULES};
 use linkme::distributed_slice;
 
 pub struct ArraykitMambaModule;

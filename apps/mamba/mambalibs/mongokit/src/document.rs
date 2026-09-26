@@ -5,7 +5,7 @@
 
 use async_trait::async_trait;
 use bson::{doc, oid::ObjectId, Document as BsonDocument};
-use cclab_core::{DataBridgeError, Result};
+use mamba_core::{DataBridgeError, Result};
 use futures::TryStreamExt;
 use mongodb::{Collection, Database};
 use serde::{de::DeserializeOwned, Serialize};

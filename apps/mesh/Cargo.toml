@@ -23,8 +23,8 @@ tokio = { workspace = true }
 
 # Shared standard CLI ops (llm / upgrade / issue). `online` is on so the
 # released binary can self-update and file issues.
-cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.13", features = ["online"] }
+cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.14", features = ["online"] }
 
 [build-dependencies]
-build-stamp = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
+build-stamp = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
 # </HANDWRITE>

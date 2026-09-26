@@ -5,7 +5,7 @@
 //!
 //! Run with: cargo test -p cclab-titan --test test_constraints
 
-use cclab_pg::{Connection, PoolConfig};
+use pg::{Connection, PoolConfig};
 
 /// Helper to get database URL from environment
 fn get_database_url() -> String {

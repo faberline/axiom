@@ -25,12 +25,12 @@ tokio = { workspace = true }
 # Standard agent-facing CLI ops — llm/upgrade/issue (the CONTRIBUTING.md CLI
 # convention). Offline paths always build; the network paths are gated behind
 # beam's online features below.
-cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.13", default-features = false, features = ["k8s"] }
+cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.14", default-features = false, features = ["k8s"] }
 reqwest = { workspace = true, features = ["blocking", "json"] }
 
 # --- Real GPU vector-search engine ---------------------------------------
 # GPU compute via wgpu (Metal on macOS). Pinned to the SAME major already in
-# the workspace lock (24.x) as `crates/cclab-grid-render-webgpu`, so the shared
+# the workspace lock (24.x) as `apps/jet/crates/grid-render-webgpu`, so the shared
 # Cargo.lock resolves without a second wgpu copy. `vulkan-portability` also
 # compiles the VULKAN backend on macOS (loader + MoltenVK), so the same wgpu
 # Vulkan path NVIDIA uses can be runtime-verified on a Mac via
@@ -64,7 +64,7 @@ hnsw_rs = { version = "0.3", features = ["simdeez_f"] }
 # retraining. GPU buffers are ephemeral and rebuilt on load, never persisted.
 # `serde` is the workspace-pinned 1.0 (derive on the persisted structs);
 # `bincode` 1.3 is the compact, non-self-describing codec already used by keep /
-# compass / cclab-grid, so the shared Cargo.lock resolves the SAME 1.3.3.
+# compass / jet-grid, so the shared Cargo.lock resolves the SAME 1.3.3.
 serde = { workspace = true }
 bincode = "1.3"
 
@@ -76,12 +76,12 @@ bincode = "1.3"
 # shared Cargo.lock stays single-versioned.
 axum = { workspace = true }
 serde_json = { workspace = true }
-h2c = { package = "transport-h2c", git = "https://github.com/faberline/core", tag = "v0.4.13", features = ["server"] }
-service-http = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-service-auth = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-service-backup = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-storage-durable = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-server-lifecycle = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
+h2c = { package = "transport-h2c", git = "https://github.com/faberline/core", tag = "v0.4.14", features = ["server"] }
+service-http = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+service-auth = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+service-backup = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+storage-durable = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+server-lifecycle = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
 utoipa = { workspace = true, features = ["axum_extras"] }
 serde_yaml = { workspace = true }
 ciborium = "0.2"

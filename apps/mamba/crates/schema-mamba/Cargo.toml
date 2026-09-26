@@ -1,0 +1,31 @@
+[package]
+name = "schema-mamba"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Mamba binding for schema — blueprint crate for {crate}-mamba native module bindings"
+
+[lib]
+name = "schema_mamba"
+crate-type = ["rlib"]
+
+[dependencies]
+# Mamba native-module registry: MambaModule trait, MAMBA_MODULES slice, MbValue
+mamba-registry = { path = "../mamba-registry" }
+
+# Schema validation (the Rust library we are wrapping)
+schema = { path = "../schema" }
+
+# Linkme distributed slice for auto-registration
+linkme.workspace = true
+
+# Serialization for JSON-Schema output
+serde.workspace = true
+serde_json.workspace = true
+
+# Error handling
+thiserror.workspace = true
+
+[dev-dependencies]
+# Nothing extra — tests use the crate itself

@@ -27,7 +27,7 @@ Three choices pin the shape:
    neighbouring rects (`padding_rect.x - content_rect.x` = `padding-left`).
 2. **`Rect { x, y, width, height: f32 }` in pixel space.** `f32`
    matches the renderer's existing pixel-space coordinate convention
-   (e.g. `cclab_grid_render_webgpu::shaper::PositionedGlyph` from
+   (e.g. `jet_grid_render_webgpu::shaper::PositionedGlyph` from
    Slice 5j carries `f32` pen positions). Subpixel positions are real
    — a `Box` whose `content_rect.x` is `12.5` is normal in a
    DPR-aware renderer. The painter decides rounding.
@@ -169,7 +169,7 @@ impl Box {
 
 - Parent epic [#1702](https://github.com/chrischeng-c4/cclab/issues/1702) —
   jet WebGPU-React renderer layout pipeline.
-- Slice 5j (#1759) — `cclab_grid_render_webgpu::shaper::PositionedGlyph`
+- Slice 5j (#1759) — `jet_grid_render_webgpu::shaper::PositionedGlyph`
   carries `f32` pen positions in pixel space. The layout's `Rect.x/y`
   flow into the same coordinate system.
 - Slice 10 series (#1860 – #1869) — React reconciler bindings.

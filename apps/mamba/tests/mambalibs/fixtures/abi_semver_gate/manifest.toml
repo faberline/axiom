@@ -2,7 +2,7 @@
 # Umbrella: #2459 (MVP mambalibs).
 #
 # Pins the shape of the ABI semver gate for the external binding
-# crate path. cclab-mamba-registry exposes ABI version constants;
+# crate path. mamba-registry exposes ABI version constants;
 # `mamba build` compares host vs each binding's ABI version before
 # link:
 #

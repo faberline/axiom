@@ -1,5 +1,5 @@
 use agentkit_binding as _;
-use cclab_mamba_registry::{find_module, test_ops, ModuleRegistrar};
+use mamba_registry::{find_module, test_ops, ModuleRegistrar};
 use std::collections::HashSet;
 
 fn registered_module_by_name(name: &str) -> ModuleRegistrar {

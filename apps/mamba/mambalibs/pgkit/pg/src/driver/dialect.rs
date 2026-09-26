@@ -12,7 +12,7 @@
 //! # Example
 //!
 //! ```ignore
-//! use cclab_pg::dialect::{Dialect, PostgresDialect, SqliteDialect};
+//! use pg::dialect::{Dialect, PostgresDialect, SqliteDialect};
 //!
 //! let pg = PostgresDialect;
 //! assert_eq!(pg.quote_identifier("table"), "\"table\"");

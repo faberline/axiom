@@ -5442,8 +5442,8 @@ thread_local! {
 /// converts our internal `MbValue` into the registry's repr-transparent
 /// `MbValue` via bit-level conversion so pointer addresses match.
 fn native_type_name_for(obj: MbValue) -> Option<&'static str> {
-    let reg = cclab_mamba_registry::MbValue::from_bits(obj.to_bits());
-    cclab_mamba_registry::convert::native_type_name(reg)
+    let reg = mamba_registry::MbValue::from_bits(obj.to_bits());
+    mamba_registry::convert::native_type_name(reg)
 }
 
 fn make_unbound_method(type_name: &str, method_name: &str) -> MbValue {
@@ -7025,7 +7025,7 @@ fn mb_getattr_impl(
     if let Some(type_name) = native_type_name_for(obj) {
         let attr_name = extract_str(attr).unwrap_or_default();
         if let Some(getter) = super::registry_bridge::lookup_getter(type_name, &attr_name) {
-            let reg_obj = cclab_mamba_registry::MbValue::from_bits(obj.to_bits());
+            let reg_obj = mamba_registry::MbValue::from_bits(obj.to_bits());
             let args = [reg_obj];
             let result = unsafe { getter(args.as_ptr(), args.len()) };
             return MbValue::from_bits(result.to_bits());
@@ -17655,7 +17655,7 @@ pub fn mb_call_method(receiver: MbValue, method_name: MbValue, args: MbValue) ->
     if let Some(type_name) = native_type_name_for(receiver) {
         let name = extract_str(method_name).unwrap_or_default();
         if let Some(getter) = super::registry_bridge::lookup_getter(type_name, &name) {
-            let reg_receiver = cclab_mamba_registry::MbValue::from_bits(receiver.to_bits());
+            let reg_receiver = mamba_registry::MbValue::from_bits(receiver.to_bits());
             let getter_args = [reg_receiver];
             let callable = unsafe { getter(getter_args.as_ptr(), getter_args.len()) };
             let callable = MbValue::from_bits(callable.to_bits());

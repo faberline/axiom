@@ -1,7 +1,7 @@
 //! Mamba binding for `agentkit`.
 //!
 //! Exposes LLM agent capabilities to Mamba scripts via the
-//! `cclab-mamba-registry` infrastructure.
+//! `mamba-registry` infrastructure.
 //!
 //! # Module name
 //!
@@ -14,7 +14,7 @@
 pub mod methods;
 pub mod types;
 
-use cclab_mamba_registry::{rt_sym, MambaModule, ModuleRegistrar, MAMBA_MODULES};
+use mamba_registry::{rt_sym, MambaModule, ModuleRegistrar, MAMBA_MODULES};
 use linkme::distributed_slice;
 
 // ── Agent module registration ─────────────────────────────────────────────────

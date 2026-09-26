@@ -1,15 +1,15 @@
 // HANDWRITE-BEGIN reason: mambalibs-http-binding-runtime-surface until the generator can emit native object methods, module values, and decorator callbacks (primitive: mamba-native-method-binding).
 //! Mamba interface for the native httpkit API toolkit.
 
-use cclab_mamba_registry::{
+use mamba_registry::{
     convert::{mb_unwrap_native_mut, mb_unwrap_native_ref, mb_wrap_native_typed, native_type_name},
     ops, rt_sym, FromMbValue, MbValue, ModuleRegistrar, RuntimeValue,
 };
-use cclab_schema_mamba::methods::{
+use schema_mamba::methods::{
     mb_schema_model_dump_json, model_dump_json_from_json_text, model_validation_detail_json,
     model_validation_detail_json_from_json_text,
 };
-use cclab_schema_mamba::types::MbBaseModel;
+use schema_mamba::types::MbBaseModel;
 use mambalibs_di::ProviderKey;
 use mambalibs_di_binding::{MbDiContainer, MbDiScope};
 pub use mambalibs_http::app::{
@@ -1277,7 +1277,7 @@ fn http_status_value() -> MbValue {
 }
 
 fn register_getter(type_name: &str, attr: &str, getter: NativeFn) {
-    if let Some(o) = cclab_mamba_registry::ops::OBJECT_OPS.get() {
+    if let Some(o) = mamba_registry::ops::OBJECT_OPS.get() {
         (o.register_getter)(type_name, attr, getter);
     }
 }

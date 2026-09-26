@@ -1,0 +1,16 @@
+[package]
+name = "qc-mamba"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Mamba native bindings for cclab-qc — test fixtures, marks, and assertions"
+
+[lib]
+name = "qc_mamba"
+crate-type = ["rlib"]
+
+[dependencies]
+mamba-registry = { path = "../mamba-registry" }
+qc = { package = "meter", path = "../../../meter" }
+linkme.workspace = true

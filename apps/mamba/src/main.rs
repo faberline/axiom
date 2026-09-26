@@ -36,11 +36,11 @@ mod standard_cli;
 #[cfg(feature = "native-modules")]
 use agentkit_binding as _;
 #[cfg(feature = "native-modules")]
-use cclab_log_mamba as _;
+use log_mamba as _;
 #[cfg(feature = "native-modules")]
-use cclab_mcp_mamba as _;
+use mcp_mamba as _;
 #[cfg(feature = "native-modules")]
-use cclab_qc_mamba as _;
+use qc_mamba as _;
 #[cfg(feature = "native-modules")]
 use mambalibs_http_binding as _;
 #[cfg(feature = "native-modules")]
@@ -651,7 +651,7 @@ fn cli() -> Command {
 
 fn main() -> Result<()> {
     // Install the ObjectOps callback table before any binding code can fire.
-    // Bindings that depend only on cclab-mamba-registry call through
+    // Bindings that depend only on mamba-registry call through
     // `registry::ops()` to allocate / inspect mamba objects and to raise
     // exceptions; the table must be populated before the first such call.
     mamba::runtime::registry_bridge::install();

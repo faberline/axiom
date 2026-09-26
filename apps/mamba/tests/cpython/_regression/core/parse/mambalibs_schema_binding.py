@@ -3,7 +3,7 @@
 # Integration fixture: cclab_schema_mamba native module
 #
 # This fixture tests parse-level correctness of the BaseModel / Field syntax.
-# Full JIT execution requires project-mode with cclab-schema-mamba linked in.
+# Full JIT execution requires project-mode with schema-mamba linked in.
 #
 # Full E2E run (from a project directory with a matching mamba.toml):
 #   cclab mamba run

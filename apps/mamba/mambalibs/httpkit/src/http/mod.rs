@@ -34,5 +34,5 @@ pub use cookie::Cookie;
 pub use request::Request;
 pub use response::Response;
 
-// Re-export shared HTTP scalars hosted in cclab-core.
-pub use cclab_core::http::{HttpMethod, HttpRequestLike, HttpResponseLike, HttpStatus};
+// Re-export shared HTTP scalars hosted in mamba-core.
+pub use mamba_core::http::{HttpMethod, HttpRequestLike, HttpResponseLike, HttpStatus};

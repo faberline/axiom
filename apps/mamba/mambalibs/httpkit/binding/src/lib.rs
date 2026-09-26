@@ -3,7 +3,7 @@
 //! Core source and logic live in the sibling `httpkit` crate. This crate owns
 //! the Mamba import namespace `mambalibs.http` and the native binding surface.
 
-use cclab_mamba_registry::{MambaModule, ModuleRegistrar, MAMBA_MODULES};
+use mamba_registry::{MambaModule, ModuleRegistrar, MAMBA_MODULES};
 use linkme::distributed_slice;
 
 pub mod app;

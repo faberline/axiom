@@ -1,0 +1,28 @@
+[package]
+name = "mamba-log"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Structured logging with async I/O, rotation, and multiple sinks"
+
+[lib]
+name = "mamba_log"
+crate-type = ["rlib"]
+
+[dependencies]
+# Core
+tokio.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+parking_lot.workspace = true
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+# Logging
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-appender.workspace = true
+

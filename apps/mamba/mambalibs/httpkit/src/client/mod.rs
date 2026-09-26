@@ -26,4 +26,4 @@ pub use middleware::{
 pub use request::{HttpMethod, RequestBuilder};
 pub use response::HttpResponse;
 
-pub use cclab_core::http::{HttpRequestLike, HttpResponseLike, HttpStatus};
+pub use mamba_core::http::{HttpRequestLike, HttpResponseLike, HttpStatus};

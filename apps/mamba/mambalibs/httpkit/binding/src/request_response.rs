@@ -1,4 +1,4 @@
-use cclab_mamba_registry::{
+use mamba_registry::{
     convert::{mb_unwrap_native_ref, mb_wrap_native_typed},
     rt_sym, FromMbValue, IntoMbValue, MbValue, ModuleRegistrar,
 };
@@ -27,7 +27,7 @@ pub unsafe extern "C" fn cookie_new(args: *const MbValue, nargs: usize) -> MbVal
     match Cookie::new(name, value, path, domain, secure, http_only, max_age) {
         Ok(value) => mb_wrap_native_typed("Cookie", value),
         Err(msg) => {
-            if let Some(o) = cclab_mamba_registry::ops::OBJECT_OPS.get() {
+            if let Some(o) = mamba_registry::ops::OBJECT_OPS.get() {
                 (o.raise)("ValueError", &msg);
             }
             MbValue::none()
@@ -58,7 +58,7 @@ pub unsafe extern "C" fn request_new(args: *const MbValue, nargs: usize) -> MbVa
     ) {
         Ok(value) => mb_wrap_native_typed("Request", value),
         Err(msg) => {
-            if let Some(o) = cclab_mamba_registry::ops::OBJECT_OPS.get() {
+            if let Some(o) = mamba_registry::ops::OBJECT_OPS.get() {
                 (o.raise)("ValueError", &msg);
             }
             MbValue::none()
@@ -81,7 +81,7 @@ pub unsafe extern "C" fn response_new(args: *const MbValue, nargs: usize) -> MbV
     match Response::new(status_code, Vec::new(), headers, Vec::new(), media_type) {
         Ok(value) => mb_wrap_native_typed("Response", value),
         Err(msg) => {
-            if let Some(o) = cclab_mamba_registry::ops::OBJECT_OPS.get() {
+            if let Some(o) = mamba_registry::ops::OBJECT_OPS.get() {
                 (o.raise)("ValueError", &msg);
             }
             MbValue::none()
@@ -150,7 +150,7 @@ pub fn register(r: &mut ModuleRegistrar) {
         response_new,
         "Response(status_code: int = 200, media_type: str = 'application/json') -> Response"
     ));
-    if let Some(o) = cclab_mamba_registry::ops::OBJECT_OPS.get() {
+    if let Some(o) = mamba_registry::ops::OBJECT_OPS.get() {
         (o.register_getter)("Cookie", "name", cookie_get_name);
         (o.register_getter)("Request", "method", request_get_method);
         (o.register_getter)("Request", "path", request_get_path);

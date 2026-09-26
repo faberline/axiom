@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-// Schema gate for #2095 — cclab-qc-mamba binding. Locks the
+// Schema gate for #2095 — qc-mamba binding. Locks the
 // manifest shape only; does NOT build mamba runtime.
 
 use std::fs;

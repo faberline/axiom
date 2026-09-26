@@ -6,7 +6,7 @@
 //!
 //! Run with: cargo test -p cclab-titan --test test_transaction
 
-use cclab_pg::{Connection, IsolationLevel, PoolConfig, Transaction, TransactionOptions};
+use pg::{Connection, IsolationLevel, PoolConfig, Transaction, TransactionOptions};
 use qc::{expect, AssertionError};
 
 /// Helper to get database URL from environment

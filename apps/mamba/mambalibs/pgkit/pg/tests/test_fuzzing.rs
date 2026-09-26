@@ -3,7 +3,7 @@
 //! This file contains extensive fuzzing tests to validate security boundaries
 //! and input validation in the cclab-titan crate.
 
-use cclab_pg::{ExtractedValue, Operator, OrderDirection, QueryBuilder};
+use pg::{ExtractedValue, Operator, OrderDirection, QueryBuilder};
 use qc::security::{FuzzConfig, Fuzzer, PayloadDatabase, SqlInjectionTester};
 use qc::{expect, AssertionError};
 

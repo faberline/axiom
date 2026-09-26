@@ -1,4 +1,4 @@
-# cclab-qc-mamba binding gate — closes #2095. Parent profiler
+# qc-mamba binding gate — closes #2095. Parent profiler
 # infra issue #2093. This issue is the in-process binding that
 # bridges cclab-qc (the cclab profiler) to mamba so Python-side
 # bench fixtures can be profiled in-process without forking

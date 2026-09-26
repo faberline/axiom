@@ -1,7 +1,7 @@
 // CODEGEN-BEGIN
 //! Agent-first CLI surface for `meter`, registered as a [`CliModule`].
 //!
-//! Registers the `meter` subcommand via the `cclab-cli-registry` distributed slice
+//! Registers the `meter` subcommand via the `cli_std::registry` distributed slice
 //! so it is automatically available when an aggregating host binary is built
 //! with this crate linked. Because no cclab host binary exists in-tree yet, the
 //! same dispatch logic also ships as a standalone `[[bin]] meter`
@@ -24,7 +24,7 @@ pub mod dispatch;
 
 pub use dispatch::{dispatch, print_report, Dispatched, MeterCommand, OutputOpts, Verb};
 
-use cclab_cli_registry::{CliModule, CLI_MODULES};
+use cli_std::registry::{CliModule, CLI_MODULES};
 use clap::{ArgMatches, CommandFactory, FromArgMatches};
 use linkme::distributed_slice;
 

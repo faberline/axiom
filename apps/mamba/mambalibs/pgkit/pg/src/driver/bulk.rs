@@ -6,7 +6,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use cclab_pg::{Connection, BulkConfig, BulkExecutor};
+//! use pg::{Connection, BulkConfig, BulkExecutor};
 //!
 //! let conn = Connection::new(&uri, PoolConfig::default()).await?;
 //! let config = BulkConfig::default().batch_size(1000);

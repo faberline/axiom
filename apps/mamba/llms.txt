@@ -2,7 +2,7 @@
 
 > Force-typed Python compiler. Lexes Python source with `logos`, lowers through HIR/MIR, and emits native machine code via Cranelift JIT/AOT. Not a transpiler, not an interpreter — produces real binaries. Project goals tracked in #1265: (G1) CPython 3.12 source compatibility, (G2) faster than CPython 3.12, (G3) 100% test pass.
 
-The `mamba` crate is the compiler + runtime. Native bindings register through the separate `cclab-mamba-registry` crate (the ABI contract — `MbValue`, `MambaModule`, `MAMBA_MODULES`). Binding crates self-register via `linkme` distributed slices and are statically linked at final-binary build time.
+The `mamba` crate is the compiler + runtime. Native bindings register through the separate `mamba-registry` crate (the ABI contract — `MbValue`, `MambaModule`, `MAMBA_MODULES`). Binding crates self-register via `linkme` distributed slices and are statically linked at final-binary build time.
 
 Pipeline: source → `lexer` → `parser` → `resolve` → `types` (force-typed inference) → `hir` → `mir` → `codegen` (Cranelift) → native. Runtime is a small Rust core (`runtime/`) backing `MbValue` operations, gc, generators, async tasks, and the stdlib shims under `runtime/stdlib/`.
 
@@ -99,7 +99,7 @@ per library: `<lib>/real_world/<scenario>.py` for R4 exit-0 gates and
 
 ## Key external references
 
-- [../../crates/cclab-mamba-registry/](../../crates/cclab-mamba-registry/): the ABI contract (`MbValue`, `MambaModule`, `MAMBA_MODULES`, `rt_sym!`)
+- [crates/mamba-registry/](crates/mamba-registry/): the ABI contract (`MbValue`, `MambaModule`, `MAMBA_MODULES`, `rt_sym!`)
 - [../../crates/cclab-fetch-mamba/](../../crates/cclab-fetch-mamba/): canonical first-party binding example (async HTTP client)
 - [mambalibs/httpkit/binding/](mambalibs/httpkit/binding/): higher-level binding example (FastAPI-style router)
 - [../../CLAUDE.md](../../CLAUDE.md): repo-wide working-tree, SDD, and CRRR rules

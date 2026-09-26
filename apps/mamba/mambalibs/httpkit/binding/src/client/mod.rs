@@ -14,15 +14,15 @@ pub mod methods;
 pub mod test_client;
 pub mod types;
 
-use cclab_mamba_registry::{rt_sym, ModuleRegistrar};
+use mamba_registry::{rt_sym, ModuleRegistrar};
 
 type NativeFn = unsafe extern "C" fn(
-    *const cclab_mamba_registry::MbValue,
+    *const mamba_registry::MbValue,
     usize,
-) -> cclab_mamba_registry::MbValue;
+) -> mamba_registry::MbValue;
 
 fn register_getter(type_name: &str, attr: &str, getter: NativeFn) {
-    if let Some(o) = cclab_mamba_registry::ops::OBJECT_OPS.get() {
+    if let Some(o) = mamba_registry::ops::OBJECT_OPS.get() {
         (o.register_getter)(type_name, attr, getter);
     }
 }

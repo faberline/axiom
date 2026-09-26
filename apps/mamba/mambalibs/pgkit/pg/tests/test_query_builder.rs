@@ -5,7 +5,7 @@
 //!
 //! Run with: cargo test -p cclab-titan --test test_query_builder
 
-use cclab_pg::{
+use pg::{
     Connection, ExtractedValue, JoinCondition, Operator, OrderDirection, PoolConfig, QueryBuilder,
     WindowSpec,
 };

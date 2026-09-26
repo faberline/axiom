@@ -27,7 +27,7 @@ Current anchors:
 | --- | --- | --- | --- | --- |
 | HTTP clients, app routing, API helpers | `mambalibs.http` | `httpkit` | later `fastapi`, `requests`, `httpx` | — |
 | Dependency injection and provider scopes | `mambalibs.di` | `dikit` | `mambalibs.http.Depends` adapter | — |
-| Dataclass/schema models | `mambalibs.dataclasses` | `cclab-schema` + `cclab-schema-mamba` | `cclab_schema_mamba` compat; later `pydantic`, `marshmallow`, `jsonschema` | — |
+| Dataclass/schema models | `mambalibs.dataclasses` | `schema` + `schema-mamba` | `cclab_schema_mamba` compat; later `pydantic`, `marshmallow`, `jsonschema` | — |
 | Logging | `mambalibs.logging` | pending | later `loguru`, `structlog` | — |
 | Arrays and low-level vectors | `mambalibs.array` | `arraykit` | later NumPy-style shims if needed | `mambalibs-arraykit` (`cp312-abi3`) |
 | Scientific computing | `mambalibs.sci` | `scikit` | later SciPy-style shims if needed | `mambalibs-scikit` (`cp312-abi3`) |

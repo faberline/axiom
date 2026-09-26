@@ -1,5 +1,5 @@
 [package]
-name = "cclab-pg"
+name = "pg"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -10,7 +10,7 @@ keywords = ["postgres", "postgresql", "orm", "async", "database"]
 categories = ["database", "asynchronous"]
 
 [lib]
-name = "cclab_pg"
+name = "pg"
 crate-type = ["rlib"]
 
 [dependencies]
@@ -38,8 +38,8 @@ rust_decimal = { version = "1.36", features = ["serde"] }
 thiserror = { workspace = true }
 
 # Shared
-cclab-core = { path = "../../../../../crates/cclab-core", features = ["postgres-errors"] }
-cclab-schema = { path = "../../../../../crates/cclab-schema" }
+mamba-core = { path = "../../../crates/core", features = ["postgres-errors"] }
+schema = { path = "../../../crates/schema" }
 
 # Parallel processing
 num_cpus = "1.16"

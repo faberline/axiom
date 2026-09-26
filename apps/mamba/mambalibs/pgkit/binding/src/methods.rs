@@ -50,16 +50,16 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use cclab_mamba_registry::convert::mb_wrap_native;
-use cclab_mamba_registry::MbValue;
+use mamba_registry::convert::mb_wrap_native;
+use mamba_registry::MbValue;
 
-use cclab_pg::driver::blocking::{
+use pg::driver::blocking::{
     Connection as PgConnection, MigrationRunner as PgMigrationRunner, Transaction as PgTransaction,
 };
-use cclab_pg::driver::transaction::IsolationLevel;
-use cclab_pg::driver::{ExtractedValue, Row};
-use cclab_pg::migrate::Migration;
-use cclab_pg::PoolConfig;
+use pg::driver::transaction::IsolationLevel;
+use pg::driver::{ExtractedValue, Row};
+use pg::migrate::Migration;
+use pg::PoolConfig;
 
 use crate::types::{MbPgConnection, MbPgMigration, MbPgMigrationRunner, MbPgTransaction};
 
@@ -75,13 +75,13 @@ unsafe fn arg(args: *const MbValue, nargs: usize, idx: usize) -> MbValue {
 }
 
 fn read_str(v: MbValue) -> Option<String> {
-    cclab_mamba_registry::test_ops::init();
-    unsafe { cclab_mamba_registry::rc::read_obj_str(v) }
+    mamba_registry::test_ops::init();
+    unsafe { mamba_registry::rc::read_obj_str(v) }
 }
 
 fn wrap_str(s: String) -> MbValue {
-    cclab_mamba_registry::test_ops::init();
-    cclab_mamba_registry::rc::wrap_obj_str(s)
+    mamba_registry::test_ops::init();
+    mamba_registry::rc::wrap_obj_str(s)
 }
 
 #[inline]
@@ -118,8 +118,8 @@ fn mb_to_extracted(v: MbValue) -> ExtractedValue {
 }
 
 fn list_to_params(v: MbValue) -> Option<Vec<ExtractedValue>> {
-    cclab_mamba_registry::test_ops::init();
-    let ops = cclab_mamba_registry::ops();
+    mamba_registry::test_ops::init();
+    let ops = mamba_registry::ops();
     let len = (ops.list_len)(v)?;
     let mut params = Vec::with_capacity(len);
     for idx in 0..len {
@@ -144,8 +144,8 @@ fn extracted_to_mb(ev: &ExtractedValue) -> MbValue {
 }
 
 fn row_to_dict(row: Row) -> MbValue {
-    cclab_mamba_registry::test_ops::init();
-    let ops = cclab_mamba_registry::ops();
+    mamba_registry::test_ops::init();
+    let ops = mamba_registry::ops();
     let dict = (ops.dict_new)();
     for (key, value) in row.columns_map() {
         (ops.dict_insert_str)(dict, key, extracted_to_mb(value));
@@ -154,8 +154,8 @@ fn row_to_dict(row: Row) -> MbValue {
 }
 
 fn rows_to_list(rows: Vec<Row>) -> MbValue {
-    cclab_mamba_registry::test_ops::init();
-    let ops = cclab_mamba_registry::ops();
+    mamba_registry::test_ops::init();
+    let ops = mamba_registry::ops();
     let dicts = rows.into_iter().map(row_to_dict).collect();
     (ops.list_new)(dicts)
 }
@@ -164,7 +164,7 @@ fn rows_to_list(rows: Vec<Row>) -> MbValue {
 
 /// `connect(url: str) -> Connection`
 ///
-/// Builds a `cclab_pg::driver::blocking::Connection` with the default
+/// Builds a `pg::driver::blocking::Connection` with the default
 /// `PoolConfig`. Returns `MbValue::none()` on failure.
 #[no_mangle]
 pub unsafe extern "C" fn mb_pg_connect(args: *const MbValue, nargs: usize) -> MbValue {
@@ -691,11 +691,11 @@ mod tests {
 
     #[test]
     fn migration_value_object_ctor() {
-        cclab_mamba_registry::test_ops::init();
-        let v = cclab_mamba_registry::rc::wrap_obj_str("0001".to_string());
-        let n = cclab_mamba_registry::rc::wrap_obj_str("test".to_string());
-        let u = cclab_mamba_registry::rc::wrap_obj_str("CREATE TABLE t(id int)".to_string());
-        let d = cclab_mamba_registry::rc::wrap_obj_str("DROP TABLE t".to_string());
+        mamba_registry::test_ops::init();
+        let v = mamba_registry::rc::wrap_obj_str("0001".to_string());
+        let n = mamba_registry::rc::wrap_obj_str("test".to_string());
+        let u = mamba_registry::rc::wrap_obj_str("CREATE TABLE t(id int)".to_string());
+        let d = mamba_registry::rc::wrap_obj_str("DROP TABLE t".to_string());
         let args = [v, n, u, d];
         let m = unsafe { mb_pg_migration_new(args.as_ptr(), 4) };
         assert!(m.is_ptr());
@@ -706,9 +706,9 @@ mod tests {
 
     #[test]
     fn list_to_params_decodes_basic_values() {
-        cclab_mamba_registry::test_ops::init();
-        let text = cclab_mamba_registry::rc::wrap_obj_str("mamba".to_string());
-        let params = (cclab_mamba_registry::ops().list_new)(vec![
+        mamba_registry::test_ops::init();
+        let text = mamba_registry::rc::wrap_obj_str("mamba".to_string());
+        let params = (mamba_registry::ops().list_new)(vec![
             MbValue::none(),
             MbValue::from_bool(true),
             MbValue::from_int(42),
@@ -730,13 +730,13 @@ mod tests {
 
     #[test]
     fn list_to_params_rejects_non_list() {
-        cclab_mamba_registry::test_ops::init();
+        mamba_registry::test_ops::init();
         assert_eq!(list_to_params(MbValue::from_int(1)), None);
     }
 
     #[test]
     fn row_to_dict_encodes_basic_values() {
-        cclab_mamba_registry::test_ops::init();
+        mamba_registry::test_ops::init();
         let row = Row::new(std::collections::HashMap::from([
             ("id".to_string(), ExtractedValue::BigInt(7)),
             (
@@ -747,14 +747,14 @@ mod tests {
         ]));
 
         let dict = row_to_dict(row);
-        let ops = cclab_mamba_registry::ops();
+        let ops = mamba_registry::ops();
         assert_eq!(
             (ops.dict_get_str)(dict, "id").and_then(|v| v.as_int()),
             Some(7)
         );
         assert_eq!(
             (ops.dict_get_str)(dict, "name")
-                .and_then(|v| unsafe { cclab_mamba_registry::rc::read_obj_str(v) }),
+                .and_then(|v| unsafe { mamba_registry::rc::read_obj_str(v) }),
             Some("mamba".to_string())
         );
         assert_eq!(
@@ -765,7 +765,7 @@ mod tests {
 
     #[test]
     fn rows_to_list_encodes_driver_rows() {
-        cclab_mamba_registry::test_ops::init();
+        mamba_registry::test_ops::init();
         let rows = vec![
             Row::new(std::collections::HashMap::from([(
                 "id".to_string(),
@@ -778,7 +778,7 @@ mod tests {
         ];
 
         let list = rows_to_list(rows);
-        let ops = cclab_mamba_registry::ops();
+        let ops = mamba_registry::ops();
         assert_eq!((ops.list_len)(list), Some(2));
         let first = (ops.list_get)(list, 0).expect("first row");
         let second = (ops.list_get)(list, 1).expect("second row");

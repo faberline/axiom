@@ -1,6 +1,0 @@
-{
-  "spec_id": "class-features-spec",
-  "group_id": "class-features",
-  "section": "overview",
-  "content": "## Overview\n<!-- type: overview lang: markdown -->\n\nExtend the Mamba class system to support advanced Python 3.12 class features: `__init_subclass__` with keyword arguments (PEP 487), `__class_getitem__` for generic subscript syntax (PEP 560), `__set_name__` descriptor naming protocol (PEP 487), `__slots__` inheritance chain merging with `__dict__` suppression, and compiler-side emission for `__slots__` declarations.\n\nThe runtime (class.rs) already supports basic `__slots__` enforcement, `__init_subclass__` invocation without kwargs, property/classmethod/staticmethod descriptors, and full MRO-based dispatch. This change extends those foundations and adds the missing PEP 487/560 protocols.\n\nBase spec: `crates/cclab-mamba/runtime/class.md` (R1–R9 unchanged, new requirements R10–R14 added).\n\n### Source Files\n\n| File | LOC | Responsibility |\n|------|-----|----------------|\n| `runtime/class.rs` | 4,402 | Class definition, dispatch, MRO, magic methods, descriptors |\n| `lower/hir_to_mir.rs` | ~2,500 | Class registration, decorator application, class-attr emission |\n| `lower/ast_to_hir.rs` | ~720 | Class body scanning, field/method extraction |\n| `runtime/symbols.rs` | ~500 | Runtime symbol table for JIT-linked functions |"
-}

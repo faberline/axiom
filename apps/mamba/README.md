@@ -1043,7 +1043,7 @@ manager, whose rows are in [STATUS.md](STATUS.md) and whose shipped outcome
   - [`apps/mamba`](./) owns every verb under `src/pkgmanage/`, the `pkgmgr`
     cases under `tests/pkgmgr/`, and the `pkgmgr_*` black-box cases under
     `e2e/`.
-  - [`core/cli-std`](https://github.com/faberline/core/blob/v0.4.13/crates/cli-std/README.md) supplies the standard
+  - [`core/cli-std`](https://github.com/faberline/core/blob/v0.4.14/crates/cli-std/README.md) supplies the standard
     command set and shell-completion conventions the binary exposes.
 - Gate: `cargo test -p mamba --test pkgmgr`
 - Gate: `cargo test -p mamba --test pkgmgr_lock_frozen_transitive`

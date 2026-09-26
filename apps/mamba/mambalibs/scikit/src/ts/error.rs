@@ -18,7 +18,7 @@ pub enum TsError {
     SingularMatrix,
 
     #[error("frame error: {0}")]
-    FrameError(#[from] cclab_frame::frame::FrameError),
+    FrameError(#[from] frame::frame::FrameError),
 
     #[error("array error: {0}")]
     ArrayError(#[from] arraykit::array::ArrayError),

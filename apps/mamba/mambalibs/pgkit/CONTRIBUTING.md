@@ -19,4 +19,4 @@ the gate names all of them.
 
 | Gate | Command |
 |---|---|
-| unit + colocated tests | `cargo test -p cclab-pg -p cclab-pg-cli -p pgkit-binding` |
+| unit + colocated tests | `cargo test -p pg -p pg-cli -p pgkit-binding` |

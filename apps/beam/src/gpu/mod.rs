@@ -12,7 +12,7 @@
 //! ([`crate::collection::Metric::code`]), so GPU and CPU top-k agree.
 //!
 //! wgpu API usage is matched to the pinned `wgpu = "24"` already in the
-//! workspace (see `crates/cclab-grid-render-webgpu`): `Instance::new(&desc)`,
+//! workspace (see `apps/jet/crates/grid-render-webgpu`): `Instance::new(&desc)`,
 //! `request_adapter` → `Option`, `request_device(&desc, None)`,
 //! `Maintain::Wait` blocking readback, `entry_point: Some(..)` on the compute
 //! pipeline.

@@ -10,13 +10,13 @@
 #[cfg(feature = "native-modules")]
 use agentkit_binding as _;
 #[cfg(feature = "native-modules")]
-use cclab_log_mamba as _;
+use log_mamba as _;
 #[cfg(feature = "native-modules")]
-use cclab_mcp_mamba as _;
+use mcp_mamba as _;
 #[cfg(feature = "native-modules")]
-use cclab_qc_mamba as _;
+use qc_mamba as _;
 #[cfg(feature = "native-modules")]
-use cclab_schema_mamba as _;
+use schema_mamba as _;
 #[cfg(feature = "native-modules")]
 use mambalibs_di_binding as _;
 #[cfg(feature = "native-modules")]
@@ -48,7 +48,7 @@ pub const EXPECTED_KITS: &[&str] = &[];
 /// `from <kit> import …`.
 pub fn assert_all_registered() {
     use std::collections::HashSet;
-    let registered: HashSet<&'static str> = cclab_mamba_registry::MAMBA_MODULES
+    let registered: HashSet<&'static str> = mamba_registry::MAMBA_MODULES
         .iter()
         .map(|m| m.name())
         .collect();

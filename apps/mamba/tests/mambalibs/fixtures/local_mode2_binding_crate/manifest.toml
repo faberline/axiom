@@ -92,7 +92,7 @@ forbidden_modifications = [
     "cclab-runtime",
     "cclab-jet",
     "cclab-kv",
-    "cclab-core",
+    "mamba-core",
     "cclab-cli",
     "cclab-pyo3",
 ]

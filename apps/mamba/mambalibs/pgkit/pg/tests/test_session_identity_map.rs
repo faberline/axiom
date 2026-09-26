@@ -1,4 +1,4 @@
-//! Integration tests for [`cclab_pg::orm::Session`].
+//! Integration tests for [`pg::orm::Session`].
 //!
 //! Each test bootstraps a `test_session_users` table, exercises the
 //! Session semantics, and drops the table on teardown. Tests are
@@ -14,8 +14,8 @@
 
 use std::sync::Arc;
 
-use cclab_pg::orm::session::sealed::Sealed;
-use cclab_pg::{
+use pg::orm::session::sealed::Sealed;
+use pg::{
     Connection, DataBridgeError, ExtractedValue, Operator, PoolConfig, Result, Row, Session,
     SessionModel,
 };

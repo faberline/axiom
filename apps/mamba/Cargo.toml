@@ -36,12 +36,12 @@ integration = []
 native-modules = [
     "dep:mambalibs-http-binding",
     "dep:mambalibs-di-binding",
-    "dep:cclab-schema-mamba",
+    "dep:schema-mamba",
     "dep:agentkit-binding",
     "dep:pgkit-binding",
-    "dep:cclab-log-mamba",
-    "dep:cclab-mcp-mamba",
-    "dep:cclab-qc-mamba",
+    "dep:log-mamba",
+    "dep:mcp-mamba",
+    "dep:qc-mamba",
     "dep:arraykit-binding",
     "dep:cryptokit-binding",
     "dep:mediakit-binding",
@@ -70,18 +70,18 @@ clap.workspace = true
 clap_complete = "4"
 tokio.workspace = true
 reqwest.workspace = true
-cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.13", default-features = false }
+cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.14", default-features = false }
 
 # Native module registry (MambaModule trait, MAMBA_MODULES slice, MbValue)
-cclab-mamba-registry = { path = "../../crates/cclab-mamba-registry" }
+mamba-registry = { path = "crates/mamba-registry" }
 mambalibs-http-binding = { path = "mambalibs/httpkit/binding", optional = true }
 mambalibs-di-binding = { path = "mambalibs/dikit/binding", optional = true }
-cclab-schema-mamba = { path = "../../crates/cclab-schema-mamba", optional = true }
+schema-mamba = { path = "crates/schema-mamba", optional = true }
 agentkit-binding = { path = "mambalibs/agentkit/binding", optional = true }
 pgkit-binding = { path = "mambalibs/pgkit/binding", optional = true }
-cclab-log-mamba = { path = "../../crates/cclab-log-mamba", optional = true }
-cclab-mcp-mamba = { path = "../../crates/cclab-mcp-mamba", optional = true }
-cclab-qc-mamba = { path = "../../crates/cclab-qc-mamba", optional = true }
+log-mamba = { path = "crates/log-mamba", optional = true }
+mcp-mamba = { path = "crates/mcp-mamba", optional = true }
+qc-mamba = { path = "crates/qc-mamba", optional = true }
 arraykit-binding = { path = "mambalibs/arraykit/binding", optional = true }
 cryptokit-binding = { path = "mambalibs/cryptokit/binding", optional = true }
 mediakit-binding = { path = "mambalibs/mediakit/binding", optional = true }
@@ -100,7 +100,7 @@ rustc-hash = "2"
 # Uncontended-fast-path RwLock for ObjData::{List,Dict,Set,ByteArray}
 # container locks + InstanceFields — #2518. parking_lot 0.12 has been
 # in the workspace dep tree for a while (used by cclab-runtime / cclab-kv
-# / cclab-log etc.) so this does not add a new transitive dep.
+# / mamba-log etc.) so this does not add a new transitive dep.
 # Wrapped via `runtime::rc::MbRwLock<T>` so existing `.read().unwrap()`
 # / `.write().unwrap()` call sites compile unchanged (the wrapper
 # returns `Result<_, Infallible>` so `.unwrap()` remains valid but the
@@ -219,7 +219,7 @@ unicode-normalization = "0.1"
 datatest-stable = "0.2"
 criterion = { version = "0.5", features = ["html_reports"] }
 tempfile = "3"
-cclab-schema-mamba = { path = "../../crates/cclab-schema-mamba" }
+schema-mamba = { path = "crates/schema-mamba" }
 # Unified profiling toolchain (Phase 1.5 / Task #13 / cclab #2093).
 # Used by `benches/3p/cross_runtime.rs` for wall-time + memory snapshotting.
 qc = { package = "meter", path = "../../apps/meter" }

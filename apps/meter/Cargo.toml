@@ -48,16 +48,13 @@ tower.workspace = true
 # HTTP client (for async fuzzer HTTP endpoint testing)
 reqwest.workspace = true
 
-# Optional: HTTP client (mambalibs_http::client) for API testing.
-mambalibs-http = { path = "../../apps/mamba/mambalibs/httpkit", optional = true }
-
 # Content hashing for carried fuzz/injection internals (not part of the public meter core).
 blake3 = { version = "1.8", optional = true }
 
 # Optional: AST-assisted instrumentation-point discovery via the compass
 # code-intelligence engine (libs/compass). Heavy (tree-sitter grammars), so it
 # is gated off by default; enable with `--features ast`.
-compass = { git = "https://github.com/faberline/core", tag = "v0.4.13", optional = true }
+compass = { git = "https://github.com/faberline/core", tag = "v0.4.14", optional = true }
 
 [dev-dependencies]
 reqwest.workspace = true
@@ -73,8 +70,7 @@ name = "serialization_benchmark"
 harness = false
 
 [features]
-default = ["http", "rkyv", "capture"]
-http = ["dep:mambalibs-http"]
+default = ["rkyv", "capture"]
 rkyv = ["dep:rkyv", "dep:bytecheck"]
 # `capture` enables the spawn-based capture-mode populators in `src/capture/`
 # (test delegate, bench, profile sampler, and carried non-core engines).

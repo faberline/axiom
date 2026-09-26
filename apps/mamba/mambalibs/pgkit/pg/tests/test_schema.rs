@@ -11,8 +11,8 @@
 //!
 //! Run tests with: cargo test --package cclab-titan --test test_schema -- --ignored
 
-use cclab_pg::schema::ColumnType;
-use cclab_pg::{Connection, PoolConfig, SchemaInspector};
+use pg::schema::ColumnType;
+use pg::{Connection, PoolConfig, SchemaInspector};
 use qc::{expect, AssertionError};
 
 /// Helper to create a test database connection

@@ -23,7 +23,7 @@ pub mod validation;
 
 pub use aggregation::{Accumulator, AggregationBuilder, AggregationStage, GroupId};
 pub use bulk::{BulkOperation, BulkWriteResult};
-pub use cclab_core::{DataBridgeError, Result};
+pub use mamba_core::{DataBridgeError, Result};
 pub use connection::{Connection, PoolConfig};
 pub use document::Document;
 pub use link::{BatchFetchResult, CollectedRefs, LinkField, LinkRef, LinkType};

@@ -6,7 +6,7 @@
 //! These tests require a PostgreSQL database to be running.
 //! Set DATABASE_URL environment variable or skip with SKIP_INTEGRATION=true
 
-use cclab_pg::{Connection, ExtractedValue, JoinType, PoolConfig, RelationConfig, Row};
+use pg::{Connection, ExtractedValue, JoinType, PoolConfig, RelationConfig, Row};
 use qc::{expect, AssertionError};
 
 #[tokio::test]

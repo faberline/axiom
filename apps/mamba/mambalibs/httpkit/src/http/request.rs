@@ -12,7 +12,7 @@
 use super::auth::Auth;
 use super::body::{MultipartField, RequestBody};
 use super::cookie::Cookie;
-use cclab_core::http::HttpMethod;
+use mamba_core::http::HttpMethod;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::time::Duration;

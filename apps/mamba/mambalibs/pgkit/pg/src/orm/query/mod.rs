@@ -8,7 +8,7 @@
 //! ## SELECT Query
 //!
 //! ```ignore
-//! use cclab_pg::{QueryBuilder, Operator, OrderDirection, ExtractedValue};
+//! use pg::{QueryBuilder, Operator, OrderDirection, ExtractedValue};
 //!
 //! let qb = QueryBuilder::new("users")?
 //!     .select(vec!["id".to_string(), "name".to_string()])?
@@ -25,7 +25,7 @@
 //! ## INSERT Query
 //!
 //! ```ignore
-//! use cclab_pg::{QueryBuilder, ExtractedValue};
+//! use pg::{QueryBuilder, ExtractedValue};
 //!
 //! let qb = QueryBuilder::new("users")?;
 //! let values = vec![
@@ -39,7 +39,7 @@
 //! ## UPDATE Query
 //!
 //! ```ignore
-//! use cclab_pg::{QueryBuilder, Operator, ExtractedValue};
+//! use pg::{QueryBuilder, Operator, ExtractedValue};
 //!
 //! let qb = QueryBuilder::new("users")?
 //!     .where_clause("id", Operator::Eq, ExtractedValue::Int(42))?;
@@ -54,7 +54,7 @@
 //! ## DELETE Query
 //!
 //! ```ignore
-//! use cclab_pg::{QueryBuilder, Operator, ExtractedValue};
+//! use pg::{QueryBuilder, Operator, ExtractedValue};
 //!
 //! let qb = QueryBuilder::new("users")?
 //!     .where_clause("id", Operator::Eq, ExtractedValue::Int(42))?;

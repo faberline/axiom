@@ -8,9 +8,9 @@ publish = false
 
 [dependencies]
 anyhow.workspace = true
-openapi-codegen = { git = "https://github.com/faberline/core", tag = "v0.4.13", version = "0.5" }
-transport-h2c = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
+openapi-codegen = { git = "https://github.com/faberline/core", tag = "v0.4.14", version = "0.5" }
+transport-h2c = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
 lumen = { git = "https://github.com/faberline/lumen", rev = "0fbfced0b82c82dc8c8fb5766fd6c88a00743147" }
 reqwest.workspace = true
-service-http = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
+service-http = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
 tokio.workspace = true

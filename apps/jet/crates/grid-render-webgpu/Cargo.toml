@@ -1,0 +1,56 @@
+[package]
+name = "jet-grid-render-webgpu"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "WebGPU render runtime for cclab grid (Device + Queue + Surface wrapper)"
+
+[lib]
+name = "jet_grid_render_webgpu"
+path = "src/lib.rs"
+
+[dependencies]
+wgpu = "24"
+# `Pod`/`Zeroable` derives let `ViewportUniforms` be handed directly to
+# `Queue::write_buffer` without unsafe casts.
+bytemuck = { version = "1", features = ["derive"] }
+thiserror.workspace = true
+# Bridges wgpu's `log::error!` validation diagnostics into the active
+# `tracing::Subscriber` so callers don't lose dev/CI signal. Slice 4k
+# (#1729) — opt-in via `validation::try_install_log_bridge`.
+tracing-log = "0.2"
+# `tracing::warn!` for the surface-acquire skip path so chronically
+# timing-out surfaces show up in operator logs. Slice 4n (#1732).
+tracing = { workspace = true }
+# Per-frame / per-pass span instrumentation needs a subscriber helper that
+# reads `RUST_LOG` via `EnvFilter`. The JS bridge + headless tests call
+# `tracing_setup::install_default_subscriber()` for a uniform default.
+# Slice 4x (#1742).
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+# Slice 5a (#1750): TrueType / OpenType font face wrapper. Pinned to
+# the same major as `jet-wasm`'s consumer so the workspace doesn't
+# pull two copies. `default-features = false` keeps the renderer
+# crate from pulling unused tables (apple-layout / variable-fonts) —
+# can be re-enabled by future text-pipeline slices.
+ttf-parser = { version = "0.25", default-features = false, features = ["std"] }
+# Slice 5b (#1751): font face registry — `(family, weight, style)`
+# lookup over a `fontdb::Database`. `default-features = false`
+# keeps the renderer's link line slim; system-font discovery still
+# walks standard directories on each platform without fontconfig.
+fontdb = { version = "0.23", default-features = false, features = ["fs"] }
+# Slice 5c (#1752): integer-px glyph rasterizer. Pure Rust, returns
+# `Vec<u8>` grayscale alpha + a `Metrics` struct in a single call —
+# avoids us hand-rolling outline-walking. Pulls a private copy of
+# `ttf-parser` (0.21 internally) alongside our 0.25 pin; the
+# duplicate is build-time only and small. `swash` / `ab_glyph` are
+# the alternatives if shaping or subpixel positioning becomes hot.
+fontdue = "0.9"
+
+[dev-dependencies]
+# Used in unit tests to validate `CELL_RECT_WGSL` parses without needing a
+# real GPU adapter. Version pinned to wgpu's transitive naga (24.x).
+naga = "24"
+# `pollster::block_on` lets the `#[ignore]`'d live-GPU tests drive the async
+# `WebGpuRenderer::new` without pulling in a full tokio runtime.
+pollster = "0.4"

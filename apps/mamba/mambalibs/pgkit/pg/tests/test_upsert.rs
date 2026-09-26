@@ -5,7 +5,7 @@
 //!
 //! Run with: cargo test -p cclab-titan --test test_upsert
 
-use cclab_pg::{Connection, PoolConfig};
+use pg::{Connection, PoolConfig};
 use sqlx::Row;
 
 /// Helper to get database URL from environment

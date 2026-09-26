@@ -1,22 +1,22 @@
-//! Bridge between mamba's internal runtime and `cclab-mamba-registry`'s
+//! Bridge between mamba's internal runtime and `mamba-registry`'s
 //! `ObjectOps` callback table.
 //!
 //! # Lifecycle
 //!
 //! [`install`] is called once from `main.rs` at binary startup, before
 //! any Python source is compiled or any FFI symbol fires. It populates
-//! `cclab_mamba_registry::OBJECT_OPS` with function pointers that route
+//! `mamba_registry::OBJECT_OPS` with function pointers that route
 //! to real mamba runtime helpers.
 //!
 //! # MbValue transmute
 //!
-//! `cclab_mamba_registry::MbValue` is `#[repr(transparent)]` over `u64`;
+//! `mamba_registry::MbValue` is `#[repr(transparent)]` over `u64`;
 //! mamba's internal `crate::runtime::value::MbValue` is also a `u64`
 //! wrapper. They are bit-compatible. We go through `to_bits` /
 //! `from_bits` on both sides rather than unsafe transmute to keep the
 //! conversion explicit and grep-able.
 
-use cclab_mamba_registry as registry;
+use mamba_registry as registry;
 use registry::ObjectOps;
 
 use super::dict_ops::DictKey;

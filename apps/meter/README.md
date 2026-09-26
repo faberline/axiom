@@ -289,5 +289,5 @@ let result = profiler.finish();
   `capture::audit`, `capture::fuzz`, `http_server`, `ts_runner`, `parametrize`,
   `fixtures`, `hooks`, `plugin`, and the older reporter envelope. They are
   carried internals, not public meter capability.
-- `crates/cclab-qc-mamba` still keeps its historical crate name while depending
+- `apps/mamba/crates/qc-mamba` still keeps its historical crate name while depending
   on `meter` through Cargo's `package = "meter"` alias.

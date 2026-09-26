@@ -1,4 +1,4 @@
-//! Blocking (synchronous) façade over the async `cclab-pg` API.
+//! Blocking (synchronous) façade over the async `pg` API.
 //!
 //! Each `Blocking*` type wraps the corresponding async type plus an
 //! `Arc<tokio::runtime::Runtime>` that drives the async work via
@@ -7,8 +7,8 @@
 //! ## Usage
 //!
 //! ```rust,ignore
-//! use cclab_pg::blocking::{Connection, MigrationRunner};
-//! use cclab_pg::PoolConfig;
+//! use pg::blocking::{Connection, MigrationRunner};
+//! use pg::PoolConfig;
 //!
 //! let conn = Connection::new("postgresql://localhost/db", PoolConfig::default())?;
 //! conn.ping()?;

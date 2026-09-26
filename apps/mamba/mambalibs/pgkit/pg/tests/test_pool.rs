@@ -5,7 +5,7 @@
 //!
 //! Run with: cargo test -p cclab-titan --test test_pool
 
-use cclab_pg::{Connection, PoolConfig, RetryConfig};
+use pg::{Connection, PoolConfig, RetryConfig};
 use std::time::Duration;
 
 /// Helper to get database URL from environment

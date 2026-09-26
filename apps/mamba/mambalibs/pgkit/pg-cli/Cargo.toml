@@ -1,18 +1,18 @@
 [package]
-name = "cclab-pg-cli"
+name = "pg-cli"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "CLI subcommands for cclab-pg — migrate generate/up/down/status"
+description = "CLI subcommands for pg — migrate generate/up/down/status"
 
 [lib]
-name = "cclab_pg_cli"
+name = "pg_cli"
 path = "src/lib.rs"
 
 [dependencies]
-cclab-pg = { path = "../pg" }
-cclab-cli-registry = { path = "../../../../../crates/cclab-cli-registry" }
+pg = { path = "../pg" }
+cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.14", features = ["registry"] }
 linkme.workspace = true
 clap = { version = "4", features = ["derive", "color"] }
 tokio.workspace = true

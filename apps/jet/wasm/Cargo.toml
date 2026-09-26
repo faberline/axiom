@@ -33,15 +33,15 @@ dom-app = ["react", "host-bridge"]
 # Enables the WebGPU paint-planning backend. The backend shares the
 # workspace grid WebGPU cell-rect contract without inventing a second
 # GPU primitive layout.
-webgpu = ["dep:cclab-grid-render-webgpu"]
+webgpu = ["dep:jet-grid-render-webgpu"]
 # WebGPU + a live browser event loop. This reuses the existing
-# cclab-grid-wasm RendererHandle instead of duplicating adapter /
+# jet-grid-wasm RendererHandle instead of duplicating adapter /
 # surface ownership in Jet.
 webgpu-app = [
   "webgpu",
   "react",
   "host-bridge",
-  "dep:cclab-grid-wasm",
+  "dep:jet-grid-wasm",
   "dep:wasm-bindgen",
   "dep:wasm-bindgen-futures",
   "dep:js-sys",
@@ -71,8 +71,8 @@ debug = [
 # extraction) or jet-local reimpls. Browser APIs are pulled in only
 # by host-bridge/debug/webgpu-app features so the pure-Rust test path
 # needs no wasm target.
-surface = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-ui-runtime = { git = "https://github.com/faberline/core", tag = "v0.4.13", default-features = false }
+surface = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+ui-runtime = { git = "https://github.com/faberline/core", tag = "v0.4.14", default-features = false }
 # taffy: pure-Rust flexbox/block layout engine — see
 # .aw/tech-design/projects/jet/wasm-renderer/layout-runtime.md.
 # Pinned to the Dioxus stable series; pure-Rust, no_std-compatible,
@@ -96,8 +96,8 @@ xxhash-rust = { version = "0.8", features = ["xxh3"] }
 icu_segmenter = "1.5"
 unicode-bidi = "0.3"
 unicode-script = "0.5"
-cclab-grid-wasm = { path = "../../../crates/cclab-grid-wasm", optional = true }
-cclab-grid-render-webgpu = { path = "../../../crates/cclab-grid-render-webgpu", optional = true }
+jet-grid-wasm = { path = "../crates/grid-wasm", optional = true }
+jet-grid-render-webgpu = { path = "../crates/grid-render-webgpu", optional = true }
 wasm-bindgen = { version = "0.2", optional = true }
 wasm-bindgen-futures = { version = "0.4", optional = true }
 js-sys = { version = "0.3", optional = true }

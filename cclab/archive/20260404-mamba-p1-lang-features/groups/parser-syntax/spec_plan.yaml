@@ -1,9 +1,0 @@
-- spec_id: parser-syntax-spec
-  action: modify
-  main_spec_ref: crates/cclab-mamba/parser/expressions.md
-  source: crates/cclab-mamba/parser/expressions.md
-  sections:
-  - overview
-  - requirements
-  - scenarios
-  - changes

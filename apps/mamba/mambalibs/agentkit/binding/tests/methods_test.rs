@@ -15,18 +15,18 @@ use agentkit_binding::methods::{
 use agentkit_binding::types::{
     MbAgentBuilder, MbLlmAgent, MbMessage, MbProvider, MbSchema, MbSchemaBuilder, MbToolRegistry,
 };
-use cclab_mamba_registry::MbValue;
+use mamba_registry::MbValue;
 
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 
 fn make_str_val(s: &str) -> MbValue {
-    cclab_mamba_registry::test_ops::init();
-    cclab_mamba_registry::rc::wrap_obj_str(s.to_string())
+    mamba_registry::test_ops::init();
+    mamba_registry::rc::wrap_obj_str(s.to_string())
 }
 
 unsafe fn read_str_val(v: MbValue) -> String {
-    cclab_mamba_registry::test_ops::init();
-    unsafe { cclab_mamba_registry::rc::read_obj_str(v) }.expect("expected a Str MbObject")
+    mamba_registry::test_ops::init();
+    unsafe { mamba_registry::rc::read_obj_str(v) }.expect("expected a Str MbObject")
 }
 
 // ── mb_agent_builder_new ──────────────────────────────────────────────────────

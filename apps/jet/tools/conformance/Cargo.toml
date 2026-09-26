@@ -11,7 +11,7 @@ name = "jet_conformance_cli"
 path = "src/lib.rs"
 
 [dependencies]
-cclab-cli-registry = { path = "../../../../crates/cclab-cli-registry" }
+cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.14", features = ["registry"] }
 linkme.workspace = true
 clap = { version = "4", features = ["derive", "color"] }
 anyhow = { workspace = true }

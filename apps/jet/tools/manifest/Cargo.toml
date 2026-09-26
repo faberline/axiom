@@ -11,7 +11,7 @@ name = "jet_manifest_cli"
 path = "src/lib.rs"
 
 [dependencies]
-cclab-cli-registry = { path = "../../../../crates/cclab-cli-registry" }
+cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.14", features = ["registry"] }
 jet-wasm = { path = "../../wasm", default-features = false }
 linkme.workspace = true
 clap = { version = "4", features = ["derive", "color"] }

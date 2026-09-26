@@ -73,8 +73,8 @@ use std::sync::atomic::{AtomicU32, Ordering};
 ///   mb_len, mb_is_truthy, mb_hash, mb_id, mb_bool
 #[inline]
 fn is_typed_native_wrapper(val: super::value::MbValue) -> bool {
-    let registry_value = cclab_mamba_registry::MbValue::from_bits(val.to_bits());
-    cclab_mamba_registry::convert::native_type_name(registry_value).is_some()
+    let registry_value = mamba_registry::MbValue::from_bits(val.to_bits());
+    mamba_registry::convert::native_type_name(registry_value).is_some()
 }
 
 /// Backing buffer for `ObjData::List` and `ObjData::Set` (#2517).
@@ -2596,7 +2596,7 @@ mod tests {
             marker: u32,
         }
 
-        let registry_value = cclab_mamba_registry::convert::mb_wrap_native_typed(
+        let registry_value = mamba_registry::convert::mb_wrap_native_typed(
             "NativeProbe",
             NativeProbe { marker: 41 },
         );
@@ -2610,7 +2610,7 @@ mod tests {
         }
 
         let probe: &NativeProbe =
-            unsafe { cclab_mamba_registry::convert::mb_unwrap_native_ref(registry_value) }
+            unsafe { mamba_registry::convert::mb_unwrap_native_ref(registry_value) }
                 .expect("typed native wrapper should remain readable");
         assert_eq!(
             probe.marker, 41,

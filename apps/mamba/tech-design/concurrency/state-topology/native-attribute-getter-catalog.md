@@ -319,10 +319,10 @@ Exact planned paths:
 - `apps/mamba/src/runtime/registry_bridge.rs`
   - replace `ATTRIBUTE_GETTERS` with the typed process catalog, implement
     conflict-aware registration, and return immutable records outside guards.
-- `crates/cclab-mamba-registry/src/ops.rs`
+- `apps/mamba/crates/mamba-registry/src/ops.rs`
   - expose typed registration failure and lifetime authority through
     `ObjectOps`.
-- `crates/cclab-mamba-registry/src/lib.rs`
+- `apps/mamba/crates/mamba-registry/src/lib.rs`
   - only when required to define or transport the proved module lease.
 
 Forbidden changes:

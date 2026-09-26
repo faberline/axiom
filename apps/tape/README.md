@@ -156,9 +156,9 @@ source below states its direct contribution.
 - Sources:
   - [`apps/tape`](./) defines the message envelope, the journal, the WAL frame
     format, the group-commit fsync, and the storage-full degraded mode.
-  - [`core/storage-durable`](https://github.com/faberline/core/blob/v0.4.13/crates/storage-durable/README.md) provides
+  - [`core/storage-durable`](https://github.com/faberline/core/blob/v0.4.14/crates/storage-durable/README.md) provides
     durable files, atomic replacement, fsync, and framed logs.
-  - [`core/raft-runtime`](https://github.com/faberline/core/blob/v0.4.13/crates/raft-runtime/README.md) orders and
+  - [`core/raft-runtime`](https://github.com/faberline/core/blob/v0.4.14/crates/raft-runtime/README.md) orders and
     replicates the append when the node runs in a group.
 - Gate: `cargo test -p tape --test http_transport --test durable_write_path --test durable_crash_recovery`
 - Gate: `cargo test -p tape --lib`
@@ -200,9 +200,9 @@ source below states its direct contribution.
   - [`apps/tape`](./) defines the replicated command set, the applied-floor
     recovery, and the peer mTLS listener that keeps raft routes off the public
     router.
-  - [`core/raft-runtime`](https://github.com/faberline/core/blob/v0.4.13/crates/raft-runtime/README.md) hosts the group,
+  - [`core/raft-runtime`](https://github.com/faberline/core/blob/v0.4.14/crates/raft-runtime/README.md) hosts the group,
     the log, snapshots, and forwarding.
-  - [`core/peer-tls`](https://github.com/faberline/core/blob/v0.4.13/crates/peer-tls/README.md) provides the mutual TLS
+  - [`core/peer-tls`](https://github.com/faberline/core/blob/v0.4.14/crates/peer-tls/README.md) provides the mutual TLS
     material and verification for peer links.
 - Gate: `cargo test -p tape --test raft_cluster --test raft_persistence --test raft_peer_mtls`
 - Gate: `cargo test -p tape --test raft_failover`
@@ -216,9 +216,9 @@ source below states its direct contribution.
 - Sources:
   - [`apps/tape`](./) defines the snapshot route, the backup verb, the
     seed-only-into-empty rule, and the redacted backup audit.
-  - [`core/service-backup`](https://github.com/faberline/core/blob/v0.4.13/crates/service-backup/README.md) provides the
+  - [`core/service-backup`](https://github.com/faberline/core/blob/v0.4.14/crates/service-backup/README.md) provides the
     destination sinks and retention pruning.
-  - [`core/storage-durable`](https://github.com/faberline/core/blob/v0.4.13/crates/storage-durable/README.md) provides
+  - [`core/storage-durable`](https://github.com/faberline/core/blob/v0.4.14/crates/storage-durable/README.md) provides
     the atomic restore write.
 - Gate: `cargo test -p tape --features backup --test backup --test backup_destination_docs`
 - Gate: `cargo test -p tape --test bootstrap --test seed_ha_bootstrap`
@@ -232,11 +232,11 @@ source below states its direct contribution.
 - Sources:
   - [`apps/tape`](./) defines the grant model, the admission classification,
     and the audit record.
-  - [`core/service-auth`](https://github.com/faberline/core/blob/v0.4.13/crates/service-auth/README.md) provides the
+  - [`core/service-auth`](https://github.com/faberline/core/blob/v0.4.14/crates/service-auth/README.md) provides the
     bearer-token registry and grant evaluation.
-  - [`core/service-http`](https://github.com/faberline/core/blob/v0.4.13/crates/service-http/README.md) provides the
+  - [`core/service-http`](https://github.com/faberline/core/blob/v0.4.14/crates/service-http/README.md) provides the
     shared router shell, error envelope, and admission hooks.
-  - [`core/peer-tls`](https://github.com/faberline/core/blob/v0.4.13/crates/peer-tls/README.md) provides the peer
+  - [`core/peer-tls`](https://github.com/faberline/core/blob/v0.4.14/crates/peer-tls/README.md) provides the peer
     identity plane.
 - Gate: `cargo test -p tape --test service_auth --test service_admission --test audit_contract`
 - Gate: `cargo test -p tape --test raft_peer_mtls`
@@ -251,7 +251,7 @@ source below states its direct contribution.
 - Sources:
   - [`apps/tape`](./) defines the CRD, defaults, topology policy, conditions,
     render verbs, direct-install base, and provisioning.
-  - [`core/service-k8s`](https://github.com/faberline/core/blob/v0.4.13/crates/service-k8s/README.md) provides reusable
+  - [`core/service-k8s`](https://github.com/faberline/core/blob/v0.4.14/crates/service-k8s/README.md) provides reusable
     reconciliation, leader election, workload, Service, and status mechanisms.
   - `external:kubernetes` stores desired state and runs the workload,
     network, lease, RBAC, and Secret contracts.
@@ -274,9 +274,9 @@ evidence; it does not define the current contract.
 - Sources:
   - [`apps/tape`](./) defines the tape metric families, the drain window, and
     the stateful restart behaviour.
-  - [`core/service-http`](https://github.com/faberline/core/blob/v0.4.13/crates/service-http/README.md) provides the
+  - [`core/service-http`](https://github.com/faberline/core/blob/v0.4.14/crates/service-http/README.md) provides the
     probe routes, `Server-Timing`, structured logs, and OTLP wiring.
-  - [`core/metrics-prometheus`](https://github.com/faberline/core/blob/v0.4.13/crates/metrics-prometheus/README.md)
+  - [`core/metrics-prometheus`](https://github.com/faberline/core/blob/v0.4.14/crates/metrics-prometheus/README.md)
     provides the Prometheus text exposition.
 - Gate: `cargo test -p tape --test http_transport --test shared_otlp_tracing --test long_running_stability`
 - Gate: `cargo test -p tape --test rig_stateful_adapter`
@@ -290,13 +290,13 @@ evidence; it does not define the current contract.
 - Sources:
   - [`apps/tape`](./) defines the route inventory, the OpenAPI document, and
     the CLI verbs.
-  - [`core/service-http`](https://github.com/faberline/core/blob/v0.4.13/crates/service-http/README.md) provides the
+  - [`core/service-http`](https://github.com/faberline/core/blob/v0.4.14/crates/service-http/README.md) provides the
     router shell and error envelope.
-  - [`core/transport-h2c`](https://github.com/faberline/core/blob/v0.4.13/crates/transport-h2c/README.md) provides the
+  - [`core/transport-h2c`](https://github.com/faberline/core/blob/v0.4.14/crates/transport-h2c/README.md) provides the
     cleartext HTTP/2 listener shared with HTTP/1.1.
-  - [`core/openapi-codegen`](https://github.com/faberline/core/blob/v0.4.13/crates/openapi-codegen/README.md) provides
+  - [`core/openapi-codegen`](https://github.com/faberline/core/blob/v0.4.14/crates/openapi-codegen/README.md) provides
     the in-binary client generator.
-  - [`core/cli-std`](https://github.com/faberline/core/blob/v0.4.13/crates/cli-std/README.md) provides the standard
+  - [`core/cli-std`](https://github.com/faberline/core/blob/v0.4.14/crates/cli-std/README.md) provides the standard
     command set and output conventions.
 - Gate: `cargo test -p tape --test spec_route_parity --test spec_generated_clients --test cli_contract`
 

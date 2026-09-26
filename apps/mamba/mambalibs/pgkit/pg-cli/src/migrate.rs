@@ -6,9 +6,9 @@
 use clap::Subcommand;
 use std::path::PathBuf;
 
-use cclab_pg::auto_detect::ModelDefinition;
-use cclab_pg::migration::{MigrationRunner, MigrationStatusReport, ModelDiffer};
-use cclab_pg::{Connection, PoolConfig};
+use pg::auto_detect::ModelDefinition;
+use pg::migration::{MigrationRunner, MigrationStatusReport, ModelDiffer};
+use pg::{Connection, PoolConfig};
 
 // ── CLI types ─────────────────────────────────────────────────────────────────
 
@@ -81,7 +81,7 @@ pub async fn run_migrate(action: MigrateAction) -> anyhow::Result<()> {
 
             // Pass empty model list — callers integrate model scanning separately.
             // In the typical workflow, models are read from the Python source by
-            // the Mamba compiler and passed via the cclab-pg Mamba binding.
+            // the Mamba compiler and passed via the pg Mamba binding.
             let models: Vec<ModelDefinition> = Vec::new();
             let result = differ.diff(&models).await?;
 

@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use cclab_mamba_registry::{
+use mamba_registry::{
     convert::{mb_unwrap_native_ref, mb_wrap_native_typed},
     ops, rt_sym, FromMbValue, MbValue, ModuleRegistrar,
 };
@@ -214,7 +214,7 @@ pub unsafe extern "C" fn get_server_stop(args: *const MbValue, nargs: usize) -> 
 }
 
 fn register_getter(type_name: &str, attr: &str, getter: NativeFn) {
-    if let Some(o) = cclab_mamba_registry::ops::OBJECT_OPS.get() {
+    if let Some(o) = mamba_registry::ops::OBJECT_OPS.get() {
         (o.register_getter)(type_name, attr, getter);
     }
 }

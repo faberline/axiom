@@ -2,7 +2,7 @@
 //!
 //! Tests performance of critical PostgreSQL operations using the cclab-probe framework.
 
-use cclab_pg::{ExtractedValue, JoinCondition, JoinType, Operator, OrderDirection, QueryBuilder};
+use pg::{ExtractedValue, JoinCondition, JoinType, Operator, OrderDirection, QueryBuilder};
 use qc::benchmark::{print_comparison_table, BenchmarkConfig, Benchmarker};
 use qc::{expect, AssertionError};
 

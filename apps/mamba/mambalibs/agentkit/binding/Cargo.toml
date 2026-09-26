@@ -11,7 +11,7 @@ name = "agentkit_binding"
 crate-type = ["rlib"]
 
 [dependencies]
-cclab-mamba-registry = { path = "../../../../../crates/cclab-mamba-registry" }
+mamba-registry = { path = "../../../crates/mamba-registry" }
 agent = { path = "../core" }
 linkme.workspace = true
 tokio.workspace = true

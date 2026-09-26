@@ -4,8 +4,8 @@
 
 use std::sync::Arc;
 
-use cclab_pg::blocking::{Connection, MigrationRunner, Transaction};
-use cclab_pg::{IsolationLevel, Migration, PoolConfig};
+use pg::blocking::{Connection, MigrationRunner, Transaction};
+use pg::{IsolationLevel, Migration, PoolConfig};
 
 fn pg_url() -> String {
     std::env::var("POSTGRES_URL")

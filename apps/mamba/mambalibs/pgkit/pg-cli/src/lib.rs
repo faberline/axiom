@@ -1,6 +1,6 @@
 //! CLI subcommands for `cclab pg migrate`.
 //!
-//! Registers the `pg` subcommand via the `cclab-cli-registry` distributed slice
+//! Registers the `pg` subcommand via the `cli_std::registry` distributed slice
 //! so it is automatically available when `cclab` is built with this crate linked.
 //!
 //! # Exposed subcommand
@@ -16,7 +16,7 @@ pub mod migrate;
 
 pub use migrate::{run_migrate, MigrateAction};
 
-use cclab_cli_registry::{CliModule, CLI_MODULES};
+use cli_std::registry::{CliModule, CLI_MODULES};
 use clap::{ArgMatches, Command, FromArgMatches, Subcommand};
 use linkme::distributed_slice;
 

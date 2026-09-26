@@ -1,0 +1,18 @@
+[package]
+name = "mamba-registry"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Mamba native-module registry: MambaModule trait, MAMBA_MODULES slice, and MbValue conversion helpers"
+
+[dependencies]
+linkme.workspace = true
+thiserror.workspace = true
+indexmap = "2"
+num-bigint = "0.4"
+
+# Process-wide tokio runtime shared by the mamba interpreter and all
+# native modules that need to dispatch async work.
+once_cell.workspace = true
+tokio.workspace = true

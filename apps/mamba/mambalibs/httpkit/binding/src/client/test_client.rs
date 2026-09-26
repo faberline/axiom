@@ -10,8 +10,8 @@ use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use cclab_mamba_registry::convert::{mb_unwrap_native_ref, mb_wrap_native_typed};
-use cclab_mamba_registry::{ops, MbValue};
+use mamba_registry::convert::{mb_unwrap_native_ref, mb_wrap_native_typed};
+use mamba_registry::{ops, MbValue};
 use serde_json::Value as JsonValue;
 
 use crate::app::{app_dispatch_handler_json, app_preflight_json};
@@ -396,11 +396,11 @@ pub unsafe extern "C" fn get_test_response_json(args: *const MbValue, nargs: usi
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cclab_mamba_registry::convert::native_type_name;
+    use mamba_registry::convert::native_type_name;
 
     #[test]
     fn test_client_new_returns_typed_ptr() {
-        cclab_mamba_registry::test_ops::init();
+        mamba_registry::test_ops::init();
         let args: [MbValue; 0] = [];
         let client_val = unsafe { mb_fetch_test_client_new(args.as_ptr(), 0) };
         assert!(client_val.is_ptr());
@@ -412,7 +412,7 @@ mod tests {
 
     #[test]
     fn test_client_close_noop_on_null() {
-        cclab_mamba_registry::test_ops::init();
+        mamba_registry::test_ops::init();
         let args = [MbValue::none()];
         let result = unsafe { mb_fetch_test_client_close(args.as_ptr(), 1) };
         assert!(result.is_none());
@@ -420,7 +420,7 @@ mod tests {
 
     #[test]
     fn test_response_status() {
-        cclab_mamba_registry::test_ops::init();
+        mamba_registry::test_ops::init();
         let resp = MbTestResponse {
             status: 200,
             body: "ok".to_string(),
@@ -433,7 +433,7 @@ mod tests {
 
     #[test]
     fn test_response_text() {
-        cclab_mamba_registry::test_ops::init();
+        mamba_registry::test_ops::init();
         let resp = MbTestResponse {
             status: 200,
             body: r#"{"ok":true}"#.to_string(),
@@ -448,7 +448,7 @@ mod tests {
 
     #[test]
     fn test_response_json_returns_dict() {
-        cclab_mamba_registry::test_ops::init();
+        mamba_registry::test_ops::init();
         let resp = MbTestResponse {
             status: 200,
             body: r#"{"ok":true}"#.to_string(),

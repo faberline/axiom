@@ -548,7 +548,7 @@ impl CompilerSession {
         proj: &MambaConfig,
     ) -> crate::error::Result<()> {
         use crate::parser::ast::Stmt;
-        use cclab_mamba_registry::find_module;
+        use mamba_registry::find_module;
 
         for spanned in &module.stmts {
             if let Stmt::Import {
@@ -681,10 +681,10 @@ pub fn render_type_diagnostic(
 
 #[cfg(test)]
 mod tests {
-    // Force-link cclab-schema-mamba so its #[distributed_slice(MAMBA_MODULES)]
+    // Force-link schema-mamba so its #[distributed_slice(MAMBA_MODULES)]
     // entry is included in the test binary.  This enables find_module("cclab_schema_mamba")
     // to return Some, making the expose-filtering tests exercise the real code path.
-    use cclab_schema_mamba as _;
+    use schema_mamba as _;
     #[cfg(feature = "native-modules")]
     use mambalibs_http_binding as _;
     #[cfg(feature = "native-modules")]
@@ -963,7 +963,7 @@ mod tests {
             paths: Default::default(),
         };
         let syms = register_external_modules(Some(&proj));
-        // With cclab-schema-mamba force-linked, we expect ≥ 5 symbols.
+        // With schema-mamba force-linked, we expect ≥ 5 symbols.
         assert!(
             !syms.is_empty(),
             "project mode with a linked native module must expose symbols"
@@ -1656,9 +1656,9 @@ class Value(metaclass=ValueMeta):
     #[cfg(feature = "native-modules")]
     #[test]
     fn native_modules_feature_links_mambalibs_http() {
-        let module = cclab_mamba_registry::find_module("mambalibs.http")
+        let module = mamba_registry::find_module("mambalibs.http")
             .expect("native-modules must link mambalibs.http");
-        let mut registrar = cclab_mamba_registry::ModuleRegistrar::new();
+        let mut registrar = mamba_registry::ModuleRegistrar::new();
         module.register(&mut registrar);
         let symbols: std::collections::HashSet<&str> =
             registrar.symbols().iter().map(|sym| sym.name).collect();
@@ -1691,9 +1691,9 @@ class Value(metaclass=ValueMeta):
         );
 
         let app = crate::runtime::class::mb_call0(ctor);
-        let app_reg = cclab_mamba_registry::MbValue::from_bits(app.to_bits());
+        let app_reg = mamba_registry::MbValue::from_bits(app.to_bits());
         assert_eq!(
-            cclab_mamba_registry::convert::native_type_name(app_reg),
+            mamba_registry::convert::native_type_name(app_reg),
             Some("App")
         );
         crate::runtime::cleanup_all_runtime_state();
@@ -1767,9 +1767,9 @@ match subject:
     #[cfg(feature = "native-modules")]
     #[test]
     fn native_modules_feature_links_mambalibs_di() {
-        let module = cclab_mamba_registry::find_module("mambalibs.di")
+        let module = mamba_registry::find_module("mambalibs.di")
             .expect("native-modules must link mambalibs.di");
-        let mut registrar = cclab_mamba_registry::ModuleRegistrar::new();
+        let mut registrar = mamba_registry::ModuleRegistrar::new();
         module.register(&mut registrar);
         let symbols: std::collections::HashSet<&str> =
             registrar.symbols().iter().map(|sym| sym.name).collect();
@@ -1782,9 +1782,9 @@ match subject:
     #[cfg(feature = "native-modules")]
     #[test]
     fn native_modules_feature_links_mambalibs_dataclasses() {
-        let module = cclab_mamba_registry::find_module("mambalibs.dataclasses")
+        let module = mamba_registry::find_module("mambalibs.dataclasses")
             .expect("native-modules must link mambalibs.dataclasses");
-        let mut registrar = cclab_mamba_registry::ModuleRegistrar::new();
+        let mut registrar = mamba_registry::ModuleRegistrar::new();
         module.register(&mut registrar);
         let symbols: std::collections::HashSet<&str> =
             registrar.symbols().iter().map(|sym| sym.name).collect();
@@ -1802,7 +1802,7 @@ match subject:
         assert!(symbols.contains("model_json_schema"));
         assert!(symbols.contains("to_json_schema"));
         assert!(
-            cclab_mamba_registry::find_module("cclab_schema_mamba").is_some(),
+            mamba_registry::find_module("cclab_schema_mamba").is_some(),
             "legacy schema module alias must remain registered"
         );
     }
@@ -2714,9 +2714,9 @@ print(module_server.url)
     #[cfg(feature = "native-modules")]
     #[test]
     fn native_modules_feature_links_pgkit() {
-        let module = cclab_mamba_registry::find_module("mambalibs.pg")
+        let module = mamba_registry::find_module("mambalibs.pg")
             .expect("native-modules must link pgkit as mambalibs.pg");
-        let mut registrar = cclab_mamba_registry::ModuleRegistrar::new();
+        let mut registrar = mamba_registry::ModuleRegistrar::new();
         module.register(&mut registrar);
         let symbols: std::collections::HashSet<&str> =
             registrar.symbols().iter().map(|sym| sym.name).collect();
@@ -2725,9 +2725,9 @@ print(module_server.url)
         assert!(symbols.contains("transaction_begin"));
         assert!(symbols.contains("Session"));
 
-        let migrate = cclab_mamba_registry::find_module("mambalibs.pg.migrate")
+        let migrate = mamba_registry::find_module("mambalibs.pg.migrate")
             .expect("native-modules must link pgkit migrate as mambalibs.pg.migrate");
-        let mut migrate_registrar = cclab_mamba_registry::ModuleRegistrar::new();
+        let mut migrate_registrar = mamba_registry::ModuleRegistrar::new();
         migrate.register(&mut migrate_registrar);
         let migrate_symbols: std::collections::HashSet<&str> = migrate_registrar
             .symbols()
@@ -2978,7 +2978,7 @@ pub fn register_external_modules(
     if project_config.is_none() {
         return Vec::new();
     }
-    use cclab_mamba_registry::{all_modules, ModuleRegistrar};
+    use mamba_registry::{all_modules, ModuleRegistrar};
 
     let mut out: Vec<(&'static str, *const u8)> = Vec::new();
     for module in all_modules() {

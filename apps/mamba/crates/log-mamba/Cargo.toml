@@ -1,0 +1,18 @@
+[package]
+name = "log-mamba"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Mamba native bindings for mamba-log — structured logging"
+
+[lib]
+name = "log_mamba"
+crate-type = ["rlib"]
+
+[dependencies]
+mamba-registry = { path = "../mamba-registry" }
+mamba-log = { path = "../log" }
+linkme.workspace = true
+tokio.workspace = true
+once_cell.workspace = true

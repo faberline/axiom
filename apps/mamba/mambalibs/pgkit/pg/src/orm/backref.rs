@@ -7,7 +7,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use cclab_pg::{Connection, BackRefLoader, BackRefConfig, PoolConfig};
+//! use pg::{Connection, BackRefLoader, BackRefConfig, PoolConfig};
 //!
 //! let conn = Connection::new(&uri, PoolConfig::default()).await?;
 //!

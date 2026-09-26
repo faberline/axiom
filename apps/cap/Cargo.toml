@@ -32,7 +32,7 @@ libc = "0.2"
 toml = "0.8"
 chrono.workspace = true
 sysinfo = { version = "0.32", default-features = false, features = ["system"] }
-cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.13", default-features = false }
+cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.14", default-features = false }
 
 [dev-dependencies]
 tempfile = "3"

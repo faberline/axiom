@@ -16,7 +16,7 @@ path = "src/bin/meter.rs"
 
 [dependencies]
 meter = { path = "..", features = ["capture"] }
-cclab-cli-registry = { path = "../../../crates/cclab-cli-registry" }
+cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.14", features = ["registry"] }
 clap = { workspace = true, features = ["derive"] }
 linkme.workspace = true
 serde_json.workspace = true

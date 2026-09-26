@@ -11,29 +11,29 @@
 //!
 //! ```text
 //! // Old import
-//! use cclab_pg::pydantic_validation::{ValidationError, EmailValidator};
+//! use pg::pydantic_validation::{ValidationError, EmailValidator};
 //!
 //! // New import (using compat layer)
-//! use cclab_pg::compat::{ValidationError, EmailValidator};
+//! use pg::compat::{ValidationError, EmailValidator};
 //!
 //! // Or use cclab-shield directly (recommended)
-//! use cclab_schema::{ValidationError, ValidationErrors};
+//! use schema::{ValidationError, ValidationErrors};
 //! ```
 
-use cclab_schema;
+use schema;
 
 // ============================================================================
 // Type Aliases for Backward Compatibility
 // ============================================================================
 
 /// Alias for shield's ValidatorMode (was ValidationMode)
-pub type ValidationMode = cclab_schema::ValidatorMode;
+pub type ValidationMode = schema::ValidatorMode;
 
 /// Alias for shield's ValidatorContext
-pub type ValidatorContext = cclab_schema::ValidatorContext;
+pub type ValidatorContext = schema::ValidatorContext;
 
 /// Alias for shield's ValidatorCollection (was ValidationRegistry)
-pub type ValidationRegistry = cclab_schema::ValidatorCollection;
+pub type ValidationRegistry = schema::ValidatorCollection;
 
 // ============================================================================
 // ValidationError Compatibility Wrapper
@@ -41,8 +41,8 @@ pub type ValidationRegistry = cclab_schema::ValidatorCollection;
 
 /// Validation error with location information.
 ///
-/// This is a compatibility wrapper around `cclab_schema::ValidationError`.
-/// For new code, prefer using `cclab_schema::ValidationError` directly.
+/// This is a compatibility wrapper around `schema::ValidationError`.
+/// For new code, prefer using `schema::ValidationError` directly.
 #[derive(Debug, Clone)]
 pub struct ValidationError {
     /// Error location (field path)
@@ -85,18 +85,18 @@ impl ValidationError {
     }
 
     /// Convert to shield ValidationError
-    pub fn to_shield(&self) -> cclab_schema::ValidationError {
+    pub fn to_shield(&self) -> schema::ValidationError {
         // Map error_type string to shield ErrorType
         let error_type = match self.error_type.as_str() {
-            s if s.starts_with("type_error") => cclab_schema::ErrorType::TypeError,
-            s if s.starts_with("value_error") => cclab_schema::ErrorType::ValueError,
-            "missing" | "missing_error" => cclab_schema::ErrorType::Missing,
-            "extra_forbidden" => cclab_schema::ErrorType::ExtraForbidden,
-            s if s.starts_with("format_error") => cclab_schema::ErrorType::FormatError,
-            _ => cclab_schema::ErrorType::ValueError, // Default fallback
+            s if s.starts_with("type_error") => schema::ErrorType::TypeError,
+            s if s.starts_with("value_error") => schema::ErrorType::ValueError,
+            "missing" | "missing_error" => schema::ErrorType::Missing,
+            "extra_forbidden" => schema::ErrorType::ExtraForbidden,
+            s if s.starts_with("format_error") => schema::ErrorType::FormatError,
+            _ => schema::ErrorType::ValueError, // Default fallback
         };
 
-        cclab_schema::ValidationError::new(
+        schema::ValidationError::new(
             self.loc.first().cloned().unwrap_or_default(),
             self.loc.get(1..).map(|s| s.join(".")).unwrap_or_default(),
             self.msg.clone(),
@@ -111,8 +111,8 @@ impl std::fmt::Display for ValidationError {
     }
 }
 
-impl From<cclab_schema::ValidationError> for ValidationError {
-    fn from(e: cclab_schema::ValidationError) -> Self {
+impl From<schema::ValidationError> for ValidationError {
+    fn from(e: schema::ValidationError) -> Self {
         // Build loc from location and field, splitting field by '.' if present
         let mut loc = vec![e.location.clone()];
         if !e.field.is_empty() {
@@ -132,7 +132,7 @@ impl From<cclab_schema::ValidationError> for ValidationError {
     }
 }
 
-impl From<ValidationError> for cclab_schema::ValidationError {
+impl From<ValidationError> for schema::ValidationError {
     fn from(e: ValidationError) -> Self {
         e.to_shield()
     }
@@ -145,7 +145,7 @@ impl From<ValidationError> for cclab_schema::ValidationError {
 /// Collection of validation errors.
 ///
 /// This is a compatibility wrapper that provides the old API while
-/// delegating to `cclab_schema::ValidationErrors`.
+/// delegating to `schema::ValidationErrors`.
 #[derive(Debug, Clone, Default)]
 pub struct ValidationErrors {
     /// List of errors
@@ -194,8 +194,8 @@ impl ValidationErrors {
     }
 
     /// Convert to shield ValidationErrors
-    pub fn to_shield(&self) -> cclab_schema::ValidationErrors {
-        let mut errors = cclab_schema::ValidationErrors::new();
+    pub fn to_shield(&self) -> schema::ValidationErrors {
+        let mut errors = schema::ValidationErrors::new();
         for e in &self.errors {
             errors.add(e.to_shield());
         }
@@ -210,15 +210,15 @@ impl std::fmt::Display for ValidationErrors {
     }
 }
 
-impl From<cclab_schema::ValidationErrors> for ValidationErrors {
-    fn from(e: cclab_schema::ValidationErrors) -> Self {
+impl From<schema::ValidationErrors> for ValidationErrors {
+    fn from(e: schema::ValidationErrors) -> Self {
         Self {
             errors: e.errors.into_iter().map(ValidationError::from).collect(),
         }
     }
 }
 
-impl From<ValidationErrors> for cclab_schema::ValidationErrors {
+impl From<ValidationErrors> for schema::ValidationErrors {
     fn from(e: ValidationErrors) -> Self {
         e.to_shield()
     }
@@ -726,11 +726,11 @@ mod tests {
 
     #[test]
     fn test_validation_error_from_shield_conversion() {
-        let shield_error = cclab_schema::ValidationError::new(
+        let shield_error = schema::ValidationError::new(
             "body".to_string(),
             "user.email".to_string(),
             "Invalid email".to_string(),
-            cclab_schema::ErrorType::FormatError,
+            schema::ErrorType::FormatError,
         );
 
         let compat_error = ValidationError::from(shield_error);
@@ -745,7 +745,7 @@ mod tests {
             ValidationError::field("name", "Too short").with_type("value_error.string.min_length");
 
         // Test Into trait
-        let shield_error: cclab_schema::ValidationError = error.into();
+        let shield_error: schema::ValidationError = error.into();
         assert_eq!(shield_error.location, "name");
         assert_eq!(shield_error.message, "Too short");
     }
@@ -757,7 +757,7 @@ mod tests {
         errors.add(ValidationError::field("email", "Invalid").with_type("format_error"));
 
         // Test Into trait
-        let shield_errors: cclab_schema::ValidationErrors = errors.into();
+        let shield_errors: schema::ValidationErrors = errors.into();
         assert_eq!(shield_errors.len(), 2);
     }
 

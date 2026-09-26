@@ -1,4 +1,4 @@
-use cclab_mamba_registry::{
+use mamba_registry::{
     convert::{mb_unwrap_native_ref, mb_wrap_native_typed},
     rt_sym, FromMbValue, IntoMbValue, MbValue, ModuleRegistrar,
 };
@@ -25,7 +25,7 @@ pub unsafe extern "C" fn http_exception_new(args: *const MbValue, nargs: usize) 
     match HTTPException::new(status_code, detail, headers) {
         Ok(value) => mb_wrap_native_typed("HTTPException", value),
         Err(msg) => {
-            if let Some(o) = cclab_mamba_registry::ops::OBJECT_OPS.get() {
+            if let Some(o) = mamba_registry::ops::OBJECT_OPS.get() {
                 (o.raise)("ValueError", &msg);
             }
             MbValue::none()
@@ -75,7 +75,7 @@ pub fn register(r: &mut ModuleRegistrar) {
         http_exception_new,
         "HTTPException(status_code: int, detail: str | None = None, headers: dict | None = None) -> HTTPException"
     ));
-    if let Some(o) = cclab_mamba_registry::ops::OBJECT_OPS.get() {
+    if let Some(o) = mamba_registry::ops::OBJECT_OPS.get() {
         (o.register_getter)(
             "HTTPException",
             "status_code",

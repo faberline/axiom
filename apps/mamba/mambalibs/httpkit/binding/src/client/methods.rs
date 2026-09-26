@@ -24,8 +24,8 @@
 use once_cell::sync::Lazy;
 use tokio::runtime::Runtime;
 
-use cclab_mamba_registry::convert::mb_wrap_native;
-use cclab_mamba_registry::MbValue;
+use mamba_registry::convert::mb_wrap_native;
+use mamba_registry::MbValue;
 use mambalibs_http::http::Request;
 
 use super::types::{MbHttpClient, MbHttpResponse};
@@ -51,13 +51,13 @@ unsafe fn arg(args: *const MbValue, nargs: usize, idx: usize) -> MbValue {
 }
 
 fn read_str(v: MbValue) -> Option<String> {
-    cclab_mamba_registry::test_ops::init();
-    unsafe { cclab_mamba_registry::rc::read_obj_str(v) }
+    mamba_registry::test_ops::init();
+    unsafe { mamba_registry::rc::read_obj_str(v) }
 }
 
 fn wrap_str(s: String) -> MbValue {
-    cclab_mamba_registry::test_ops::init();
-    cclab_mamba_registry::rc::wrap_obj_str(s)
+    mamba_registry::test_ops::init();
+    mamba_registry::rc::wrap_obj_str(s)
 }
 
 // ── mb_fetch_client_new ───────────────────────────────────────────────────────
@@ -286,8 +286,8 @@ mod tests {
     use super::*;
 
     fn make_str_val(s: &str) -> MbValue {
-        cclab_mamba_registry::test_ops::init();
-        cclab_mamba_registry::rc::wrap_obj_str(s.to_string())
+        mamba_registry::test_ops::init();
+        mamba_registry::rc::wrap_obj_str(s.to_string())
     }
 
     #[test]

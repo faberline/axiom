@@ -1,9 +1,0 @@
-- spec_id: class-features-spec
-  action: modify
-  main_spec_ref: crates/cclab-mamba/runtime/class.md
-  source: crates/cclab-mamba/runtime/class.md
-  sections:
-  - overview
-  - requirements
-  - scenarios
-  - changes

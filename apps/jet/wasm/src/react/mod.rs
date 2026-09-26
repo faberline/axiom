@@ -6,7 +6,7 @@
 //! only the WASM host adapters here:
 //!
 //! - `webgpu_app`: the primary path, `Element -> LayoutTree -> PaintOp ->
-//!   cclab-grid-wasm`.
+//!   jet-grid-wasm`.
 //! - `dom_app`: compatibility path for browser-native controls while renderer
 //!   parity catches up.
 //!

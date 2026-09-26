@@ -1,14 +1,14 @@
 //! Opaque handle types for the `pgkit-binding` FFI layer.
 //!
-//! Each handle wraps the corresponding `cclab_pg::driver::blocking`
+//! Each handle wraps the corresponding `pg::driver::blocking`
 //! façade type (plus the orm `Session` surface):
 //!
 //! | Handle                  | Wraps                                                            |
 //! |-------------------------|------------------------------------------------------------------|
-//! | [`MbPgConnection`]      | `Arc<cclab_pg::driver::blocking::Connection>`                    |
-//! | [`MbPgTransaction`]     | `Mutex<Option<cclab_pg::driver::blocking::Transaction>>`         |
-//! | [`MbPgMigrationRunner`] | `Arc<cclab_pg::driver::blocking::MigrationRunner>`               |
-//! | [`MbPgMigration`]       | `Arc<cclab_pg::migrate::Migration>`                              |
+//! | [`MbPgConnection`]      | `Arc<pg::driver::blocking::Connection>`                    |
+//! | [`MbPgTransaction`]     | `Mutex<Option<pg::driver::blocking::Transaction>>`         |
+//! | [`MbPgMigrationRunner`] | `Arc<pg::driver::blocking::MigrationRunner>`               |
+//! | [`MbPgMigration`]       | `Arc<pg::migrate::Migration>`                              |
 //! | [`MbPgSession`]         | `Mutex<Option<OwnedSession>>` (self-referential Session+Conn)    |
 
 // HANDWRITE-BEGIN reason: mamba-FFI generator codegen gap; no
@@ -20,11 +20,11 @@
 
 use std::sync::{Arc, Mutex};
 
-use cclab_pg::blocking::Session as PgSession;
-use cclab_pg::driver::blocking::{
+use pg::blocking::Session as PgSession;
+use pg::driver::blocking::{
     Connection as PgConnection, MigrationRunner as PgMigrationRunner, Transaction as PgTransaction,
 };
-use cclab_pg::migrate::Migration;
+use pg::migrate::Migration;
 
 /// Mamba handle for a pooled Postgres connection.
 ///

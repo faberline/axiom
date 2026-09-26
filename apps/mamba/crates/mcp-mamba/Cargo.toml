@@ -1,0 +1,18 @@
+[package]
+name = "mcp-mamba"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Mamba native bindings for MCP — Model Context Protocol server"
+
+[lib]
+name = "mcp_mamba"
+crate-type = ["rlib"]
+
+[dependencies]
+mamba-registry = { path = "../mamba-registry" }
+linkme.workspace = true
+tokio.workspace = true
+once_cell.workspace = true
+serde_json.workspace = true

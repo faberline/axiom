@@ -1,1 +1,0 @@
-{"group_id":"stdlib-conformance","skipped":true,"scope_summary":{"problem":"See requirements.md","success_criteria":"CPython 3.12 conformance","boundary":{"in_scope":"stdlib-conformance","out_of_scope":"other groups","constraints":"Follow existing codebase patterns"}}}

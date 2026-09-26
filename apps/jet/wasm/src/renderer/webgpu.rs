@@ -7,20 +7,20 @@
 //! The WebGPU backend translates the subset that already matches the shared
 //! grid renderer's cell and text pipelines into `CellInstance`s and structured
 //! text runs. The wasm bridge shapes those text runs into real glyph atlas
-//! instances before calling `cclab_grid_render_webgpu::WebGpuRenderer`.
+//! instances before calling `jet_grid_render_webgpu::WebGpuRenderer`.
 
-use cclab_grid_render_webgpu::cell_rect::CellInstance;
+use jet_grid_render_webgpu::cell_rect::CellInstance;
 
 use super::{Color, PaintBackend, PaintOp, Rect};
 
-/// Packed JS wire stride used by `cclab-grid-wasm::RendererHandle`.
+/// Packed JS wire stride used by `jet-grid-wasm::RendererHandle`.
 ///
 /// Order: `pos_px.xy`, `size_px.xy`, `color.rgba`.
 pub const CELL_F32_STRIDE: usize = 8;
 
 /// One frame of WebGPU-ready primitive data.
 ///
-/// `cells` maps directly to the shared `cclab-grid-render-webgpu`
+/// `cells` maps directly to the shared `jet-grid-render-webgpu`
 /// cell-rect instance buffer. `unsupported` records paint ops that need
 /// later WebGPU passes before the backend can claim canvas parity.
 /// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-renderer.md#schema
@@ -153,7 +153,7 @@ pub enum WebGpuUnsupportedOp {
 ///
 /// The backend is host-testable and does not acquire a GPU adapter itself.
 /// Browser/native adapter selection is owned by
-/// `cclab_grid_render_webgpu::backend`; this module exposes its description
+/// `jet_grid_render_webgpu::backend`; this module exposes its description
 /// so the Jet layer reports the same backend contract as the lower renderer.
 /// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-renderer.md#schema
 #[derive(Debug, Clone)]
@@ -242,7 +242,7 @@ impl WebGpuBackend {
     }
 
     pub fn backend_description(&self) -> &'static str {
-        cclab_grid_render_webgpu::backend::backend_description()
+        jet_grid_render_webgpu::backend::backend_description()
     }
 }
 

@@ -1,8 +1,8 @@
-# cclab-pg — Author Guide
+# pg — Author Guide
 
 ## Async/Sync Parity Invariant
 
-`cclab-pg` is **async-first with a sync facade**. Every public
+`pg` is **async-first with a sync facade**. Every public
 IO-touching function in `driver/`, `migrate/`, and (when it lands)
 `orm/` is `async fn` over `sqlx`. The `driver/blocking/` directory is
 the sync surface, and every function there is a thin pass-through that
@@ -33,7 +33,7 @@ recorded in the TD.
 ## Layer Boundaries
 
 Per `.aw/tech-design/projects/pg/specs/pg-mod-boundary.md`,
-`cclab-pg` is split into three layers, each modeled on a Python
+`pg` is split into three layers, each modeled on a Python
 pgkit analog:
 
   * `driver/`   — psycopg / asyncpg equivalent (Connection,

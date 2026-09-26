@@ -14,8 +14,8 @@ crate-type = ["rlib"]
 mambalibs-http = { path = ".." }
 mambalibs-di = { path = "../../dikit" }
 mambalibs-di-binding = { path = "../../dikit/binding" }
-cclab-schema-mamba = { path = "../../../../../crates/cclab-schema-mamba" }
-cclab-mamba-registry = { path = "../../../../../crates/cclab-mamba-registry" }
+schema-mamba = { path = "../../../crates/schema-mamba" }
+mamba-registry = { path = "../../../crates/mamba-registry" }
 linkme.workspace = true
 
 # Client-side HTTP bindings backed by mambalibs_http::client.

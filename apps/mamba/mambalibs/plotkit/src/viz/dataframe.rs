@@ -1,7 +1,7 @@
 //! DataFrame integration for plotting.
 //!
 //! Provides trait-based plotting from column data, enabling `df.plot()` style
-//! usage when combined with the cclab-frame crate.
+//! usage when combined with the frame crate.
 //!
 //! # Architecture
 //!
@@ -33,7 +33,7 @@ pub trait Plottable {
 
 /// A simple in-memory column store for standalone use.
 ///
-/// This provides a basic `Plottable` without requiring `cclab-frame`.
+/// This provides a basic `Plottable` without requiring `frame`.
 #[derive(Debug, Clone, Default)]
 pub struct ColumnData {
     columns: Vec<(String, ColumnValues)>,

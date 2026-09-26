@@ -2,7 +2,7 @@
 //!
 //! Tests SQL injection prevention and input validation.
 
-use cclab_pg::{ExtractedValue, JoinType, Operator, QueryBuilder, RelationConfig};
+use pg::{ExtractedValue, JoinType, Operator, QueryBuilder, RelationConfig};
 use qc::security::{FuzzConfig, Fuzzer, PayloadDatabase, SqlInjectionTester};
 use qc::{expect, AssertionError};
 
@@ -249,7 +249,7 @@ fn test_order_by_injection_blocked() -> Result<(), AssertionError> {
     for payload in payloads.sql_injection().iter().take(10) {
         // Try to use injection payload in ORDER BY
         let qb = QueryBuilder::new("users").unwrap();
-        let result = qb.order_by(payload, cclab_pg::OrderDirection::Asc);
+        let result = qb.order_by(payload, pg::OrderDirection::Asc);
         expect(result.is_err()).to_be_true()?;
     }
 

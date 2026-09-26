@@ -21,7 +21,7 @@
 
 #![allow(improper_ctypes_definitions)]
 
-use cclab_mamba_registry::MbValue;
+use mamba_registry::MbValue;
 
 use pgkit_binding::methods::{mb_pg_close, mb_pg_connect, mb_pg_execute};
 use pgkit_binding::session::{
@@ -35,8 +35,8 @@ fn db_url() -> Option<String> {
 }
 
 fn s(v: &str) -> MbValue {
-    cclab_mamba_registry::test_ops::init();
-    cclab_mamba_registry::rc::wrap_obj_str(v.to_string())
+    mamba_registry::test_ops::init();
+    mamba_registry::rc::wrap_obj_str(v.to_string())
 }
 
 unsafe fn handle<'a, T>(v: MbValue) -> &'a T {
@@ -45,8 +45,8 @@ unsafe fn handle<'a, T>(v: MbValue) -> &'a T {
 }
 
 fn dict(pairs: &[(&str, MbValue)]) -> MbValue {
-    cclab_mamba_registry::test_ops::init();
-    let ops = cclab_mamba_registry::ops();
+    mamba_registry::test_ops::init();
+    let ops = mamba_registry::ops();
     let d = (ops.dict_new)();
     for (k, v) in pairs {
         (ops.dict_insert_str)(d, k, *v);
@@ -55,14 +55,14 @@ fn dict(pairs: &[(&str, MbValue)]) -> MbValue {
 }
 
 fn empty_dict() -> MbValue {
-    cclab_mamba_registry::test_ops::init();
-    let ops = cclab_mamba_registry::ops();
+    mamba_registry::test_ops::init();
+    let ops = mamba_registry::ops();
     (ops.dict_new)()
 }
 
 fn dict_get(v: MbValue, key: &str) -> Option<MbValue> {
-    cclab_mamba_registry::test_ops::init();
-    let ops = cclab_mamba_registry::ops();
+    mamba_registry::test_ops::init();
+    let ops = mamba_registry::ops();
     (ops.dict_get_str)(v, key)
 }
 
@@ -141,7 +141,7 @@ fn session_add_commit_then_get_round_trips() {
     assert!(got.is_ptr(), "get returned None for committed row");
 
     let name = dict_get(got, "name").expect("name key");
-    let name_s = unsafe { cclab_mamba_registry::rc::read_obj_str(name) }.expect("name str");
+    let name_s = unsafe { mamba_registry::rc::read_obj_str(name) }.expect("name str");
     assert_eq!(name_s, "Alice");
 
     let _ = unsafe { mb_pg_session_close([sess].as_ptr(), 1) };
@@ -228,7 +228,7 @@ fn session_query_all_returns_dicts() {
 
     let first = list[0];
     let name = dict_get(first, "name").expect("name key");
-    let name_s = unsafe { cclab_mamba_registry::rc::read_obj_str(name) }.expect("name str");
+    let name_s = unsafe { mamba_registry::rc::read_obj_str(name) }.expect("name str");
     assert_eq!(name_s, "Alice");
 
     let _ = unsafe { mb_pg_session_close([sess].as_ptr(), 1) };

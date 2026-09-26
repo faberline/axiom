@@ -1,1 +1,0 @@
-{"group_id":"parser-syntax","answers":[{"question":"Implementation scope?","answer":"Full CPython 3.12 conformance for this feature set. Follow existing patterns in the codebase."}]}

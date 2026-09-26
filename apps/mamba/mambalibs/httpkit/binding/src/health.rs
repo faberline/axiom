@@ -1,4 +1,4 @@
-use cclab_mamba_registry::{
+use mamba_registry::{
     convert::{mb_unwrap_native_ref, mb_wrap_native_typed},
     rt_sym, FromMbValue, IntoMbValue, MbValue, ModuleRegistrar,
 };
@@ -24,7 +24,7 @@ pub unsafe extern "C" fn health_check_new(args: *const MbValue, nargs: usize) ->
     match HealthCheck::new(name, status, description) {
         Ok(value) => mb_wrap_native_typed("HealthCheck", value),
         Err(msg) => {
-            if let Some(o) = cclab_mamba_registry::ops::OBJECT_OPS.get() {
+            if let Some(o) = mamba_registry::ops::OBJECT_OPS.get() {
                 (o.raise)("ValueError", &msg);
             }
             MbValue::none()
@@ -71,7 +71,7 @@ pub unsafe extern "C" fn health_manager_new(_args: *const MbValue, _nargs: usize
     match HealthManager::new(Vec::new()) {
         Ok(value) => mb_wrap_native_typed("HealthManager", value),
         Err(msg) => {
-            if let Some(o) = cclab_mamba_registry::ops::OBJECT_OPS.get() {
+            if let Some(o) = mamba_registry::ops::OBJECT_OPS.get() {
                 (o.raise)("ValueError", &msg);
             }
             MbValue::none()
@@ -90,7 +90,7 @@ pub fn register(r: &mut ModuleRegistrar) {
         health_manager_new,
         "HealthManager(checks: list | None = None) -> HealthManager"
     ));
-    if let Some(o) = cclab_mamba_registry::ops::OBJECT_OPS.get() {
+    if let Some(o) = mamba_registry::ops::OBJECT_OPS.get() {
         (o.register_getter)("HealthCheck", "name", health_check_get_name);
         (o.register_getter)("HealthCheck", "status", health_check_get_status);
         (o.register_getter)("HealthCheck", "description", health_check_get_description);

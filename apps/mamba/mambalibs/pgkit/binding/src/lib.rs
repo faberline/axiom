@@ -1,10 +1,10 @@
-//! Mamba interface for the native `cclab-pg` PostgreSQL toolkit.
+//! Mamba interface for the native `pg` PostgreSQL toolkit.
 //!
 //! Exposes PostgreSQL driver + migrate surface to Mamba scripts via the
-//! `cclab-mamba-registry` infrastructure. ORM-shaped symbols
+//! `mamba-registry` infrastructure. ORM-shaped symbols
 //! (DeclarativeBase, mapped_column, relationship, QueryBuilder, …) are
 //! intentionally not mounted — they will return once
-//! the `Session` API in cclab-pg's `orm` layer exists.
+//! the `Session` API in pg's `orm` layer exists.
 //!
 //! # Module names
 //!
@@ -21,7 +21,7 @@ pub mod methods;
 pub mod session;
 pub mod types;
 
-use cclab_mamba_registry::{rt_sym, MambaModule, ModuleRegistrar, MAMBA_MODULES};
+use mamba_registry::{rt_sym, MambaModule, ModuleRegistrar, MAMBA_MODULES};
 use linkme::distributed_slice;
 
 // ── PgMambaModule — `mambalibs.pg` ───────────────────────────────────────────
@@ -35,7 +35,7 @@ impl MambaModule for PgMambaModule {
     }
 
     fn doc(&self) -> &'static str {
-        "Mamba interface for cclab-pg — driver (Connection) + Transaction"
+        "Mamba interface for pg — driver (Connection) + Transaction"
     }
 
     fn register(&self, r: &mut ModuleRegistrar) {

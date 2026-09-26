@@ -1,6 +1,6 @@
 #![allow(improper_ctypes_definitions)]
 
-//! Mamba FFI for [`cclab_pg::orm::blocking::Session`].
+//! Mamba FFI for [`pg::orm::blocking::Session`].
 //!
 //! Exposes the ORM Session / unit-of-work / identity-map surface as
 //! native-call symbols mounted under `mambalibs.pg`.
@@ -37,10 +37,10 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use cclab_mamba_registry::convert::mb_wrap_native;
-use cclab_mamba_registry::MbValue;
+use mamba_registry::convert::mb_wrap_native;
+use mamba_registry::MbValue;
 
-use cclab_pg::driver::ExtractedValue;
+use pg::driver::ExtractedValue;
 
 use crate::types::{MbPgConnection, MbPgSession};
 
@@ -56,13 +56,13 @@ unsafe fn arg(args: *const MbValue, nargs: usize, idx: usize) -> MbValue {
 }
 
 fn read_str(v: MbValue) -> Option<String> {
-    cclab_mamba_registry::test_ops::init();
-    unsafe { cclab_mamba_registry::rc::read_obj_str(v) }
+    mamba_registry::test_ops::init();
+    unsafe { mamba_registry::rc::read_obj_str(v) }
 }
 
 fn wrap_str(s: String) -> MbValue {
-    cclab_mamba_registry::test_ops::init();
-    cclab_mamba_registry::rc::wrap_obj_str(s)
+    mamba_registry::test_ops::init();
+    mamba_registry::rc::wrap_obj_str(s)
 }
 
 #[inline]
@@ -122,8 +122,8 @@ fn extracted_to_mb(ev: &ExtractedValue) -> MbValue {
 /// Decode a mamba dict (`HashMap<str, MbValue>`) into the
 /// `(name, ExtractedValue)` rows the session dyn surface expects.
 fn dict_to_values(v: MbValue) -> Vec<(String, ExtractedValue)> {
-    cclab_mamba_registry::test_ops::init();
-    let ops = cclab_mamba_registry::ops();
+    mamba_registry::test_ops::init();
+    let ops = mamba_registry::ops();
     match (ops.dict_iter_str_items)(v) {
         Some(items) => items
             .into_iter()
@@ -135,8 +135,8 @@ fn dict_to_values(v: MbValue) -> Vec<(String, ExtractedValue)> {
 
 /// Encode a `HashMap<String, ExtractedValue>` row as a mamba dict.
 fn values_to_dict(row: HashMap<String, ExtractedValue>) -> MbValue {
-    cclab_mamba_registry::test_ops::init();
-    let ops = cclab_mamba_registry::ops();
+    mamba_registry::test_ops::init();
+    let ops = mamba_registry::ops();
     let dict = (ops.dict_new)();
     for (k, v) in row {
         (ops.dict_insert_str)(dict, &k, extracted_to_mb(&v));

@@ -21,7 +21,7 @@ serde_json = { workspace = true }
 
 # Error handling
 thiserror = { workspace = true }
-cclab-core = { path = "../../../../crates/cclab-core" }
+mamba-core = { path = "../../crates/core" }
 
 # Scheduling
 chrono = { workspace = true }

@@ -1,7 +1,7 @@
-//! Audit the Mamba binding's dependency on `cclab_pg`.
+//! Audit the Mamba binding's dependency on `pg`.
 //!
 //! Phase A (initial gate, now narrowed): the binding used to be
-//! forbidden from referencing `cclab_pg::orm::*` outright while the
+//! forbidden from referencing `pg::orm::*` outright while the
 //! ORM `Session` surface was being designed. Since #2088 the binding
 //! mounts `Session` / `SessionModel` / `SessionQuery` directly, so
 //! the literal-namespace ban has been replaced with a narrower one
@@ -17,14 +17,14 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// Internal ORM submodules the binding must not reach into. The
-/// public `Session` surface is reached via `cclab_pg::blocking::`
+/// public `Session` surface is reached via `pg::blocking::`
 /// (the top-level aggregator) or its re-exports — not via these
 /// raw paths.
 const FORBIDDEN_FROM_BINDING: &[&str] = &[
-    "cclab_pg::orm::query::",
-    "cclab_pg::orm::schema::",
-    "cclab_pg::orm::validation::",
-    "cclab_pg::orm::session::sealed",
+    "pg::orm::query::",
+    "pg::orm::schema::",
+    "pg::orm::validation::",
+    "pg::orm::session::sealed",
 ];
 
 #[test]

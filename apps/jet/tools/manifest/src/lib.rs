@@ -5,7 +5,7 @@
 //!
 //! @spec .aw/tech-design/projects/jet/wasm-renderer/binding-manifest.md
 //!
-//! Auto-registered via the `cclab-cli-registry` distributed slice.
+//! Auto-registered via the `cli_std::registry` distributed slice.
 //! Walks the ancestor chain from `--source-dir` up to `--workspace-root`,
 //! collecting every `jet.declare.d.ts`, then overlay-merges with
 //! defaults seeded from [`jet_wasm::manifest::DEFAULT_BINDINGS`].
@@ -13,7 +13,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
-use cclab_cli_registry::{CliModule, CLI_MODULES};
+use cli_std::registry::{CliModule, CLI_MODULES};
 use clap::{Arg, ArgMatches, Command};
 use jet_wasm::manifest::{parse_manifest, ExportKind, JetImpl, ParsedManifest};
 use linkme::distributed_slice;

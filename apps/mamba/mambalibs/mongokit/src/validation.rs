@@ -11,7 +11,7 @@
 
 use crate::Result;
 use bson::Bson;
-use cclab_core::DataBridgeError;
+use mamba_core::DataBridgeError;
 use std::collections::HashMap;
 
 /// Maximum allowed length for collection names (MongoDB limit is 255, we're more conservative)
@@ -385,36 +385,36 @@ pub fn validate_query(query: &bson::Bson) -> Result<()> {
 // BSON ↔ Value Conversion
 // =====================
 
-/// Convert BSON to cclab_schema::Value for common validation
+/// Convert BSON to schema::Value for common validation
 ///
 /// This conversion enables using the unified validation engine from cclab-shield
 /// while preserving MongoDB-specific security validations.
 #[allow(dead_code)]
-fn bson_to_validation_value(bson: &Bson) -> cclab_schema::Value {
+fn bson_to_validation_value(bson: &Bson) -> schema::Value {
     match bson {
-        Bson::Double(f) => cclab_schema::Value::Float(*f),
-        Bson::String(s) => cclab_schema::Value::String(s.clone()),
+        Bson::Double(f) => schema::Value::Float(*f),
+        Bson::String(s) => schema::Value::String(s.clone()),
         Bson::Array(arr) => {
-            cclab_schema::Value::List(arr.iter().map(bson_to_validation_value).collect())
+            schema::Value::List(arr.iter().map(bson_to_validation_value).collect())
         }
-        Bson::Document(doc) => cclab_schema::Value::Object(
+        Bson::Document(doc) => schema::Value::Object(
             doc.iter()
                 .map(|(k, v)| (k.clone(), bson_to_validation_value(v)))
                 .collect(),
         ),
-        Bson::Boolean(b) => cclab_schema::Value::Bool(*b),
-        Bson::Null => cclab_schema::Value::Null,
-        Bson::Int32(i) => cclab_schema::Value::Int(*i as i64),
-        Bson::Int64(i) => cclab_schema::Value::Int(*i),
-        Bson::Binary(bin) => cclab_schema::Value::Bytes(bin.bytes.clone()),
+        Bson::Boolean(b) => schema::Value::Bool(*b),
+        Bson::Null => schema::Value::Null,
+        Bson::Int32(i) => schema::Value::Int(*i as i64),
+        Bson::Int64(i) => schema::Value::Int(*i),
+        Bson::Binary(bin) => schema::Value::Bytes(bin.bytes.clone()),
         // BSON-specific types: convert to string representation for display/error messages
         // (actual validation of these types happens in MongoDB-specific code)
-        Bson::ObjectId(oid) => cclab_schema::Value::String(oid.to_hex()),
-        Bson::DateTime(dt) => cclab_schema::Value::String(dt.to_string()),
-        Bson::Decimal128(d) => cclab_schema::Value::String(d.to_string()),
-        Bson::Timestamp(ts) => cclab_schema::Value::String(format!("{:?}", ts)),
-        Bson::Symbol(s) => cclab_schema::Value::String(s.to_string()),
-        _ => cclab_schema::Value::String(bson.to_string()),
+        Bson::ObjectId(oid) => schema::Value::String(oid.to_hex()),
+        Bson::DateTime(dt) => schema::Value::String(dt.to_string()),
+        Bson::Decimal128(d) => schema::Value::String(d.to_string()),
+        Bson::Timestamp(ts) => schema::Value::String(format!("{:?}", ts)),
+        Bson::Symbol(s) => schema::Value::String(s.to_string()),
+        _ => schema::Value::String(bson.to_string()),
     }
 }
 
@@ -429,9 +429,9 @@ fn bson_to_validation_value(bson: &Bson) -> cclab_schema::Value {
 #[derive(Debug, Clone, Default)]
 pub struct BsonConstraints {
     /// String constraints from cclab-shield
-    pub string: Option<cclab_schema::StringConstraints>,
+    pub string: Option<schema::StringConstraints>,
     /// Numeric constraints from cclab-shield (f64)
-    pub numeric: Option<cclab_schema::NumericConstraints<f64>>,
+    pub numeric: Option<schema::NumericConstraints<f64>>,
 }
 
 impl BsonConstraints {
@@ -511,41 +511,41 @@ impl BsonTypeDescriptor {
         }
     }
 
-    /// Convert to cclab_schema::TypeDescriptor for common validation
+    /// Convert to schema::TypeDescriptor for common validation
     ///
     /// This enables using the unified validation engine while preserving MongoDB-specific types.
     /// BSON-specific types (ObjectId, DateTime, etc.) are returned as None since they need
     /// MongoDB-specific validation.
-    pub fn to_validation_type_desc(&self) -> Option<cclab_schema::TypeDescriptor> {
+    pub fn to_validation_type_desc(&self) -> Option<schema::TypeDescriptor> {
         match self {
             BsonTypeDescriptor::String { constraints } => constraints
                 .string
                 .as_ref()
-                .map(|c| cclab_schema::TypeDescriptor::String(c.clone())),
+                .map(|c| schema::TypeDescriptor::String(c.clone())),
             BsonTypeDescriptor::Int64 { constraints } => {
                 constraints.numeric.as_ref().map(|c| {
                     // Convert f64 constraints to i64
-                    let i64_constraints = cclab_schema::NumericConstraints {
+                    let i64_constraints = schema::NumericConstraints {
                         minimum: c.minimum.map(|v| v as i64),
                         maximum: c.maximum.map(|v| v as i64),
                         exclusive_minimum: c.exclusive_minimum.map(|v| v as i64),
                         exclusive_maximum: c.exclusive_maximum.map(|v| v as i64),
                         multiple_of: c.multiple_of.map(|v| v as i64),
                     };
-                    cclab_schema::TypeDescriptor::Int64(i64_constraints)
+                    schema::TypeDescriptor::Int64(i64_constraints)
                 })
             }
             BsonTypeDescriptor::Double { constraints } => constraints
                 .numeric
                 .as_ref()
-                .map(|c| cclab_schema::TypeDescriptor::Float64(c.clone())),
-            BsonTypeDescriptor::Bool => Some(cclab_schema::TypeDescriptor::Bool),
-            BsonTypeDescriptor::Null => Some(cclab_schema::TypeDescriptor::Null),
-            BsonTypeDescriptor::Binary => Some(cclab_schema::TypeDescriptor::Bytes),
-            BsonTypeDescriptor::Any => Some(cclab_schema::TypeDescriptor::Any),
+                .map(|c| schema::TypeDescriptor::Float64(c.clone())),
+            BsonTypeDescriptor::Bool => Some(schema::TypeDescriptor::Bool),
+            BsonTypeDescriptor::Null => Some(schema::TypeDescriptor::Null),
+            BsonTypeDescriptor::Binary => Some(schema::TypeDescriptor::Bytes),
+            BsonTypeDescriptor::Any => Some(schema::TypeDescriptor::Any),
             BsonTypeDescriptor::Optional { inner } => inner
                 .to_validation_type_desc()
-                .map(|inner_desc| cclab_schema::TypeDescriptor::Optional(Box::new(inner_desc))),
+                .map(|inner_desc| schema::TypeDescriptor::Optional(Box::new(inner_desc))),
             // BSON-specific types need MongoDB-specific validation
             BsonTypeDescriptor::DateTime
             | BsonTypeDescriptor::Decimal128 { .. }
@@ -603,13 +603,13 @@ pub fn validate_field(field_path: &str, value: &Bson, expected: &BsonTypeDescrip
             Bson::String(s) => {
                 // Use cclab-shield for common string validation
                 if let Some(ref string_constraints) = constraints.string {
-                    let validation_value = cclab_schema::Value::String(s.clone());
+                    let validation_value = schema::Value::String(s.clone());
                     let type_desc =
-                        cclab_schema::TypeDescriptor::String(string_constraints.clone());
-                    let mut ctx = cclab_schema::ValidationContext::with_location(field_path);
-                    let mut errors = cclab_schema::ValidationErrors::new();
+                        schema::TypeDescriptor::String(string_constraints.clone());
+                    let mut ctx = schema::ValidationContext::with_location(field_path);
+                    let mut errors = schema::ValidationErrors::new();
 
-                    cclab_schema::validate_value(
+                    schema::validate_value(
                         &validation_value,
                         &type_desc,
                         &mut ctx,
@@ -633,20 +633,20 @@ pub fn validate_field(field_path: &str, value: &Bson, expected: &BsonTypeDescrip
             Bson::Int64(n) => {
                 // Use cclab-shield for common numeric validation
                 if let Some(ref numeric_constraints) = constraints.numeric {
-                    let validation_value = cclab_schema::Value::Int(*n);
+                    let validation_value = schema::Value::Int(*n);
                     // Convert f64 constraints to i64 for proper type checking
-                    let i64_constraints = cclab_schema::NumericConstraints {
+                    let i64_constraints = schema::NumericConstraints {
                         minimum: numeric_constraints.minimum.map(|v| v as i64),
                         maximum: numeric_constraints.maximum.map(|v| v as i64),
                         exclusive_minimum: numeric_constraints.exclusive_minimum.map(|v| v as i64),
                         exclusive_maximum: numeric_constraints.exclusive_maximum.map(|v| v as i64),
                         multiple_of: numeric_constraints.multiple_of.map(|v| v as i64),
                     };
-                    let type_desc = cclab_schema::TypeDescriptor::Int64(i64_constraints);
-                    let mut ctx = cclab_schema::ValidationContext::with_location(field_path);
-                    let mut errors = cclab_schema::ValidationErrors::new();
+                    let type_desc = schema::TypeDescriptor::Int64(i64_constraints);
+                    let mut ctx = schema::ValidationContext::with_location(field_path);
+                    let mut errors = schema::ValidationErrors::new();
 
-                    cclab_schema::validate_value(
+                    schema::validate_value(
                         &validation_value,
                         &type_desc,
                         &mut ctx,
@@ -662,19 +662,19 @@ pub fn validate_field(field_path: &str, value: &Bson, expected: &BsonTypeDescrip
             Bson::Int32(n) => {
                 // Convert Int32 to Int64 and validate
                 if let Some(ref numeric_constraints) = constraints.numeric {
-                    let validation_value = cclab_schema::Value::Int(*n as i64);
-                    let i64_constraints = cclab_schema::NumericConstraints {
+                    let validation_value = schema::Value::Int(*n as i64);
+                    let i64_constraints = schema::NumericConstraints {
                         minimum: numeric_constraints.minimum.map(|v| v as i64),
                         maximum: numeric_constraints.maximum.map(|v| v as i64),
                         exclusive_minimum: numeric_constraints.exclusive_minimum.map(|v| v as i64),
                         exclusive_maximum: numeric_constraints.exclusive_maximum.map(|v| v as i64),
                         multiple_of: numeric_constraints.multiple_of.map(|v| v as i64),
                     };
-                    let type_desc = cclab_schema::TypeDescriptor::Int64(i64_constraints);
-                    let mut ctx = cclab_schema::ValidationContext::with_location(field_path);
-                    let mut errors = cclab_schema::ValidationErrors::new();
+                    let type_desc = schema::TypeDescriptor::Int64(i64_constraints);
+                    let mut ctx = schema::ValidationContext::with_location(field_path);
+                    let mut errors = schema::ValidationErrors::new();
 
-                    cclab_schema::validate_value(
+                    schema::validate_value(
                         &validation_value,
                         &type_desc,
                         &mut ctx,
@@ -698,13 +698,13 @@ pub fn validate_field(field_path: &str, value: &Bson, expected: &BsonTypeDescrip
             Bson::Double(n) => {
                 // Use cclab-shield for common numeric validation
                 if let Some(ref numeric_constraints) = constraints.numeric {
-                    let validation_value = cclab_schema::Value::Float(*n);
+                    let validation_value = schema::Value::Float(*n);
                     let type_desc =
-                        cclab_schema::TypeDescriptor::Float64(numeric_constraints.clone());
-                    let mut ctx = cclab_schema::ValidationContext::with_location(field_path);
-                    let mut errors = cclab_schema::ValidationErrors::new();
+                        schema::TypeDescriptor::Float64(numeric_constraints.clone());
+                    let mut ctx = schema::ValidationContext::with_location(field_path);
+                    let mut errors = schema::ValidationErrors::new();
 
-                    cclab_schema::validate_value(
+                    schema::validate_value(
                         &validation_value,
                         &type_desc,
                         &mut ctx,
@@ -768,13 +768,13 @@ pub fn validate_field(field_path: &str, value: &Bson, expected: &BsonTypeDescrip
                 if let Some(ref numeric_constraints) = constraints.numeric {
                     let d_str = d.to_string();
                     if let Ok(n) = d_str.parse::<f64>() {
-                        let validation_value = cclab_schema::Value::Float(n);
+                        let validation_value = schema::Value::Float(n);
                         let type_desc =
-                            cclab_schema::TypeDescriptor::Float64(numeric_constraints.clone());
-                        let mut ctx = cclab_schema::ValidationContext::with_location(field_path);
-                        let mut errors = cclab_schema::ValidationErrors::new();
+                            schema::TypeDescriptor::Float64(numeric_constraints.clone());
+                        let mut ctx = schema::ValidationContext::with_location(field_path);
+                        let mut errors = schema::ValidationErrors::new();
 
-                        cclab_schema::validate_value(
+                        schema::validate_value(
                             &validation_value,
                             &type_desc,
                             &mut ctx,

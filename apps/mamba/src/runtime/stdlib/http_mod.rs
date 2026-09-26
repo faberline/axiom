@@ -767,13 +767,13 @@ pub fn register() {
     // level and as attributes of a HTTPStatus namespace instance so that both
     // `http.OK` and `http.HTTPStatus.OK` yield int-compatible status members.
     //
-    // The `(code, name, phrase)` table is owned by `cclab_mamba_registry::http`;
+    // The `(code, name, phrase)` table is owned by `mamba_registry::http`;
     // we iterate the canonical list rather than maintain a parallel copy in
     // mamba (which previously drifted — e.g. was missing PROCESSING,
     // EARLY_HINTS, IM_A_TEAPOT). Binding crates and mamba now agree on the
     // same table.
     let mut http_attrs = HashMap::new();
-    let status_defs: Vec<(&str, i64)> = cclab_mamba_registry::http::canonical_codes()
+    let status_defs: Vec<(&str, i64)> = mamba_registry::http::canonical_codes()
         .iter()
         .map(|(code, name, _)| (*name, i64::from(*code)))
         .collect();
@@ -785,7 +785,7 @@ pub fn register() {
             let members = MbObject::new_dict();
             if let ObjData::Dict(ref lock) = (*members).data {
                 let mut map = lock.write().unwrap();
-                for ((code, name, phrase), member) in cclab_mamba_registry::http::canonical_codes()
+                for ((code, name, phrase), member) in mamba_registry::http::canonical_codes()
                     .iter()
                     .zip(status_members)
                 {
@@ -932,7 +932,7 @@ pub fn register() {
         "error".to_string(),
         MbValue::from_ptr(MbObject::new_str("HTTPException".to_string())),
     );
-    for &(code, name, _phrase) in cclab_mamba_registry::http::canonical_codes() {
+    for &(code, name, _phrase) in mamba_registry::http::canonical_codes() {
         client_attrs.insert(name.to_string(), MbValue::from_int(code as i64));
     }
     // Default HTTP/S ports.
@@ -1086,7 +1086,7 @@ fn make_responses_dict() -> MbValue {
     unsafe {
         if let ObjData::Dict(ref lock) = (*dict).data {
             let mut map = lock.write().unwrap();
-            for &(code, _name, phrase) in cclab_mamba_registry::http::canonical_codes() {
+            for &(code, _name, phrase) in mamba_registry::http::canonical_codes() {
                 map.insert(
                     DictKey::Int(code as i64),
                     MbValue::from_ptr(MbObject::new_str(phrase.to_string())),
@@ -1108,7 +1108,7 @@ fn make_handler_responses_dict() -> MbValue {
     unsafe {
         if let ObjData::Dict(ref lock) = (*dict).data {
             let mut map = lock.write().unwrap();
-            for &(code, _name, phrase) in cclab_mamba_registry::http::canonical_codes() {
+            for &(code, _name, phrase) in mamba_registry::http::canonical_codes() {
                 let tuple = MbObject::new_tuple(vec![
                     MbValue::from_ptr(MbObject::new_str(phrase.to_string())),
                     MbValue::from_ptr(MbObject::new_str(phrase.to_string())),
@@ -1171,7 +1171,7 @@ pub fn mb_httpstatus_call(arg: MbValue) -> MbValue {
         raise("ValueError", "None is not a valid HTTPStatus".to_string());
         return MbValue::none();
     };
-    if cclab_mamba_registry::http::canonical_codes()
+    if mamba_registry::http::canonical_codes()
         .iter()
         .find(|(known, _, _)| i64::from(*known) == code)
         .is_some()

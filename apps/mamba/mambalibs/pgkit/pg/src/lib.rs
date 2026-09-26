@@ -61,7 +61,7 @@
 //! ## Basic Query Execution
 //!
 //! ```rust,ignore
-//! use cclab_pg::{Connection, QueryBuilder, Operator, PoolConfig};
+//! use pg::{Connection, QueryBuilder, Operator, PoolConfig};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Connect to PostgreSQL
@@ -71,7 +71,7 @@
 //! let query = QueryBuilder::new("users")?
 //!     .select(vec!["id".to_string(), "name".to_string(), "email".to_string()])?
 //!     .where_clause("age", Operator::Gt, "18".into())?
-//!     .order_by("name", cclab_pg::OrderDirection::Asc)?
+//!     .order_by("name", pg::OrderDirection::Asc)?
 //!     .limit(10)?;
 //!
 //! let rows = query.fetch_rows(&conn).await?;
@@ -82,7 +82,7 @@
 //! ## Transaction with Savepoints
 //!
 //! ```rust,ignore
-//! use cclab_pg::{Connection, Transaction, PoolConfig};
+//! use pg::{Connection, Transaction, PoolConfig};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let conn = Connection::new("postgresql://localhost/db", PoolConfig::default()).await?;
@@ -109,7 +109,7 @@
 //! ## Complex Query with Joins and Window Functions
 //!
 //! ```rust,ignore
-//! use cclab_pg::{QueryBuilder, JoinType, WindowFunction, WindowSpec, OrderDirection};
+//! use pg::{QueryBuilder, JoinType, WindowFunction, WindowSpec, OrderDirection};
 //!
 //! # fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let query = QueryBuilder::new("orders")?
@@ -161,7 +161,7 @@
 //
 // Cross-cutting modules (`cli`, `metrics`) stay at the crate root.
 // Backward compatibility: flat `pub use <layer>::*;` shims below preserve
-// the historic `cclab_pg::<Foo>` paths for every existing caller.
+// the historic `pg::<Foo>` paths for every existing caller.
 // ---------------------------------------------------------------------
 
 pub mod driver;
@@ -180,7 +180,7 @@ pub use driver::*;
 pub use migrate::*;
 pub use orm::*;
 
-// Aggregator for the historic `cclab_pg::blocking::*` namespace.
+// Aggregator for the historic `pg::blocking::*` namespace.
 // Combines the driver-side blocking facade with the orm-side Session
 // surface. Pure `pub use` only — no orm symbol is depended on from
 // inside `driver/`, so the one-way layer boundary (driver → orm
@@ -195,7 +195,7 @@ pub use cli::{CliResult, MigrationCli, MigrationCliConfig, MigrationCommand};
 
 // Validation re-exports from cclab-shield (new API)
 // These provide Pydantic-style validation with Rust performance
-pub use cclab_schema::{
+pub use ::schema::{
     coerce_value,
     custom_error,
     field_error,
@@ -236,9 +236,9 @@ pub use cclab_schema::{
 
 // Re-export shield's ValidationError/ValidationErrors with different names
 // to avoid confusion with compat layer
-pub use cclab_schema::ValidationContext as ShieldValidationContext;
-pub use cclab_schema::ValidationError as ShieldValidationError;
-pub use cclab_schema::ValidationErrors as ShieldValidationErrors;
+pub use ::schema::ValidationContext as ShieldValidationContext;
+pub use ::schema::ValidationError as ShieldValidationError;
+pub use ::schema::ValidationErrors as ShieldValidationErrors;
 
 // Compatibility re-exports (backward compatible with old pydantic_validation API)
 // These maintain the old API signatures for easier migration
@@ -263,4 +263,4 @@ pub use metrics::{HealthCheck, HealthStatus, LatencyStats, MetricsCollector, Poo
 // Back-reference re-exports
 pub use backref::{BackRefConfig, BackRefLoader, EagerLoader, EagerRelation};
 
-pub use cclab_core::{DataBridgeError, Result};
+pub use mamba_core::{DataBridgeError, Result};

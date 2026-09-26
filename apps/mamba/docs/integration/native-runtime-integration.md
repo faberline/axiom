@@ -6,7 +6,7 @@ crates and true 3rd-party vendors.
 This scoped doc replaces the retired project-root integration guide.
 
 This guide is the operational reference for capability C3 and native-module
-bring-up. The **contract** itself lives in `crates/cclab-mamba-registry/`
+bring-up. The **contract** itself lives in `apps/mamba/crates/mamba-registry/`
 (the `MambaModule` trait, `MAMBA_MODULES` slice, `rt_sym!` macro, `MbValue`
 type). `mamba` crate is the runtime that loads the bindings — do not confuse
 the two.
@@ -14,7 +14,7 @@ the two.
 ## Architecture Overview
 
 ```
-cclab-mamba-registry          (thin contract: MbValue, MambaModule, MAMBA_MODULES)
+mamba-registry          (thin contract: MbValue, MambaModule, MAMBA_MODULES)
         ↑
         ├── mamba             (runtime — reads MAMBA_MODULES at startup)
         ├── <first-party>     (cclab-fetch-mamba, apps/mamba/mambalibs/httpkit/binding, ...)
@@ -23,7 +23,7 @@ cclab-mamba-registry          (thin contract: MbValue, MambaModule, MAMBA_MODULE
 
 | Crate | Role | Depend on it when... |
 |---|---|---|
-| `cclab-mamba-registry` | ABI contract | Writing any binding crate |
+| `mamba-registry` | ABI contract | Writing any binding crate |
 | `mamba` | Runtime + compiler + stdlib | You want to reuse mamba's internal Rust stdlib (http, json, re) at build time |
 
 Binding crates self-register via `#[distributed_slice(MAMBA_MODULES)]`. The
@@ -71,7 +71,7 @@ edition = "2021"
 crate-type = ["rlib"]
 
 [dependencies]
-cclab-mamba-registry = "0.1"   # or path/git during MVP
+mamba-registry = "0.1"   # or path/git during MVP
 linkme = "0.3"
 ```
 
@@ -81,7 +81,7 @@ not dynamic loading.
 ### src/lib.rs — minimal template
 
 ```rust
-use cclab_mamba_registry::{
+use mamba_registry::{
     rc::{MbObject, ObjData},
     MambaModule, ModuleRegistrar, MbValue, MAMBA_MODULES, rt_sym,
 };
@@ -246,7 +246,7 @@ slow (~5 min for mamba + typical deps); subsequent builds are incremental.
 ## Do / Don't
 
 **Do**:
-- Depend only on `cclab-mamba-registry` unless you genuinely need `mamba` internals.
+- Depend only on `mamba-registry` unless you genuinely need `mamba` internals.
 - Use `rt_sym!` for all exports — it generates the correct `RuntimeSymbol` shape.
 - Keep `MambaModule::name()` namespaced (`"acme.payment"`, not `"payment"`).
 - Use the `MbValue` accessors (`as_int`, `as_ptr`, `as_obj_str`) — don't assume layout.
@@ -265,7 +265,7 @@ add `mamba` as a direct dep:
 
 ```toml
 [dependencies]
-cclab-mamba-registry = "0.1"
+mamba-registry = "0.1"
 mamba = { path = "../mamba" }   # +20-60s compile time
 ```
 
@@ -303,7 +303,7 @@ without pulling the compiler.
 
 ## References
 
-- Contract crate: `crates/cclab-mamba-registry/src/lib.rs`
+- Contract crate: `apps/mamba/crates/mamba-registry/src/lib.rs`
 - Canonical binding: `crates/cclab-fetch-mamba/`
 - Higher-level binding: `apps/mamba/mambalibs/httpkit/binding/` (FastAPI-style router)
 - Config schema: `apps/mamba/src/config/schema.rs`

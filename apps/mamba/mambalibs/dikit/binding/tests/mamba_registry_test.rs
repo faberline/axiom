@@ -1,4 +1,4 @@
-use cclab_mamba_registry::{
+use mamba_registry::{
     convert::{mb_unwrap_native_ref, native_type_name},
     find_module, test_ops, FromMbValue, IntoMbValue, MbValue, ModuleRegistrar,
 };

@@ -8,7 +8,7 @@
 //!
 //! Run tests with: cargo test --package cclab-titan --test test_migration -- --ignored
 
-use cclab_pg::{Connection, Migration, MigrationRunner, PoolConfig};
+use pg::{Connection, Migration, MigrationRunner, PoolConfig};
 use qc::{expect, AssertionError};
 use std::fs;
 use tempfile::TempDir;

@@ -1387,7 +1387,7 @@ pub fn mb_insert_search_path(index: usize, path: &str) {
 ///   (`mb_call0`/`mb_call1_val`/`mb_call_spread`) can use the correct calling
 ///   convention (`extern "C" fn(*const MbValue, usize) -> MbValue`)
 pub fn mb_register_native_modules() {
-    use cclab_mamba_registry::{all_modules, ModuleRegistrar};
+    use mamba_registry::{all_modules, ModuleRegistrar};
 
     for module in all_modules() {
         let mut registrar = ModuleRegistrar::new();

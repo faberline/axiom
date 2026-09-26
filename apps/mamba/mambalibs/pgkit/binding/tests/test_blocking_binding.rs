@@ -11,7 +11,7 @@
 
 #![allow(improper_ctypes_definitions)]
 
-use cclab_mamba_registry::MbValue;
+use mamba_registry::MbValue;
 
 use pgkit_binding::methods::{
     mb_pg_close, mb_pg_connect, mb_pg_execute, mb_pg_migration_new,
@@ -27,8 +27,8 @@ fn db_url() -> Option<String> {
 }
 
 fn s(v: &str) -> MbValue {
-    cclab_mamba_registry::test_ops::init();
-    cclab_mamba_registry::rc::wrap_obj_str(v.to_string())
+    mamba_registry::test_ops::init();
+    mamba_registry::rc::wrap_obj_str(v.to_string())
 }
 
 unsafe fn handle<'a, T>(v: MbValue) -> &'a T {
@@ -163,7 +163,7 @@ fn migrate_apply_then_revert() {
     };
     let applied_versions: Vec<String> = applied_list
         .iter()
-        .filter_map(|&v| unsafe { cclab_mamba_registry::rc::read_obj_str(v) })
+        .filter_map(|&v| unsafe { mamba_registry::rc::read_obj_str(v) })
         .collect();
     assert!(
         applied_versions.iter().any(|v| v == &version),
@@ -179,7 +179,7 @@ fn migrate_apply_then_revert() {
     };
     let post_versions: Vec<String> = post_list
         .iter()
-        .filter_map(|&v| unsafe { cclab_mamba_registry::rc::read_obj_str(v) })
+        .filter_map(|&v| unsafe { mamba_registry::rc::read_obj_str(v) })
         .collect();
     assert!(
         !post_versions.iter().any(|v| v == &version),

@@ -5,7 +5,7 @@
 //! server-constructed responses.
 
 use super::cookie::Cookie;
-use cclab_core::http::{HttpResponseLike, HttpStatus};
+use mamba_core::http::{HttpResponseLike, HttpStatus};
 use std::collections::HashMap;
 use std::time::Duration;
 

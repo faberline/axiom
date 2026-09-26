@@ -6,7 +6,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use cclab_pg::{Connection, PoolConfig, PoolMetrics, HealthCheck};
+//! use pg::{Connection, PoolConfig, PoolMetrics, HealthCheck};
 //!
 //! let conn = Connection::new(&uri, PoolConfig::default()).await?;
 //! let metrics = PoolMetrics::from_connection(&conn);

@@ -3,8 +3,8 @@
 //! Many basic ops (shift, diff, pct_change, rolling) already live in
 //! `Series`. This module adds EWMA and expanding-window aggregations.
 
-use cclab_frame::frame::Series;
-use cclab_frame::frame::Value;
+use frame::frame::Series;
+use frame::frame::Value;
 
 // ============================================================================
 // EWMA (Exponentially Weighted Moving Average)

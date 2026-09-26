@@ -1,4 +1,4 @@
-use cclab_mamba_registry::{
+use mamba_registry::{
     convert::{mb_unwrap_native_ref, native_type_name},
     find_module, ops, test_ops, FromMbValue, IntoMbValue, MbValue, ModuleRegistrar,
 };
@@ -234,8 +234,8 @@ fn depends_records_shared_di_provider_key() {
 
 #[test]
 fn endpoint_contract_combines_http_di_and_dataclasses() {
-    use cclab_schema_mamba::methods::mb_schema_base_model_new;
-    use cclab_schema_mamba::types::MbBaseModel;
+    use schema_mamba::methods::mb_schema_base_model_new;
+    use schema_mamba::types::MbBaseModel;
 
     let registrar = registered_module();
 
@@ -396,7 +396,7 @@ fn app_post_decorator_registers_status_code() {
 
 #[test]
 fn app_post_decorator_kwargs_register_di_models_and_openapi() {
-    use cclab_schema_mamba::methods::{
+    use schema_mamba::methods::{
         mb_schema_base_model_new, mb_schema_field, mb_schema_model_add_field,
     };
 
@@ -500,7 +500,7 @@ fn app_post_decorator_kwargs_register_di_models_and_openapi() {
 
 #[test]
 fn app_openapi_preserves_dataclass_field_schema_metadata() {
-    use cclab_schema_mamba::methods::{
+    use schema_mamba::methods::{
         mb_schema_base_model_new, mb_schema_field, mb_schema_model_add_field,
     };
 
@@ -700,7 +700,7 @@ fn app_route_parameters_openapi_and_preflight() {
 
 #[test]
 fn app_preflight_resolves_di_and_normalizes_schema_body() {
-    use cclab_schema_mamba::methods::{
+    use schema_mamba::methods::{
         mb_schema_base_model_new, mb_schema_field, mb_schema_model_add_field,
     };
 
@@ -863,7 +863,7 @@ fn app_preflight_resolves_di_and_normalizes_schema_body() {
 
 #[test]
 fn app_preflight_reports_nested_validation_detail_locations() {
-    use cclab_schema_mamba::methods::{
+    use schema_mamba::methods::{
         mb_schema_base_model_new, mb_schema_field, mb_schema_model_add_field,
     };
 
@@ -979,7 +979,7 @@ fn app_preflight_reports_nested_validation_detail_locations() {
 
 #[test]
 fn test_client_dispatches_preflight_with_di_and_schema() {
-    use cclab_schema_mamba::methods::{
+    use schema_mamba::methods::{
         mb_schema_base_model_new, mb_schema_field, mb_schema_model_add_field,
     };
 
@@ -1159,7 +1159,7 @@ fn test_client_dispatches_preflight_with_di_and_schema() {
 
 #[test]
 fn test_client_dispatches_handler_and_response_model() {
-    use cclab_schema_mamba::methods::{
+    use schema_mamba::methods::{
         mb_schema_base_model_new, mb_schema_field, mb_schema_model_add_field,
     };
 

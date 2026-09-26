@@ -11,8 +11,8 @@ name = "pgkit_binding"
 crate-type = ["rlib"]
 
 [dependencies]
-cclab-mamba-registry = { path = "../../../../../crates/cclab-mamba-registry" }
-cclab-pg = { path = "../pg" }
+mamba-registry = { path = "../../../crates/mamba-registry" }
+pg = { path = "../pg" }
 linkme.workspace = true
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres"] }
 tokio.workspace = true

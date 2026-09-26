@@ -1,10 +1,10 @@
 //! `mambalibs.pg.migrate` Mamba sub-module.
 //!
-//! Exposes the schema-versioning surface of `cclab_pg::migrate`
+//! Exposes the schema-versioning surface of `pg::migrate`
 //! (Alembic equivalent) — `MigrationRunner` with 7 verbs plus the
 //! `Migration` value-object constructor.
 
-use cclab_mamba_registry::{rt_sym, MambaModule, ModuleRegistrar, MAMBA_MODULES};
+use mamba_registry::{rt_sym, MambaModule, ModuleRegistrar, MAMBA_MODULES};
 use linkme::distributed_slice;
 
 /// Migrate surface mounted under `mambalibs.pg.migrate`.
@@ -16,7 +16,7 @@ impl MambaModule for PgMigrateMambaModule {
     }
 
     fn doc(&self) -> &'static str {
-        "Mamba interface for cclab-pg::migrate — schema versioning (MigrationRunner)"
+        "Mamba interface for pg::migrate — schema versioning (MigrationRunner)"
     }
 
     fn register(&self, r: &mut ModuleRegistrar) {

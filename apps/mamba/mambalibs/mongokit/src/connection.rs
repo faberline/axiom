@@ -1,7 +1,7 @@
 //! MongoDB connection management with pool configuration and health checking
 
 use bson::{doc, Document as BsonDocument};
-use cclab_core::Result;
+use mamba_core::Result;
 use mongodb::{
     options::{ClientOptions, ServerApi, ServerApiVersion},
     Client, Collection, Database,
@@ -83,7 +83,7 @@ impl Connection {
         let client = Client::with_options(client_options)?;
 
         let database = client.default_database().ok_or_else(|| {
-            cclab_core::DataBridgeError::Connection(
+            mamba_core::DataBridgeError::Connection(
                 "No default database specified in connection string".to_string(),
             )
         })?;
@@ -131,7 +131,7 @@ impl Connection {
     pub async fn ping(&self) -> Result<bool> {
         match self.database.run_command(doc! { "ping": 1 }).await {
             Ok(_) => Ok(true),
-            Err(e) => Err(cclab_core::DataBridgeError::Connection(format!(
+            Err(e) => Err(mamba_core::DataBridgeError::Connection(format!(
                 "Ping failed: {}",
                 e
             ))),

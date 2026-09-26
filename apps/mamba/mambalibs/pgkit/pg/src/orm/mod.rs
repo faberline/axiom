@@ -32,7 +32,7 @@ pub use validation::validate_foreign_key_reference;
 
 /// Re-export aggregator for the blocking ORM surface.
 ///
-/// `cclab_pg::orm::blocking::Session` resolves to the orm blocking
+/// `pg::orm::blocking::Session` resolves to the orm blocking
 /// Session. The crate-root `crate::blocking` aggregator pulls both
 /// driver and orm blocking surfaces together.
 pub mod blocking {

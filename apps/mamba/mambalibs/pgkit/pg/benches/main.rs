@@ -10,7 +10,7 @@
 //!
 //! Requires a PostgreSQL database to be available.
 
-use cclab_pg::{
+use pg::{
     Connection, ExtractedValue, JoinCondition, JoinType, Operator, OrderDirection, PoolConfig,
     QueryBuilder, Row,
 };

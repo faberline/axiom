@@ -38,7 +38,7 @@ Services and tools compose the shared Rust libraries in
 [faberline/core](https://github.com/faberline/core) instead of reimplementing
 transport, auth, metrics, codegen, replication, durable local storage, backup,
 or operator plumbing locally. Each library is a `crates/<name>` package there;
-member manifests here depend on it by git tag (`tag = "v0.4.13"`), and READMEs
+member manifests here depend on it by git tag (`tag = "v0.4.14"`), and READMEs
 name it `core/<name>`. Run a library's own tests at the pinned commit with
 `bash scripts/faberline-core-test.sh <name>`.
 

@@ -4,7 +4,7 @@
 //!
 //! @spec .aw/tech-design/projects/jet/wasm-renderer/subset-rigor.md
 //!
-//! Auto-registered via the `cclab-cli-registry` distributed slice. Implements
+//! Auto-registered via the `cli_std::registry` distributed slice. Implements
 //! the manifest-validation logic specified in subset-rigor.md § Manifest
 //! Validation Logic: load YAML, structural sanity-check, then for each
 //! non-pending entry assert `demo_dir` exists under `examples/` and
@@ -19,7 +19,7 @@
 use std::path::PathBuf;
 
 use anyhow::{anyhow, bail, Context, Result};
-use cclab_cli_registry::{CliModule, CLI_MODULES};
+use cli_std::registry::{CliModule, CLI_MODULES};
 use clap::{Arg, ArgMatches, Command};
 use linkme::distributed_slice;
 use serde::Deserialize;

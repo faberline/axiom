@@ -2,14 +2,14 @@ use super::async_rt::{alloc_task_id, mb_coroutine_step, MbTask, COROUTINES, TASK
 use super::rc::{MbObject, ObjData};
 /// Tokio multi-threaded executor for Mamba async tasks (R6).
 ///
-/// Delegates to the process-wide shared runtime in `cclab-mamba-registry` so
+/// Delegates to the process-wide shared runtime in `mamba-registry` so
 /// the interpreter and every native module (mambalibs_http::client, pgkit, mcp, etc.)
 /// dispatch onto a single tokio runtime instead of each owning one.
 use super::value::MbValue;
 
-/// Handle to the shared mamba tokio runtime (hosted in cclab-mamba-registry).
+/// Handle to the shared mamba tokio runtime (hosted in mamba-registry).
 fn runtime() -> tokio::runtime::Handle {
-    cclab_mamba_registry::runtime::handle()
+    mamba_registry::runtime::handle()
 }
 
 /// Spawn a coroutine as a Tokio task for parallel execution.

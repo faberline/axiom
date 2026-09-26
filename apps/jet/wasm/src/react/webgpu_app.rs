@@ -1,7 +1,7 @@
 // SPEC-MANAGED: .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 // CODEGEN-BEGIN
 //! WebGPU event loop — wires a mounted React component to the shared
-//! `cclab-grid-wasm` renderer handle.
+//! `jet-grid-wasm` renderer handle.
 //!
 //! React produces an `Element` tree, Jet lays it out and emits `PaintOp`s,
 //! then `WebGpuBackend` lowers
@@ -32,7 +32,7 @@ use crate::debug::{DebugBridgeState, JetDebug};
 
 /// JS-owned WebGPU app handle. Dropping the Rust-side handle would release
 /// the JS value, but an explicit `destroy()` gives browser callers the same
-/// lifecycle shape as `cclab-grid-wasm::RendererHandle`.
+/// lifecycle shape as `jet-grid-wasm::RendererHandle`.
 /// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 #[wasm_bindgen]
 pub struct JetWebGpuApp {
@@ -132,7 +132,7 @@ pub fn run(canvas_id: &str, component: Component) -> Result<js_sys::Promise, JsV
 
     Ok(wasm_bindgen_futures::future_to_promise(async move {
         let grid_handle =
-            match JsFuture::from(cclab_grid_wasm::init_renderer(canvas_for_init, dpr)).await {
+            match JsFuture::from(jet_grid_wasm::init_renderer(canvas_for_init, dpr)).await {
                 Ok(handle) => handle,
                 Err(e) => {
                     record_error(&status, &e);

@@ -288,7 +288,7 @@ fn no_cclab_production_crate_behavior_is_changed() {
         .and_then(|v| v.as_array())
         .map(|a| a.iter().filter_map(|v| v.as_str()).collect())
         .unwrap_or_default();
-    for required in &["cclab-mamba", "cclab-runtime", "cclab-jet", "cclab-core"] {
+    for required in &["cclab-mamba", "cclab-runtime", "cclab-jet", "mamba-core"] {
         assert!(
             forbidden.contains(required),
             "forbidden_modifications must include {required}"

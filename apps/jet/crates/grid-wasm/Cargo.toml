@@ -1,0 +1,48 @@
+[package]
+name = "jet-grid-wasm"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "WebAssembly bindings for RuSheet"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+jet-grid = { path = "../grid", default-features = false }
+# Slice 4m (#1731): the wasm-bindgen bridge module wraps a
+# `WebGpuRenderer<'static>` behind a JS-facing `RendererHandle`.
+jet-grid-render-webgpu = { path = "../grid-render-webgpu" }
+wasm-bindgen = "0.2"
+# Slice 4m (#1731): `future_to_promise` converts the async
+# `WebGpuRenderer::new` future into the `js_sys::Promise` that
+# `init_renderer` returns to JS.
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+serde.workspace = true
+serde_json.workspace = true
+serde-wasm-bindgen = "0.6"
+console_error_panic_hook = "0.1"
+web-sys = { version = "0.3", features = [
+    "console",
+    "Window",
+    "HtmlCanvasElement",
+    # Slice 4cc (#1747): ResizeObserver hookup needs these for the
+    # canvas-resize → on_resize bridge.
+    "ResizeObserver",
+    "ResizeObserverEntry",
+    "DomRectReadOnly",
+    "Element",
+] }
+uuid = { version = "1.6", features = ["v4", "js"] }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[profile.release]
+opt-level = "s"
+lto = true

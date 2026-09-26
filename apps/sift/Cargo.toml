@@ -254,7 +254,7 @@ path = "e2e/vat_service_observability_e2e.rs"
 [dependencies]
 anyhow.workspace = true
 async-trait.workspace = true
-service-k8s = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
+service-k8s = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
 axum.workspace = true
 arrow-array = "59.2.0"
 arrow-schema = "59.2.0"
@@ -263,15 +263,15 @@ bytes.workspace = true
 chrono.workspace = true
 clap = { workspace = true, features = ["env"] }
 crc32fast = "1"
-cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.13", default-features = false, features = ["online", "k8s"] }
-openapi-codegen = { git = "https://github.com/faberline/core", tag = "v0.4.13", version = "0.5" }
+cli-std = { git = "https://github.com/faberline/core", tag = "v0.4.14", default-features = false, features = ["online", "k8s"] }
+openapi-codegen = { git = "https://github.com/faberline/core", tag = "v0.4.14", version = "0.5" }
 opentelemetry-proto = { version = "0.32", default-features = false, features = ["gen-tonic", "logs", "metrics", "trace"] }
 parquet = { version = "59.2.0", default-features = false, features = ["arrow", "snap"] }
 flate2 = "1"
 hex = "0.4"
 k8s-openapi = { version = "0.24", features = ["v1_32"] }
 kube = { version = "0.98", features = ["runtime", "derive", "client"] }
-index-text = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
+index-text = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
 prost = "0.13"
 prost14 = { package = "prost", version = "0.14" }
 regex.workspace = true
@@ -279,30 +279,30 @@ reqwest.workspace = true
 rmcp = { version = "3.1.4", features = ["server", "transport-io", "transport-streamable-http-server"] }
 serde.workspace = true
 serde_json.workspace = true
-service-auth = { git = "https://github.com/faberline/core", tag = "v0.4.13", features = ["k8s"] }
-service-backup = { git = "https://github.com/faberline/core", tag = "v0.4.13", features = ["http-client"] }
-service-collector = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-service-executor = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-storage-durable = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-storage-object = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-storage-segment = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-service-http = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-service-mcp = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-metrics-prometheus = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-metrics-remote-write = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-service-observability = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-service-projection = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-server-lifecycle = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-raft-core = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-raft-runtime = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
-peer-tls = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
+service-auth = { git = "https://github.com/faberline/core", tag = "v0.4.14", features = ["k8s"] }
+service-backup = { git = "https://github.com/faberline/core", tag = "v0.4.14", features = ["http-client"] }
+service-collector = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+service-executor = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+storage-durable = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+storage-object = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+storage-segment = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+service-http = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+service-mcp = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+metrics-prometheus = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+metrics-remote-write = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+service-observability = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+service-projection = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+server-lifecycle = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+raft-core = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+raft-runtime = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
+peer-tls = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
 schemars = "0.8"
 schemars1 = { package = "schemars", version = "1.2" }
 sha2 = "0.10"
 tokio.workspace = true
 tokio-stream = { version = "0.1", features = ["net"] }
 tonic = { version = "0.14", features = ["gzip"] }
-transport-otlp = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
+transport-otlp = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
 tower.workspace = true
 tracing.workspace = true
 thiserror.workspace = true
@@ -317,7 +317,7 @@ serde_yaml.workspace = true
 vat = { path = "../../apps/vat", default-features = false, features = ["emulator"] }
 
 [build-dependencies]
-build-stamp = { git = "https://github.com/faberline/core", tag = "v0.4.13" }
+build-stamp = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
 
 [[test]]
 name = "operator_reconcile_oracle"

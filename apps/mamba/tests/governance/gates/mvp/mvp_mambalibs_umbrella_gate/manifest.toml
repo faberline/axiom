@@ -12,7 +12,7 @@
 #   - R2: `mamba build` fetches external binding crates (git +
 #     registry) and synthesizes the Cargo workspace that links
 #     them into the mamba binary (#2520).
-#   - R3: `cclab-mamba-registry` ABI semver gate refuses
+#   - R3: `mamba-registry` ABI semver gate refuses
 #     incompatible binding-crate versions (#2521).
 #   - R4: Mode 2 lockfile is the source of truth for reproducible
 #     builds (#2522).
@@ -99,7 +99,7 @@ workspace_synth_skipped_failure_kind = "mvp_mambalibs_workspace_synth_skipped"
 workspace_synth_skipped_exit_code = 367
 must_distinguish_fetch_skipped_from_synth_skipped = true
 
-# R3 — cclab-mamba-registry ABI semver gate (#2521).
+# R3 — mamba-registry ABI semver gate (#2521).
 [r3_cclab_mamba_registry_abi_semver_gate_contract]
 case = "cclab_mamba_registry_refuses_incompatible_binding_crate_versions"
 requirement_id = "R3"

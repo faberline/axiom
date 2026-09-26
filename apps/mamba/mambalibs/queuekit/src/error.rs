@@ -1,6 +1,6 @@
 //! Task-specific error types
 
-use cclab_core::DataBridgeError;
+use mamba_core::DataBridgeError;
 use std::time::Duration;
 use thiserror::Error;
 
