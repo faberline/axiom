@@ -1,0 +1,25 @@
+{
+  "model": "mlx-community/Qwen3-Coder-30B-A3B-Instruct-8bit",
+  "revision": "7c6ee1bbb5ee3051c4b3bc6553f24bdc2d01393a",
+  "files": {
+    "README.md": "dc0b22c31444bc26a2a4900d8257d32aad13a8f39090e5ab30d05063329e4810",
+    "added_tokens.json": "c0284b582e14987fbd3d5a2cb2bd139084371ed9acbae488829a1c900833c680",
+    "chat_template.jinja": "672e747c77e990320152343b0a4951222e40de5645297905d89afba05586d827",
+    "config.json": "b672d86efa611145c1c669ef5eabed1eb10f7d5e6c210b048435a79c292d63be",
+    "generation_config.json": "c99723ab3ba28630d26ae23def77603b540a46924895af5cf234740d3b27b51d",
+    "merges.txt": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+    "model-00001-of-00007.safetensors": "6f7cbc1b29b47c24cad7c87ad5d78d8d10eb0dd42278ddb6422a6ce6dcaa98a8",
+    "model-00002-of-00007.safetensors": "013918a532a2673efc3e22676b5dc9a0025d28f1823df0fdd5dfd8a8c94b2657",
+    "model-00003-of-00007.safetensors": "e227aaa501f644974e64b4db35adb042ef25474abadd552bf1d7a7b74132d478",
+    "model-00004-of-00007.safetensors": "549fd2970c9780fab83bf574ef348338f9b85ab2b6e9535cfb58df7a4d06ac84",
+    "model-00005-of-00007.safetensors": "302c97dc377be5b0543d1bbfc996b22c20d5ecd779ff972301189015e09096bc",
+    "model-00006-of-00007.safetensors": "f672186d62aeace0909643fe9304745052b51aa471196e3a5a9bbb73756d3487",
+    "model-00007-of-00007.safetensors": "454991147bf856ca2e813ba6f4d19448fe2ec922e3e9bb95008d71932db2f105",
+    "model.safetensors.index.json": "b3025770273810c4d546267a4ba253d61a05bea76e74f7298f9451467656062d",
+    "qwen3coder_tool_parser.py": "8265749a8e247732a9a0879278fe52efda2d1daa461ec8e3fb84d1e58b39531e",
+    "special_tokens_map.json": "76862e765266b85aa9459767e33cbaf13970f327a0e88d1c65846c2ddd3a1ecd",
+    "tokenizer.json": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+    "tokenizer_config.json": "05a2d456eb807c8368fe6b60101b1d1160d6889071a751ed08576b96e77e01cd",
+    "vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+  }
+}

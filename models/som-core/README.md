@@ -18,6 +18,43 @@ loader that reads the executable oracle corpus
 model is trained yet. The [STATUS](STATUS.md) matrix says exactly which
 surface is which.
 
+## Direction
+
+Settled 2026-09-25. Where older wording below differs, this section wins.
+
+- **Input is a SOM prompt, not a conversation.** A flagship model (Claude,
+  Codex) or a person writes a terse, fixed-order tagged prompt — `intent`,
+  `exports`, `patch`, `kwargs`, `raises`, `attrs`, `keys`, `values`,
+  `avoid`, `contract:`, `fix:` — the way an image-generation model takes a
+  structured prompt. The flagship spends its tokens on the prompt and never
+  writes code.
+- **The model is a local code generator, not an LLM replacement.** The SOM
+  model is fast and lightweight. It runs on-device on macOS (Apple Silicon)
+  and translates the prompt into DSL precisely. Reasoning stays with the
+  flagship.
+- **The model is ours, trained from scratch on our data.** It is never
+  fine-tuned from someone else's base model. Claude manufactures the
+  training material and the gates verify it, so the model's behaviour comes
+  only from the corpus we author. That keeps it controllable, and it is
+  retrained as the corpus grows. A model we do not train never produces
+  program text, because its output cannot be steered.
+- **The DSL is assembled, not free text.** The DSL names ISA snippets and
+  their parameters, and `som assemble` renders the program from them, so
+  every assembled line comes from an approved snippet.
+- **Approved snippets are the optimal form.** Each snippet and each gold
+  program passes its family fixture, ruff (including the efficiency rules
+  `PERF`, `C4`, `FURB`), mypy strict, and pylint, and is the one canonical
+  form of its behaviour. Snippets and their combinations are generated and
+  added continuously. A displaced form is kept as a near miss whose
+  `why_wrong` names the rule that caught it: negative training data, never
+  an inference option.
+- **The holdout families are never trained on.**
+
+Current state: the `som_generate` path in use today emits terse Python that
+`compile_dsl` checks and expands, from a LoRA on Qwen3-Coder-30B-A3B. Both
+are stepping stones. The target is a small from-scratch model emitting
+ISA-referencing DSL that `som assemble` assembles.
+
 ## Primary workflow
 
 1. Create the project environment with `uv sync` inside `models/som-core`
@@ -132,3 +169,7 @@ never options at inference.
 - [CONTRIBUTING.md](CONTRIBUTING.md) is the local workflow and verification.
 - [docs/product/README.md](docs/product/README.md) indexes the product
   requirement sections.
+- [docs/reference/layer-sft-research.md](docs/reference/layer-sft-research.md)
+  maps published results on code-in-JSON, constrained decoding, and
+  block-wise generation onto the layer SFT failures and orders the next
+  experiments.
