@@ -1,0 +1,169 @@
+{
+  "family_id": "230-openai-embeddings-ordered-batches",
+  "domain": "python",
+  "area": "openai",
+  "capability": "openai-embeddings-ordered-batches",
+  "requirement": "Embed an arbitrary number of documents with the OpenAI embeddings endpoint while respecting a per-request batch limit and returning vectors aligned with the input.",
+  "skeleton": "An EmbeddingCountError and embed_all validating batch_size and blank texts, slicing batches, calling client.embeddings.create, sorting data by index, and checking the count per batch.",
+  "caption": "Embedding a list of texts through an OpenAI client in batches. embed_all(client, texts, *, model, batch_size=100) raises ValueError saying batch_size must be positive when it is below 1, and ValueError saying texts must be non-empty when any text is blank after stripping, both before any request. It slices texts into consecutive batches of batch_size and calls client.embeddings.create with the model and the batch as input. The response data items are sorted by their index field because the API does not promise order; a count different from the batch size raises EmbeddingCountError, a RuntimeError. Embeddings are appended so the result lines up with texts. The fixture asserts that seven texts go out as batches of 3, 3 and 1 with the model name, that vectors follow input order although the fake returns them reversed, that empty input makes no call, that a whitespace text and batch_size 0 raise ValueError, and that a short response raises EmbeddingCountError.",
+  "plan": {
+    "intent": "Index documents for semantic search",
+    "target": "embedding batcher",
+    "constraints": [
+      "batch_size below 1 raises ValueError",
+      "Blank texts raise ValueError before any request",
+      "Texts are sent in consecutive batches of at most batch_size",
+      "Response items are ordered by their index field",
+      "A count mismatch raises EmbeddingCountError"
+    ]
+  },
+  "rationale": {
+    "teaches": "Batch requests to the provider limit and realign results by the returned index so each vector maps back to its text.",
+    "why": "Trusting response order silently attaches vectors to the wrong documents, and off-by-one slicing drops the tail of the corpus."
+  },
+  "oracle": "fixtures/test_230_openai_embeddings_ordered_batches.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "EmbeddingCountError",
+        "bases": [
+          "RuntimeError"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "embed_all",
+        "params": [
+          "client",
+          "texts",
+          "model",
+          "batch_size"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "EmbeddingCountError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "EmbeddingCountError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "embed_all",
+              "kind": "function",
+              "depends_on": [
+                "EmbeddingCountError"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Embed many texts through an OpenAI client in ordered, bounded batches."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "EmbeddingCountError",
+        "source": "class EmbeddingCountError(RuntimeError):\n    \"\"\"Raised when a batch returns a different number of embeddings.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "embed_all",
+        "source": "def embed_all(\n    client: Any, texts: list[str], *, model: str, batch_size: int = 100\n) -> list[list[float]]:\n    \"\"\"Return one embedding per text, in the order of ``texts``.\"\"\"\n    if batch_size < 1:\n        raise ValueError(\"batch_size must be positive\")\n    if any(not text.strip() for text in texts):\n        raise ValueError(\"texts must be non-empty\")\n    vectors: list[list[float]] = []\n    for start in range(0, len(texts), batch_size):\n        batch = texts[start : start + batch_size]\n        response = client.embeddings.create(model=model, input=batch)\n        data = sorted(response[\"data\"], key=lambda item: item[\"index\"])\n        if len(data) != len(batch):\n            raise EmbeddingCountError(\n                f\"expected {len(batch)} embeddings, got {len(data)}\"\n            )\n        vectors.extend(item[\"embedding\"] for item in data)\n    return vectors",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Vectors are attached in response order, mismatching documents and embeddings.",
+      "caught_by": [
+        "test_vectors_follow_input_order_despite_shuffled_response"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The final batch is never sent, dropping the tail of the input.",
+      "caught_by": [
+        "test_texts_are_sent_in_bounded_batches",
+        "test_vectors_follow_input_order_despite_shuffled_response"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A short response silently misaligns every following vector.",
+      "caught_by": [
+        "test_short_response_raises"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Whitespace-only texts are sent to the API instead of being rejected.",
+      "caught_by": [
+        "test_blank_text_is_rejected_before_any_call"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A batch size of zero is accepted and fails later inside range.",
+      "caught_by": [
+        "test_non_positive_batch_size_is_rejected"
+      ]
+    }
+  ]
+}

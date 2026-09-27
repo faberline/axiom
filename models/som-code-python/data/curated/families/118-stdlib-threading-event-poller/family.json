@@ -1,0 +1,148 @@
+{
+  "family_id": "118-stdlib-threading-event-poller",
+  "domain": "python",
+  "area": "stdlib",
+  "capability": "threading-event-interruptible-worker",
+  "requirement": "Run a task repeatedly on a daemon thread with a fixed interval, record task exceptions without stopping the loop, refuse a second start, and stop promptly even mid-interval by waiting on a threading.Event instead of sleeping.",
+  "skeleton": "Poller class validating interval, start creating one daemon Thread, _run looping until the Event is set with an exception guard and Event.wait between calls, and stop setting the Event then joining with a timeout.",
+  "caption": "An interruptible background worker with the standard-library threading module. Poller(task, interval) raises ValueError saying interval must be positive when interval is zero or less, and keeps a threading.Event used as the stop flag, an optional Thread and a public errors list. start raises RuntimeError saying the poller is already started when called twice, otherwise creates a daemon Thread named poller targeting _run and starts it. _run loops while the event is not set: it calls the task, appends any Exception it raises to errors so a flaky task never kills the thread, and then waits on the event for interval seconds, so setting the event wakes it immediately instead of after a full sleep. stop(timeout=1.0) sets the event first, returns True when the thread was never started, and otherwise joins with the timeout and returns whether the thread is no longer alive. The fixture asserts that the task runs at least three times and stops being called after stop returns True, that stop with a ten-second interval returns True in under half a second, that two OSError failures are recorded in order while the loop keeps running, that interval zero raises ValueError, that stopping an unstarted poller returns True, and that a second start raises RuntimeError.",
+  "plan": {
+    "intent": "Poll a resource in the background and shut down cleanly",
+    "target": "background poller",
+    "constraints": [
+      "A non-positive interval raises ValueError",
+      "Starting twice raises RuntimeError",
+      "Task exceptions are recorded and the loop keeps running",
+      "Stopping wakes the worker immediately rather than after the interval",
+      "stop reports whether the thread exited within its timeout"
+    ]
+  },
+  "rationale": {
+    "teaches": "threading.Event as both stop flag and interruptible sleep, with set-then-join shutdown and an exception guard inside the worker loop.",
+    "why": "Workers that sleep with time.sleep, join before signalling, or let one exception end the thread look fine in quick runs and only fail under a long interval, a timing check or a flaky task."
+  },
+  "oracle": "fixtures/test_118_stdlib_threading_event_poller.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Poller",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "start",
+          "_run",
+          "stop"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "RuntimeError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Poller",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Run a background polling worker that stops promptly through threading.Event."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import threading",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Poller",
+        "source": "class Poller:\n    \"\"\"Call a task every interval seconds on a daemon thread until stopped.\"\"\"\n\n    def __init__(self, task: Callable[[], None], interval: float) -> None:\n        if interval <= 0:\n            raise ValueError(\"interval must be positive\")\n        self._task = task\n        self._interval = interval\n        self._stop = threading.Event()\n        self._thread: threading.Thread | None = None\n        self.errors: list[Exception] = []\n\n    def start(self) -> None:\n        \"\"\"Start the worker thread exactly once.\"\"\"\n        if self._thread is not None:\n            raise RuntimeError(\"poller already started\")\n        self._thread = threading.Thread(target=self._run, name=\"poller\", daemon=True)\n        self._thread.start()\n\n    def _run(self) -> None:\n        while not self._stop.is_set():\n            try:\n                self._task()\n            except Exception as exc:  # pylint: disable=broad-exception-caught\n                self.errors.append(exc)\n            self._stop.wait(self._interval)\n\n    def stop(self, timeout: float = 1.0) -> bool:\n        \"\"\"Signal the worker and report whether it exited within timeout.\"\"\"\n        self._stop.set()\n        if self._thread is None:\n            return True\n        self._thread.join(timeout)\n        return not self._thread.is_alive()",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "time.sleep cannot be interrupted, so stop waits out the whole interval and reports the thread still alive.",
+      "caught_by": [
+        "test_stop_interrupts_a_long_interval"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Only ValueError is caught, so an OSError from the task ends the thread and polling silently stops.",
+      "caught_by": [
+        "test_task_errors_are_recorded_without_killing_the_thread"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "An interval of zero is accepted instead of raising ValueError.",
+      "caught_by": [
+        "test_lifecycle_misuse"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A second start spawns another worker thread instead of raising RuntimeError.",
+      "caught_by": [
+        "test_lifecycle_misuse"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "stop joins before setting the event, so the join times out and stop reports failure.",
+      "caught_by": [
+        "test_stop_interrupts_a_long_interval",
+        "test_task_repeats_until_stopped"
+      ]
+    }
+  ]
+}

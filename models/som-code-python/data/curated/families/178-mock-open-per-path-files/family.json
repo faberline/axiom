@@ -1,0 +1,169 @@
+{
+  "family_id": "178-mock-open-per-path-files",
+  "domain": "python",
+  "area": "unittest.mock",
+  "capability": "mock-open-per-path-read-data",
+  "requirement": "Parse a key=value settings file, and provide a test helper that patches open so each known path yields its own text and unknown paths raise FileNotFoundError.",
+  "skeleton": "read_settings iterating the opened file with numbered lines, skipping blanks and comments and partitioning on the first equals sign; fake_files contextmanager patching builtins.open with a side_effect returning per-path mock_open handles.",
+  "caption": "File-reading code tested with unittest.mock instead of real files. read_settings(path) opens the path with encoding utf-8 and walks its lines with enumerate starting at 1, stripping each one and skipping blank lines and lines starting with #. Every other line is split with str.partition on the first equals sign, so values may themselves contain equals signs; a line without an equals sign or with a blank key raises ValueError formatted as path:line: expected key=value. Keys and values are stripped and a later key overrides an earlier one. fake_files(contents) is a contextlib.contextmanager that patches builtins.open with a side_effect function and yields the patch mock, so callers can assert how open was called. For a path in the mapping the function returns a fresh mock_open handle whose read_data is that path's text, which supports iteration; any other path raises FileNotFoundError naming it, just like a missing file. The fixture asserts that comments and blank lines are skipped and open was called once with encoding utf-8, that a URL value keeps its equals signs, that a malformed second line raises ValueError naming app.cfg:2, that a blank key raises ValueError, that two paths read their own text with call_count 2, and that an unknown path raises FileNotFoundError.",
+  "plan": {
+    "intent": "Test file parsing without touching the disk",
+    "target": "settings reader and open fake",
+    "constraints": [
+      "Blank lines and # comments are skipped",
+      "Values may contain equals signs",
+      "Malformed lines and blank keys raise ValueError with path and line number",
+      "Each fake path reads its own text",
+      "Unknown paths raise FileNotFoundError",
+      "open is called with encoding utf-8"
+    ]
+  },
+  "rationale": {
+    "teaches": "patch('builtins.open', side_effect=...) returning mock_open(read_data=...) handles per path, so iteration and missing files behave like the real filesystem.",
+    "why": "A single global mock_open hides which file was read and turns missing files into empty ones, so path bugs and error handling go untested."
+  },
+  "oracle": "fixtures/test_178_mock_open_per_path_files.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "function",
+        "name": "read_settings",
+        "params": [
+          "path"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "fake_files",
+        "params": [
+          "contents"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "FileNotFoundError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "read_settings",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "fake_files",
+              "kind": "function",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Patch open with per-path mock_open handles to test file-reading code."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Iterator, Mapping",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from contextlib import contextmanager",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from unittest.mock import MagicMock, mock_open, patch",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "read_settings",
+        "source": "def read_settings(path: str) -> dict[str, str]:\n    \"\"\"Parse key=value lines, skipping blank lines and # comments.\"\"\"\n    settings: dict[str, str] = {}\n    with open(path, encoding=\"utf-8\") as handle:\n        for number, raw in enumerate(handle, start=1):\n            line = raw.strip()\n            if not line or line.startswith(\"#\"):\n                continue\n            key, sep, value = line.partition(\"=\")\n            if not sep or not key.strip():\n                raise ValueError(f\"{path}:{number}: expected key=value\")\n            settings[key.strip()] = value.strip()\n    return settings",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "fake_files",
+        "source": "@contextmanager\ndef fake_files(contents: Mapping[str, str]) -> Iterator[MagicMock]:\n    \"\"\"Patch builtins.open so each known path reads its text and others are missing.\"\"\"\n\n    def opener(path: str, *_args: object, **_kwargs: object) -> MagicMock:\n        if path not in contents:\n            raise FileNotFoundError(path)\n        handle: MagicMock = mock_open(read_data=contents[path])()\n        return handle\n\n    with patch(\"builtins.open\", side_effect=opener) as fake:\n        yield fake",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "rpartition splits on the last equals sign, so values containing equals signs are cut.",
+      "caught_by": [
+        "test_value_may_contain_equals_signs"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Line numbers start at zero, so errors point at the previous line.",
+      "caught_by": [
+        "test_malformed_line_reports_its_line_number"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Comment lines are parsed as settings and rejected as malformed.",
+      "caught_by": [
+        "test_parses_pairs_skipping_blanks_and_comments"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A line with a blank key is stored under the empty string instead of raising.",
+      "caught_by": [
+        "test_blank_key_is_rejected"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Unknown paths read as empty files instead of raising FileNotFoundError.",
+      "caught_by": [
+        "test_unknown_path_is_missing"
+      ]
+    }
+  ]
+}

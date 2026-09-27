@@ -1,0 +1,146 @@
+{
+  "family_id": "152-syntax-context-manager-exit-suppression",
+  "domain": "python",
+  "area": "syntax",
+  "capability": "context-manager-exit-return-suppression",
+  "requirement": "Write a reusable context manager class that suppresses and records only the listed exception types and their subclasses, at most a budget of times across all its with blocks, letting every other exception propagate and validating its arguments.",
+  "skeleton": "Tolerate class storing kinds, budget and an errors list, __enter__ returning self, and __exit__ returning True only for an instance of a listed kind while the budget allows, False otherwise.",
+  "caption": "A context manager class whose __exit__ return value decides suppression. Tolerate(*kinds, budget=3) raises ValueError asking to name at least one exception type when kinds is empty and ValueError saying budget must be at least 1 when budget is below 1, then stores the kinds, the budget and an empty errors list. __enter__ returns self, typed with typing.Self, so the as target is the very object that records errors. __exit__ receives the exception type, the exception and the traceback typed with types.TracebackType; it returns False, letting the exception propagate or doing nothing for a clean block, unless isinstance matches one of the kinds, which also covers subclasses, and fewer than budget errors have been recorded; in that case it appends the exception and returns True to swallow it. The same instance can guard several with blocks and the budget spans them all. The fixture asserts that a KeyError is swallowed and recorded, that Tolerate(LookupError) swallows IndexError, that ZeroDivisionError propagates and is not recorded, that a budget of 2 swallows two KeyErrors and lets the third propagate, that a clean block records nothing, and that no kinds or a budget of 0 raise ValueError while a budget of 1 is accepted.",
+  "plan": {
+    "intent": "Tolerate a limited number of expected errors",
+    "target": "error-tolerant block",
+    "constraints": [
+      "Listed exception types and their subclasses are suppressed and recorded",
+      "Other exceptions propagate unrecorded",
+      "At most budget errors are suppressed across all blocks of one instance",
+      "The as target is the recording instance",
+      "No exception types or a budget below 1 raise ValueError"
+    ]
+  },
+  "rationale": {
+    "teaches": "__exit__ returning True to suppress, isinstance against a tuple of types, and __enter__ returning self.",
+    "why": "Exact type checks, off-by-one budgets and an __enter__ that returns something other than self all behave correctly for the single simplest example and fail only on subclasses, limits or later inspection."
+  },
+  "oracle": "fixtures/test_152_syntax_context_manager_exit_suppression.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Tolerate",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "__enter__",
+          "__exit__"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Tolerate",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "A context manager that swallows only the expected errors, up to a budget."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from types import TracebackType",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Self",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Tolerate",
+        "source": "class Tolerate:\n    \"\"\"Suppress and record the listed exception types, at most budget times.\"\"\"\n\n    def __init__(self, *kinds: type[Exception], budget: int = 3) -> None:\n        if not kinds:\n            raise ValueError(\"name at least one exception type\")\n        if budget < 1:\n            raise ValueError(\"budget must be at least 1\")\n        self.kinds = kinds\n        self.budget = budget\n        self.errors: list[Exception] = []\n\n    def __enter__(self) -> Self:\n        return self\n\n    def __exit__(\n        self,\n        exc_type: type[BaseException] | None,\n        exc: BaseException | None,\n        tb: TracebackType | None,\n    ) -> bool:\n        if not isinstance(exc, self.kinds):\n            return False\n        if len(self.errors) >= self.budget:\n            return False\n        self.errors.append(exc)\n        return True",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Comparing exact types lets subclasses of the listed exceptions escape the block.",
+      "caught_by": [
+        "test_subclasses_are_suppressed_too"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The budget check is off by one, so one extra error is swallowed.",
+      "caught_by": [
+        "test_budget_is_exact_across_blocks"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A Tolerate with no exception types is accepted and silently never suppresses anything.",
+      "caught_by": [
+        "test_constructor_validation"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A budget of zero is accepted and creates a manager that can never suppress.",
+      "caught_by": [
+        "test_constructor_validation"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "__enter__ returns a fresh copy, so the as target never sees the errors recorded by the manager.",
+      "caught_by": [
+        "test_listed_error_is_suppressed_and_recorded",
+        "test_subclasses_are_suppressed_too"
+      ]
+    }
+  ]
+}

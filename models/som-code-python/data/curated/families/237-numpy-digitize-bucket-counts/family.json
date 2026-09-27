@@ -1,0 +1,154 @@
+{
+  "family_id": "237-numpy-digitize-bucket-counts",
+  "domain": "python",
+  "area": "numpy",
+  "capability": "numpy-digitize-bucket-counts",
+  "requirement": "Count measurements into caller-supplied bin edges with NumPy, matching np.histogram semantics including the closed last bin, ignoring out-of-range and NaN values, and rejecting malformed edges.",
+  "skeleton": "A bucket_counts function validating edges, mapping values with np.digitize, closing the last bin on the top edge, masking out-of-range indexes, and counting with np.bincount and minlength.",
+  "caption": "Counting values into explicit bins with NumPy so the result matches np.histogram. bucket_counts(values, edges) converts both to float64 arrays and raises ValueError saying edges must be strictly increasing when edges are not 1-D, have fewer than two entries, or any np.diff is not positive. It maps values to bin indexes with np.digitize minus one, so bins are half-open on the right, then moves values equal to the top edge into the last bin so that bin is closed. Indexes below zero or past the last bin, which covers out-of-range values and NaN, are masked out, and np.bincount with minlength equal to the bin count returns one count per bin including trailing empty bins. The fixture asserts the half-open bins with a closed last bin, that out-of-range and NaN values are ignored, that trailing empty bins and empty input still report every bin, agreement with np.histogram on random data, and that duplicate, short, 2-D or decreasing edges raise ValueError.",
+  "plan": {
+    "intent": "Bucket latency samples into fixed SLO bins",
+    "target": "histogram counter",
+    "constraints": [
+      "Malformed or non-increasing edges raise ValueError",
+      "Bins are half-open except the last, which includes the top edge",
+      "Out-of-range and NaN values are not counted",
+      "The result has exactly one count per bin, even for empty trailing bins"
+    ]
+  },
+  "rationale": {
+    "teaches": "Combine np.digitize with explicit top-edge handling, an index mask, and np.bincount minlength to reproduce histogram semantics exactly.",
+    "why": "digitize alone drops the maximum value, bincount without minlength shrinks the result when the top bins are empty, and unvalidated edges silently produce meaningless counts."
+  },
+  "oracle": "fixtures/test_237_numpy_digitize_bucket_counts.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "function",
+        "name": "bucket_counts",
+        "params": [
+          "values",
+          "edges"
+        ]
+      }
+    ],
+    "imports": [
+      "numpy"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "bucket_counts",
+              "kind": "function",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Count values into explicit bins with np.digitize and np.bincount."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import numpy as np",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from numpy.typing import ArrayLike, NDArray",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "bucket_counts",
+        "source": "def bucket_counts(values: ArrayLike, edges: ArrayLike) -> NDArray[np.intp]:\n    \"\"\"Count values per half-open bin; the last bin also holds the top edge.\"\"\"\n    v = np.asarray(values, dtype=np.float64)\n    e = np.asarray(edges, dtype=np.float64)\n    if e.ndim != 1 or e.size < 2 or np.any(np.diff(e) <= 0):\n        raise ValueError(\"edges must be 1-D, strictly increasing, at least 2 long\")\n    idx = np.digitize(v, e) - 1\n    idx[v == e[-1]] = e.size - 2\n    inside = (idx >= 0) & (idx < e.size - 1)\n    return np.bincount(idx[inside], minlength=e.size - 1)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Values equal to the top edge are dropped instead of counted in the last bin.",
+      "caught_by": [
+        "test_half_open_bins_with_closed_last_bin",
+        "test_matches_numpy_histogram"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Without minlength the result is shorter than the bin count when trailing bins are empty.",
+      "caught_by": [
+        "test_out_of_range_and_nan_values_are_ignored",
+        "test_trailing_empty_bins_are_reported"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "right=True makes bins closed on the right, so values on lower edges shift down a bin.",
+      "caught_by": [
+        "test_half_open_bins_with_closed_last_bin",
+        "test_matches_numpy_histogram"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Duplicate or decreasing edges are accepted and produce nonsense counts.",
+      "caught_by": [
+        "test_invalid_edges_are_rejected"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Values above the top edge and NaN land in an extra bin past the end.",
+      "caught_by": [
+        "test_matches_numpy_histogram",
+        "test_out_of_range_and_nan_values_are_ignored"
+      ]
+    }
+  ]
+}

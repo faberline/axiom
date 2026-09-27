@@ -1,0 +1,248 @@
+{
+  "family_id": "228-openai-structured-output-parse",
+  "domain": "python",
+  "area": "openai",
+  "capability": "openai-structured-output-parse",
+  "requirement": "Convert a structured-output chat completion into a typed pydantic object, distinguishing refusals, token-limit truncation and schema mismatches with dedicated exceptions.",
+  "skeleton": "A StructuredOutputError hierarchy with RefusalError, TruncatedOutputError and SchemaMismatchError, and a generic parse_structured checking refusal, then finish_reason length, then validating JSON content.",
+  "caption": "Turning an OpenAI structured-output chat response dict into a pydantic model. StructuredOutputError is the base of RefusalError, which stores the refusal text as reason, TruncatedOutputError and SchemaMismatchError. parse_structured(response, model) reads the first choice and its message. A truthy refusal raises RefusalError. A finish_reason of length raises TruncatedOutputError before any parsing, since the JSON was cut off. Otherwise the content, with None treated as empty, is validated with model.model_validate_json, and a pydantic ValidationError is re-raised as SchemaMismatchError chained from it. The fixture asserts that valid content returns the Invoice, that a refusal raises RefusalError with its reason while a null refusal field does not, that a length cutoff raises TruncatedOutputError, that wrong types, None and malformed JSON raise SchemaMismatchError caused by ValidationError, and that all three share the base.",
+  "plan": {
+    "intent": "Extract typed records with structured outputs",
+    "target": "response parser",
+    "constraints": [
+      "A non-empty refusal raises RefusalError with the text",
+      "finish_reason length raises TruncatedOutputError",
+      "Invalid or missing content raises SchemaMismatchError chained from ValidationError",
+      "All errors derive from StructuredOutputError",
+      "A null refusal field is not a refusal"
+    ]
+  },
+  "rationale": {
+    "teaches": "Check refusal and truncation signals before validating, and use model_validate_json so malformed JSON and wrong types surface through one exception path.",
+    "why": "Treating refusals and truncation as schema errors hides why the call failed and triggers pointless retries, and json.loads leaks decode errors past the handler."
+  },
+  "oracle": "fixtures/test_228_openai_structured_output_parse.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "StructuredOutputError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "RefusalError",
+        "bases": [
+          "StructuredOutputError"
+        ],
+        "methods": [
+          "__init__"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "TruncatedOutputError",
+        "bases": [
+          "StructuredOutputError"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "SchemaMismatchError",
+        "bases": [
+          "StructuredOutputError"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "parse_structured",
+        "params": [
+          "response",
+          "model"
+        ]
+      }
+    ],
+    "imports": [
+      "pydantic"
+    ],
+    "raises": [
+      "RefusalError",
+      "SchemaMismatchError",
+      "TruncatedOutputError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "StructuredOutputError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "RefusalError",
+              "kind": "class",
+              "depends_on": [
+                "StructuredOutputError"
+              ]
+            },
+            {
+              "name": "TruncatedOutputError",
+              "kind": "class",
+              "depends_on": [
+                "StructuredOutputError"
+              ]
+            },
+            {
+              "name": "SchemaMismatchError",
+              "kind": "class",
+              "depends_on": [
+                "StructuredOutputError"
+              ]
+            },
+            {
+              "name": "parse_structured",
+              "kind": "function",
+              "depends_on": [
+                "RefusalError",
+                "TruncatedOutputError",
+                "SchemaMismatchError"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Parse an OpenAI structured-output chat response into a pydantic model."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel, ValidationError",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "StructuredOutputError",
+        "source": "class StructuredOutputError(Exception):\n    \"\"\"Base class for every way a structured response can be unusable.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "RefusalError",
+        "source": "class RefusalError(StructuredOutputError):\n    \"\"\"The model refused; ``reason`` carries its refusal text.\"\"\"\n\n    def __init__(self, reason: str) -> None:\n        super().__init__(reason)\n        self.reason = reason",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "TruncatedOutputError",
+        "source": "class TruncatedOutputError(StructuredOutputError):\n    \"\"\"The output stopped at the token limit, so its JSON is incomplete.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SchemaMismatchError",
+        "source": "class SchemaMismatchError(StructuredOutputError):\n    \"\"\"The content is not valid JSON for the requested schema.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "parse_structured",
+        "source": "def parse_structured[T: BaseModel](response: dict[str, Any], model: type[T]) -> T:\n    \"\"\"Return the first choice's content validated as ``model``.\"\"\"\n    choice = response[\"choices\"][0]\n    message = choice[\"message\"]\n    if message.get(\"refusal\"):\n        raise RefusalError(message[\"refusal\"])\n    if choice.get(\"finish_reason\") == \"length\":\n        raise TruncatedOutputError(\"output stopped at the token limit\")\n    try:\n        return model.model_validate_json(message.get(\"content\") or \"\")\n    except ValidationError as exc:\n        raise SchemaMismatchError(str(exc)) from exc",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 5
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A refusal is reported as a schema mismatch and loses the refusal text.",
+      "caught_by": [
+        "test_refusal_raises_with_reason"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Output cut off at the token limit is reported as a schema mismatch.",
+      "caught_by": [
+        "test_length_cutoff_is_truncation_not_schema_error"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Missing or malformed content leaks a raw JSON decode error.",
+      "caught_by": [
+        "test_missing_or_malformed_content_is_schema_mismatch"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "SchemaMismatchError cannot be caught as a StructuredOutputError.",
+      "caught_by": [
+        "test_errors_share_one_base_class"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Any response with a refusal key, even null, is treated as a refusal.",
+      "caught_by": [
+        "test_length_cutoff_is_truncation_not_schema_error",
+        "test_missing_or_malformed_content_is_schema_mismatch",
+        "test_valid_content_is_parsed",
+        "test_wrong_shape_is_schema_mismatch"
+      ]
+    }
+  ]
+}

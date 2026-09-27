@@ -1,0 +1,325 @@
+{
+  "family_id": "176-pydantic-generic-response-envelope",
+  "domain": "python",
+  "area": "pydantic",
+  "capability": "generic-model-response-envelope",
+  "requirement": "Parse API responses through one generic envelope parametrized by the payload type, returning validated models, raising a typed error when the response carries errors and a ValueError when it carries no data.",
+  "skeleton": "User and ApiError models, a PEP 695 Envelope[T] model with request id, optional data and errors, an ApiResponseError exception, a generic _unwrap, and fetch_user and fetch_users validating through parametrized envelopes.",
+  "caption": "A generic response envelope in pydantic v2 using PEP 695 class syntax, parametrized with the payload type where it is used. User has id as an int with Field gt=0 and a name. ApiError has a code and a message. Envelope[T] is a BaseModel with request_id as a str with Field min_length=8, data as T or None defaulting to None, and errors as a list of ApiError built by default_factory. ApiResponseError is an Exception whose message is the request id, a colon and the errors joined as code: message pairs separated by semicolons, and which keeps the errors list. _unwrap(envelope) raises ApiResponseError whenever errors are present, even if data was also sent, raises ValueError saying the request id then empty response when data is None, and otherwise returns the data. fetch_user(raw) validates the body with Envelope[User].model_validate_json and fetch_users(raw) with Envelope[list[User]], so the payload is checked against the concrete type and returned as User models rather than dicts. Bad bodies raise pydantic.ValidationError. The fixture asserts that a string id is coerced inside a real User, that a list payload yields User models, that an id of 0 or a missing id raises ValidationError, that errors with data raise ApiResponseError with the exact joined message and codes, that an empty response raises ValueError, and that a five-character request id raises ValidationError while req-0001 is accepted.",
+  "plan": {
+    "intent": "Share one response envelope across endpoints",
+    "target": "typed API client parsing",
+    "constraints": [
+      "The payload is validated against the envelope's type parameter",
+      "Single and list payloads share the envelope",
+      "Any errors raise ApiResponseError, even with data present",
+      "A response without data or errors raises ValueError",
+      "Request ids must be at least eight characters",
+      "User ids must be positive"
+    ]
+  },
+  "rationale": {
+    "teaches": "Generic BaseModel classes parametrized at the call site, so Envelope[User] validates nested payloads while the envelope rules are written once.",
+    "why": "An unparametrized envelope validates happily and hands back raw dicts, so type errors surface far from the parse, and checking data before errors hides failures."
+  },
+  "oracle": "fixtures/test_176_pydantic_generic_response_envelope.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "User",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ApiError",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Envelope",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ApiResponseError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": [
+          "__init__"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "_unwrap",
+        "params": [
+          "envelope"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "fetch_user",
+        "params": [
+          "raw"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "fetch_users",
+        "params": [
+          "raw"
+        ]
+      }
+    ],
+    "imports": [
+      "pydantic"
+    ],
+    "raises": [
+      "ApiResponseError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "User",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "ApiError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Envelope",
+              "kind": "class",
+              "depends_on": [
+                "ApiError"
+              ]
+            },
+            {
+              "name": "ApiResponseError",
+              "kind": "class",
+              "depends_on": [
+                "ApiError"
+              ]
+            },
+            {
+              "name": "_unwrap",
+              "kind": "function",
+              "depends_on": [
+                "Envelope",
+                "ApiResponseError"
+              ]
+            },
+            {
+              "name": "fetch_user",
+              "kind": "function",
+              "depends_on": [
+                "User",
+                "_unwrap",
+                "Envelope"
+              ]
+            },
+            {
+              "name": "fetch_users",
+              "kind": "function",
+              "depends_on": [
+                "User",
+                "_unwrap",
+                "Envelope"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "A generic API envelope whose payload type is chosen at the call site."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel, Field",
+        "group": 0
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "User",
+        "id": "pydantic_model",
+        "params": {
+          "name": "User",
+          "doc": "A user record returned by the API.",
+          "fields": [
+            {
+              "field": "id",
+              "declaration": "int = Field(gt=0)"
+            },
+            {
+              "field": "name",
+              "declaration": "str"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "ApiError",
+        "id": "pydantic_model",
+        "params": {
+          "name": "ApiError",
+          "doc": "One error entry in a failed response.",
+          "fields": [
+            {
+              "field": "code",
+              "declaration": "str"
+            },
+            {
+              "field": "message",
+              "declaration": "str"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "Envelope",
+        "id": "pydantic_model",
+        "params": {
+          "name": "Envelope[T]",
+          "doc": "Every API response: a request id, optional data and a list of errors.",
+          "fields": [
+            {
+              "field": "request_id",
+              "declaration": "str = Field(min_length=8)"
+            },
+            {
+              "field": "data",
+              "declaration": "T | None = None"
+            },
+            {
+              "field": "errors",
+              "declaration": "list[ApiError] = Field(default_factory=list)"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ApiResponseError",
+        "source": "class ApiResponseError(Exception):\n    \"\"\"The API answered with errors.\"\"\"\n\n    def __init__(self, request_id: str, errors: list[ApiError]) -> None:\n        details = \"; \".join(f\"{error.code}: {error.message}\" for error in errors)\n        super().__init__(f\"{request_id}: {details}\")\n        self.errors = errors",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_unwrap",
+        "source": "def _unwrap[T](envelope: Envelope[T]) -> T:\n    if envelope.errors:\n        raise ApiResponseError(envelope.request_id, envelope.errors)\n    if envelope.data is None:\n        raise ValueError(f\"{envelope.request_id}: empty response\")\n    return envelope.data",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "fetch_user",
+        "source": "def fetch_user(raw: str) -> User:\n    \"\"\"Parse a single-user response body.\"\"\"\n    return _unwrap(Envelope[User].model_validate_json(raw))",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "fetch_users",
+        "source": "def fetch_users(raw: str) -> list[User]:\n    \"\"\"Parse a user-list response body.\"\"\"\n    return _unwrap(Envelope[list[User]].model_validate_json(raw))",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 3,
+      "literal_blocks": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The unparametrized envelope returns the payload as an unvalidated dict.",
+      "caught_by": [
+        "test_payload_is_validated_against_the_type_parameter",
+        "test_single_user_is_validated_as_a_model"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Errors are ignored whenever the response also carries data.",
+      "caught_by": [
+        "test_errors_raise_even_with_data"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "An empty response returns None instead of raising ValueError.",
+      "caught_by": [
+        "test_empty_response_is_a_value_error"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "min_length=9 rejects valid eight-character request ids.",
+      "caught_by": [
+        "test_empty_response_is_a_value_error",
+        "test_errors_raise_even_with_data",
+        "test_list_payload_uses_the_same_envelope",
+        "test_single_user_is_validated_as_a_model"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "ge=0 accepts a user whose id is zero.",
+      "caught_by": [
+        "test_payload_is_validated_against_the_type_parameter"
+      ]
+    }
+  ]
+}

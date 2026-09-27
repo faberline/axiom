@@ -1,0 +1,166 @@
+{
+  "family_id": "222-pandas-groupby-named-agg-dropna",
+  "domain": "python",
+  "area": "pandas",
+  "capability": "pandas-groupby-named-agg-dropna",
+  "requirement": "Summarize sales lines per region with order counts, revenue and average ticket, keeping lines that have no region instead of silently dropping them.",
+  "skeleton": "An UNKNOWN_REGION constant and region_summary grouping with dropna False, named aggregations for distinct orders, revenue and mean amount, filling the missing key, rounding, and a two-key sort.",
+  "caption": "A per-region sales summary in pandas built with named aggregation. region_summary(sales) groups by region with dropna False so rows without a region form their own group, and aggregates orders as the nunique of order_id, revenue as the sum of amount, and avg_ticket as the mean of amount, then resets the index. The missing region key is filled with the UNKNOWN_REGION constant unknown, avg_ticket is rounded to two decimals, and rows are sorted by revenue descending with ties broken by region ascending, renumbering the index. The input frame is never modified. The fixture asserts the columns region, orders, revenue and avg_ticket, the order a, b, c, unknown with revenues 90, 31, 31 and 5, distinct order counts 2, 3, 1 and 1, rounded means 30, 10.33, 31 and 5, that a lone row without region is reported as unknown, and that the input is unchanged.",
+  "plan": {
+    "intent": "Report regional sales from raw order lines",
+    "target": "regional summary report",
+    "constraints": [
+      "Rows without a region are kept via dropna False",
+      "orders counts distinct order ids",
+      "avg_ticket is the mean rounded to two places",
+      "Missing regions are labeled unknown",
+      "Sort by revenue descending then region ascending"
+    ]
+  },
+  "rationale": {
+    "teaches": "Use named aggregation tuples with the right reducer and dropna False so a groupby report accounts for every input row.",
+    "why": "groupby drops NaN keys by default so revenue silently disappears, count double-counts multi-line orders, and a one-key sort leaves ties nondeterministic."
+  },
+  "oracle": "fixtures/test_222_pandas_groupby_named_agg_dropna.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "UNKNOWN_REGION"
+      },
+      {
+        "kind": "function",
+        "name": "region_summary",
+        "params": [
+          "sales"
+        ]
+      }
+    ],
+    "imports": [
+      "pandas"
+    ],
+    "raises": [],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "UNKNOWN_REGION",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "region_summary",
+              "kind": "function",
+              "depends_on": [
+                "UNKNOWN_REGION"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Summarize sales per region with named aggregations, keeping missing regions."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import pandas as pd",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "UNKNOWN_REGION",
+        "source": "UNKNOWN_REGION = \"unknown\"",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "region_summary",
+        "source": "def region_summary(sales: pd.DataFrame) -> pd.DataFrame:\n    \"\"\"Return orders, revenue and mean ticket per region, highest revenue first.\"\"\"\n    summary = (\n        sales.groupby(\"region\", dropna=False)\n        .agg(\n            orders=(\"order_id\", \"nunique\"),\n            revenue=(\"amount\", \"sum\"),\n            avg_ticket=(\"amount\", \"mean\"),\n        )\n        .reset_index()\n    )\n    summary[\"region\"] = summary[\"region\"].fillna(UNKNOWN_REGION)\n    summary[\"avg_ticket\"] = summary[\"avg_ticket\"].round(2)\n    return summary.sort_values(\n        [\"revenue\", \"region\"], ascending=[False, True], ignore_index=True\n    )",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Sales lines without a region silently vanish from the report.",
+      "caught_by": [
+        "test_average_ticket_is_rounded_mean",
+        "test_columns_and_revenue_order",
+        "test_missing_region_is_kept_as_unknown",
+        "test_orders_count_distinct_order_ids"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Orders with several lines are counted once per line instead of once.",
+      "caught_by": [
+        "test_orders_count_distinct_order_ids"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Regions with equal revenue are sorted in reverse alphabetical order.",
+      "caught_by": [
+        "test_average_ticket_is_rounded_mean",
+        "test_columns_and_revenue_order",
+        "test_orders_count_distinct_order_ids"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The median amount is reported instead of the mean ticket.",
+      "caught_by": [
+        "test_average_ticket_is_rounded_mean"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The missing region stays NaN instead of being labeled unknown.",
+      "caught_by": [
+        "test_columns_and_revenue_order",
+        "test_missing_region_is_kept_as_unknown"
+      ]
+    }
+  ]
+}

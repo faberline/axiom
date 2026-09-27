@@ -1,0 +1,200 @@
+{
+  "family_id": "185-jwt-issuer-keyed-secrets",
+  "domain": "python",
+  "area": "security",
+  "capability": "jwt-issuer-keyed-verification",
+  "requirement": "Verify JWTs from several trusted issuers where each issuer has its own HMAC secret, rejecting unknown issuers, forged signatures, other algorithms, wrong audiences and tokens missing required claims.",
+  "skeleton": "UntrustedIssuerError subclassing jwt.InvalidTokenError, issue signing HS256 claims, and verify reading iss from an unverified decode, checking it against the secrets mapping, then fully decoding with pinned algorithm, audience, issuer and required claims.",
+  "caption": "Multi-issuer JWT verification with PyJWT. UntrustedIssuerError subclasses jwt.InvalidTokenError so callers can catch every rejection in one place. issue(secret, issuer, subject, audience) signs iss, sub and aud with HS256. verify(token, secrets, audience) first decodes without verifying the signature only to read the iss claim, which raises jwt.DecodeError for a malformed token; when iss is missing, not a string or absent from the secrets mapping it raises UntrustedIssuerError naming the issuer repr. It then decodes again with that issuer's secret, algorithms pinned to HS256, the expected audience, issuer set to the same iss and options requiring iss, sub and aud, and returns only these verified claims, never the unverified ones. So a token claiming issuer b but signed with a's secret raises jwt.InvalidSignatureError, an HS512 token raises jwt.InvalidAlgorithmError, a token without sub raises jwt.MissingRequiredClaimError and a wrong audience raises jwt.InvalidAudienceError. The fixture asserts that both issuers verify with their own secrets and return the three claims, that the cross-signed forgery, an unknown issuer, a missing issuer, an HS512 token, a missing subject, a billing-api audience and the string not-a-token each raise the exception above.",
+  "plan": {
+    "intent": "Accept tokens from several issuers safely",
+    "target": "multi-issuer JWT verifier",
+    "constraints": [
+      "The unverified decode is used only to choose the secret",
+      "Unknown or missing issuers raise UntrustedIssuerError",
+      "A token signed with another issuer's secret raises jwt.InvalidSignatureError",
+      "Only HS256 is accepted, others raise jwt.InvalidAlgorithmError",
+      "iss, sub and aud are required (jwt.MissingRequiredClaimError)",
+      "Wrong audiences raise jwt.InvalidAudienceError and malformed tokens jwt.DecodeError"
+    ]
+  },
+  "rationale": {
+    "teaches": "Read the issuer from an unverified decode only to select a key, then run a full jwt.decode with pinned algorithms, issuer, audience and required claims.",
+    "why": "Returning or trusting the unverified payload, or falling back to a default key for unknown issuers, turns key selection into an authentication bypass."
+  },
+  "oracle": "fixtures/test_185_jwt_issuer_keyed_secrets.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "UntrustedIssuerError",
+        "bases": [
+          "jwt.InvalidTokenError"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "issue",
+        "params": [
+          "secret",
+          "issuer",
+          "subject",
+          "audience"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "verify",
+        "params": [
+          "token",
+          "secrets",
+          "audience"
+        ]
+      }
+    ],
+    "imports": [
+      "jwt"
+    ],
+    "raises": [
+      "UntrustedIssuerError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "UntrustedIssuerError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "issue",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "verify",
+              "kind": "function",
+              "depends_on": [
+                "UntrustedIssuerError"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Verify JWTs from several trusted issuers, each with its own HMAC secret."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Mapping",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import jwt",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "UntrustedIssuerError",
+        "source": "class UntrustedIssuerError(jwt.InvalidTokenError):\n    \"\"\"The token names an issuer that has no configured secret.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "issue",
+        "source": "def issue(secret: str, issuer: str, subject: str, audience: str) -> str:\n    \"\"\"Sign a token the way a trusted issuer would.\"\"\"\n    claims = {\"iss\": issuer, \"sub\": subject, \"aud\": audience}\n    return jwt.encode(claims, secret, algorithm=\"HS256\")",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "verify",
+        "source": "def verify(token: str, secrets: Mapping[str, str], audience: str) -> dict[str, Any]:\n    \"\"\"Pick the secret by the unverified issuer, then fully verify with it.\"\"\"\n    unverified = jwt.decode(token, options={\"verify_signature\": False})\n    issuer = unverified.get(\"iss\")\n    if not isinstance(issuer, str) or issuer not in secrets:\n        raise UntrustedIssuerError(f\"untrusted issuer: {issuer!r}\")\n    claims: dict[str, Any] = jwt.decode(\n        token,\n        secrets[issuer],\n        algorithms=[\"HS256\"],\n        audience=audience,\n        issuer=issuer,\n        options={\"require\": [\"iss\", \"sub\", \"aud\"]},\n    )\n    return claims",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The unverified payload is returned, so forged and unsigned tokens are accepted.",
+      "caught_by": [
+        "test_only_hs256_is_accepted",
+        "test_subject_is_required",
+        "test_token_signed_with_another_issuers_secret_is_rejected",
+        "test_wrong_audience_and_garbage_are_rejected"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Unknown issuers fall back to an empty secret instead of raising UntrustedIssuerError.",
+      "caught_by": [
+        "test_unknown_issuer_is_untrusted"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Indexing iss raises KeyError for tokens without an issuer instead of UntrustedIssuerError.",
+      "caught_by": [
+        "test_missing_issuer_is_untrusted"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "HS512 is also allowed, widening the accepted algorithms beyond HS256.",
+      "caught_by": [
+        "test_only_hs256_is_accepted"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The subject claim is not required, so tokens without sub are accepted.",
+      "caught_by": [
+        "test_subject_is_required"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,150 @@
+{
+  "family_id": "256-pytorch-warmup-cosine-lr-lambda",
+  "domain": "python",
+  "area": "pytorch",
+  "capability": "pytorch-warmup-cosine-lr-lambda",
+  "requirement": "Build a LambdaLR multiplier that warms the learning rate up linearly and then decays it along a cosine curve to a floor ratio, staying at the floor after training ends.",
+  "skeleton": "warmup_cosine validating its three arguments and returning a closure that applies linear warmup from step plus one, then a capped cosine decay scaled between min_ratio and one.",
+  "caption": "A learning rate multiplier for PyTorch's LambdaLR, written with the standard library math module and no third-party imports. warmup_cosine(warmup_steps, total_steps, min_ratio=0.0) raises ValueError when warmup_steps is negative, when total_steps does not exceed warmup_steps, or when min_ratio is outside zero to one, and returns an lr_lambda closure. During warmup the factor is step plus one over warmup_steps, so the first step is never zero and the last warmup step reaches one. Afterwards progress is the decay fraction capped at one, the cosine term is half of one plus cos of pi times progress, and the factor is min_ratio plus one minus min_ratio times that term. The fixture asserts the linear warmup, the peak after warmup, the cosine midpoint and end, min_ratio scaling, staying at the floor past total_steps, and argument validation.",
+  "plan": {
+    "intent": "Schedule the learning rate for transformer fine-tuning",
+    "target": "lr schedule",
+    "constraints": [
+      "Negative warmup, total_steps not above warmup, or min_ratio outside [0, 1] raise ValueError",
+      "Warmup starts above zero and reaches one on its last step",
+      "Decay progress is capped at one",
+      "The factor is interpolated between min_ratio and one"
+    ]
+  },
+  "rationale": {
+    "teaches": "Offset warmup by one step, cap the cosine progress, and interpolate from min_ratio rather than clamping to it.",
+    "why": "A zero first step wastes an update, uncapped progress makes the rate climb back up after total_steps, and clamping flattens the curve into a sudden cliff."
+  },
+  "oracle": "fixtures/test_256_pytorch_warmup_cosine_lr_lambda.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "function",
+        "name": "warmup_cosine",
+        "params": [
+          "warmup_steps",
+          "total_steps",
+          "min_ratio"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "warmup_cosine",
+              "kind": "function",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "A linear-warmup, cosine-decay learning rate factor for LambdaLR."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import math",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "warmup_cosine",
+        "source": "def warmup_cosine(\n    warmup_steps: int, total_steps: int, min_ratio: float = 0.0\n) -> Callable[[int], float]:\n    \"\"\"Return lr_lambda(step) giving the multiplier of the base learning rate.\"\"\"\n    if warmup_steps < 0:\n        raise ValueError(\"warmup_steps must be non-negative\")\n    if total_steps <= warmup_steps:\n        raise ValueError(\"total_steps must exceed warmup_steps\")\n    if not 0.0 <= min_ratio <= 1.0:\n        raise ValueError(\"min_ratio must be within [0, 1]\")\n    decay_steps = total_steps - warmup_steps\n\n    def lr_lambda(step: int) -> float:\n        if step < warmup_steps:\n            return (step + 1) / warmup_steps\n        progress = min(1.0, (step - warmup_steps) / decay_steps)\n        cosine = 0.5 * (1.0 + math.cos(math.pi * progress))\n        return min_ratio + (1.0 - min_ratio) * cosine\n\n    return lr_lambda",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The first warmup step has a zero learning rate.",
+      "caught_by": [
+        "test_warmup_is_linear_and_never_zero"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "After total_steps the cosine swings back up and the rate rises again.",
+      "caught_by": [
+        "test_factor_stays_at_the_floor_after_total_steps"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The first step after warmup overshoots above the base learning rate.",
+      "caught_by": [
+        "test_cosine_midpoint_and_end",
+        "test_peak_right_after_warmup"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Clamping to the floor distorts the decay instead of rescaling it.",
+      "caught_by": [
+        "test_min_ratio_scales_the_decay"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Equal warmup and total steps build a schedule that divides by zero.",
+      "caught_by": [
+        "test_arguments_are_validated"
+      ]
+    }
+  ]
+}

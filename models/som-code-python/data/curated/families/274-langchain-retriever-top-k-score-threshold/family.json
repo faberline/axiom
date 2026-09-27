@@ -1,0 +1,231 @@
+{
+  "family_id": "274-langchain-retriever-top-k-score-threshold",
+  "domain": "python",
+  "area": "langchain",
+  "capability": "langchain-retriever-top-k-score-threshold",
+  "requirement": "Retrieve context for a RAG prompt with a LangChain-like retriever that honours a score threshold, a metadata filter, per-source dedup and a top-k limit.",
+  "skeleton": "A frozen Document dataclass, a zero-safe cosine, an InMemoryVectorStore ranking by score, and a ScoreThresholdRetriever that validates k and the threshold and returns distinct matching documents.",
+  "caption": "A LangChain-style similarity retriever written in the standard library with math, dataclasses, collections.abc and typing and no third-party imports. Document is a frozen dataclass whose metadata id names its source. cosine returns 0.0 for a zero vector. InMemoryVectorStore embeds documents and returns them with scores best first. ScoreThresholdRetriever raises ValueError when k is below 1 or score_threshold is outside [0, 1]. invoke walks ranked results, stops at the first score below the threshold so an equal score is kept, skips documents failing the metadata filter, returns each source id once, and stops after k documents so filtering happens before k. The fixture asserts ranking with an inclusive threshold, deduplicated chunks, filter before k, the k limit, zero-vector scores and the ValueError cases.",
+  "plan": {
+    "intent": "Retrieve relevant chunks for RAG",
+    "target": "score-threshold retriever",
+    "constraints": [
+      "k below 1 or a score_threshold outside [0, 1] raises ValueError",
+      "Scores equal to the threshold are kept",
+      "Metadata filtering and dedup happen before the k limit",
+      "Each metadata id is returned at most once",
+      "A zero vector scores 0.0 instead of dividing by zero"
+    ]
+  },
+  "rationale": {
+    "teaches": "Walk the ranked list once, applying the threshold, filter and dedup before counting toward k.",
+    "why": "Truncating to k before filtering starves the prompt of context, and duplicate chunks of one source waste the context window."
+  },
+  "oracle": "fixtures/test_274_langchain_retriever_top_k_score_threshold.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Document",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "cosine",
+        "params": [
+          "left",
+          "right"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "InMemoryVectorStore",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "add_documents",
+          "similarity_search_with_score"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "ScoreThresholdRetriever",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "matches",
+          "invoke"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Document",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "cosine",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "InMemoryVectorStore",
+              "kind": "class",
+              "depends_on": [
+                "Document",
+                "cosine"
+              ]
+            },
+            {
+              "name": "ScoreThresholdRetriever",
+              "kind": "class",
+              "depends_on": [
+                "InMemoryVectorStore",
+                "Document"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "A LangChain-style retriever with top-k, a score threshold and dedup."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import math",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable, Mapping, Sequence",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from dataclasses import dataclass, field",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Document",
+        "source": "@dataclass(frozen=True)\nclass Document:\n    \"\"\"A retrieved text with metadata carrying its source id.\"\"\"\n\n    page_content: str\n    metadata: dict[str, Any] = field(default_factory=dict)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "cosine",
+        "source": "def cosine(left: Sequence[float], right: Sequence[float]) -> float:\n    \"\"\"Return cosine similarity, or 0.0 when either vector is zero.\"\"\"\n    norm = math.sqrt(sum(x * x for x in left)) * math.sqrt(sum(y * y for y in right))\n    if norm == 0:\n        return 0.0\n    return sum(x * y for x, y in zip(left, right, strict=True)) / norm",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "InMemoryVectorStore",
+        "source": "class InMemoryVectorStore:\n    \"\"\"Keep documents with their embeddings and rank them by cosine.\"\"\"\n\n    def __init__(self, embed: Callable[[str], list[float]]) -> None:\n        self._embed = embed\n        self._rows: list[tuple[Document, list[float]]] = []\n\n    def add_documents(self, docs: Sequence[Document]) -> None:\n        \"\"\"Embed and store each document in insertion order.\"\"\"\n        for doc in docs:\n            self._rows.append((doc, self._embed(doc.page_content)))\n\n    def similarity_search_with_score(self, query: str) -> list[tuple[Document, float]]:\n        \"\"\"Return every document with its score, best first, ties stable.\"\"\"\n        vector = self._embed(query)\n        scored = [(doc, cosine(vector, emb)) for doc, emb in self._rows]\n        return sorted(scored, key=lambda pair: pair[1], reverse=True)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ScoreThresholdRetriever",
+        "source": "class ScoreThresholdRetriever:\n    \"\"\"Return up to k distinct matching documents scoring at least a threshold.\"\"\"\n\n    def __init__(\n        self,\n        store: InMemoryVectorStore,\n        k: int = 4,\n        score_threshold: float = 0.0,\n        metadata_filter: Mapping[str, Any] | None = None,\n    ) -> None:\n        if k < 1:\n            raise ValueError(\"k must be at least 1\")\n        if not 0.0 <= score_threshold <= 1.0:\n            raise ValueError(\"score_threshold must be within [0, 1]\")\n        self.store = store\n        self.k = k\n        self.score_threshold = score_threshold\n        self.metadata_filter = dict(metadata_filter or {})\n\n    def matches(self, doc: Document) -> bool:\n        \"\"\"Return whether every filter key equals the document metadata.\"\"\"\n        return all(\n            doc.metadata.get(key) == value\n            for key, value in self.metadata_filter.items()\n        )\n\n    def invoke(self, query: str) -> list[Document]:\n        \"\"\"Filter, dedupe by metadata id, then keep the best k documents.\"\"\"\n        seen: set[Any] = set()\n        results: list[Document] = []\n        for doc, score in self.store.similarity_search_with_score(query):\n            if score < self.score_threshold:\n                break\n            if not self.matches(doc):\n                continue\n            doc_id = doc.metadata.get(\"id\", doc.page_content)\n            if doc_id in seen:\n                continue\n            seen.add(doc_id)\n            results.append(doc)\n            if len(results) == self.k:\n                break\n        return results",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A document scoring exactly the threshold is dropped from the results.",
+      "caught_by": [
+        "test_filter_is_applied_before_k",
+        "test_results_are_ranked_and_threshold_is_inclusive",
+        "test_zero_vectors_score_zero"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Several chunks from the same source document fill the results repeatedly.",
+      "caught_by": [
+        "test_duplicate_chunks_of_one_source_are_returned_once"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Truncating to k before filtering returns fewer documents than exist.",
+      "caught_by": [
+        "test_filter_is_applied_before_k"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A threshold above 1 or below 0 is accepted without complaint.",
+      "caught_by": [
+        "test_invalid_configuration_is_rejected"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A zero embedding raises ZeroDivisionError instead of scoring zero.",
+      "caught_by": [
+        "test_zero_vectors_score_zero"
+      ]
+    }
+  ]
+}

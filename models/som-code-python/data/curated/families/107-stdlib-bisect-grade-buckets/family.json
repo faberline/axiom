@@ -1,0 +1,153 @@
+{
+  "family_id": "107-stdlib-bisect-grade-buckets",
+  "domain": "python",
+  "area": "stdlib",
+  "capability": "bisect-threshold-bucketing",
+  "requirement": "Assign scores between 0 and 100 to letter grades defined by ascending thresholds, where a score equal to a threshold falls into the higher grade, validate the scale on construction, and count scores per grade including empty grades.",
+  "skeleton": "GradeScale class validating thresholds and labels, grade using bisect_right, and histogram seeded with every label.",
+  "caption": "Letter grading with the standard-library bisect module. GradeScale(thresholds, labels) takes ascending lower bounds and one more label than thresholds; it raises ValueError saying labels must have one more entry than thresholds when the counts disagree, and ValueError saying thresholds must be strictly increasing when any neighbouring pair from itertools.pairwise is not strictly ascending. grade(score) raises ValueError naming a score out of range unless the score is between 0 and 100 inclusive, then indexes the labels with bisect.bisect_right over the thresholds so a score exactly on a threshold belongs to the higher bucket. histogram(scores) starts from dict.fromkeys over every label with zero, grades each score and increments its label, so labels with no scores still appear with a count of zero. The fixture builds thresholds 60, 70, 80 and 90 with labels F, D, C, B and A and asserts that 0 and 59.9 are F, 60 is D, 89.5 is B, and both 90 and 100 are A, that 100.5 and -1 raise ValueError, that a scale with three labels for one threshold or with a repeated threshold raises ValueError, and that the histogram of 95, 91 and 65 lists F, C and B with zero, D with one and A with two.",
+  "plan": {
+    "intent": "Turn numeric scores into letter grades",
+    "target": "grade scale",
+    "constraints": [
+      "A score equal to a threshold receives the higher grade",
+      "Scores outside 0 to 100 inclusive raise ValueError",
+      "Labels must number one more than thresholds and thresholds must strictly increase",
+      "The histogram includes grades with zero scores"
+    ]
+  },
+  "rationale": {
+    "teaches": "bisect_right as a lookup into sorted bucket boundaries, with construction-time validation of the boundaries.",
+    "why": "Bucketing code turns on which side of a boundary an exact value falls and on inclusive range checks, and both errors are invisible unless the exact boundary values are tested."
+  },
+  "oracle": "fixtures/test_107_stdlib_bisect_grade_buckets.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "GradeScale",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "grade",
+          "histogram"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "GradeScale",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Map scores to letter grades with bisect over sorted thresholds."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from bisect import bisect_right",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Iterable, Sequence",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from itertools import pairwise",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "GradeScale",
+        "source": "class GradeScale:\n    \"\"\"Letter grades defined by ascending lower-bound thresholds.\"\"\"\n\n    def __init__(self, thresholds: Sequence[float], labels: Sequence[str]) -> None:\n        if len(labels) != len(thresholds) + 1:\n            raise ValueError(\"labels must have one more entry than thresholds\")\n        if any(low >= high for low, high in pairwise(thresholds)):\n            raise ValueError(\"thresholds must be strictly increasing\")\n        self._thresholds = list(thresholds)\n        self._labels = list(labels)\n\n    def grade(self, score: float) -> str:\n        \"\"\"Return the label whose bucket contains score; thresholds start a bucket.\"\"\"\n        if not 0 <= score <= 100:\n            raise ValueError(f\"score out of range: {score}\")\n        return self._labels[bisect_right(self._thresholds, score)]\n\n    def histogram(self, scores: Iterable[float]) -> dict[str, int]:\n        \"\"\"Count scores per label, listing every label even when it has none.\"\"\"\n        counts = dict.fromkeys(self._labels, 0)\n        for score in scores:\n            label = self.grade(score)\n            counts[label] = counts.get(label, 0) + 1\n        return counts",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Repeated or descending thresholds are accepted, leaving buckets that can never be reached.",
+      "caught_by": [
+        "test_thresholds_must_strictly_increase"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "bisect_left puts a score equal to a threshold into the lower grade.",
+      "caught_by": [
+        "test_threshold_values_belong_to_the_upper_bucket"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The range check excludes 100, so a perfect score is rejected.",
+      "caught_by": [
+        "test_threshold_values_belong_to_the_upper_bucket"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The label count is compared with the threshold count directly, so every valid scale is rejected and mismatched ones are accepted.",
+      "caught_by": [
+        "test_histogram_lists_every_label_including_empty_ones",
+        "test_out_of_range_scores_are_rejected",
+        "test_threshold_values_belong_to_the_upper_bucket",
+        "test_thresholds_must_strictly_increase"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The histogram starts empty, so grades with no scores are missing instead of reported as zero.",
+      "caught_by": [
+        "test_histogram_lists_every_label_including_empty_ones"
+      ]
+    }
+  ]
+}

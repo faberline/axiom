@@ -1,0 +1,219 @@
+{
+  "family_id": "174-pydantic-typeadapter-row-errors",
+  "domain": "python",
+  "area": "pydantic",
+  "capability": "typeadapter-bulk-row-error-collection",
+  "requirement": "Validate CSV contact rows independently, coercing string values, keeping every valid row and reporting each failing field with its file line number, where the header counts as line 1.",
+  "skeleton": "A Contact TypedDict with Annotated Field bounds, a module TypeAdapter, a RowError dataclass, and import_contacts looping with line numbers from 2, catching ValidationError and expanding errors() into RowError entries.",
+  "caption": "Bulk validation of CSV contact rows with a pydantic v2 TypeAdapter over a TypedDict, reporting every failing field instead of stopping at the first bad row. Contact is a typing.TypedDict with name as Annotated str with Field min_length=1, age as Annotated int with Field ge=0 and le=150, and newsletter as a bool. A module-level TypeAdapter of Contact validates plain dicts in lax mode, so CSV strings such as 36 and yes become the int 36 and True. RowError is a frozen dataclass holding the file line, the field and the message. import_contacts(rows) walks the rows with enumerate starting at 2, because the CSV header is line 1, calls validate_python on a dict copy of each row, and appends the result. It catches pydantic.ValidationError, and for each entry of exc.errors() joins the loc parts with dots into the field name and records a RowError with the entry's msg, then continues with the next row. It returns the valid contacts and the errors. The fixture feeds csv.DictReader input and asserts that valid rows are coerced with age 150 accepted, that an empty name on line 3 and a non-numeric age on line 4 are reported while the rows around them import, that one row with three bad fields yields three errors on line 2, and that a missing newsletter column is reported for every row.",
+  "plan": {
+    "intent": "Import spreadsheet rows and report every problem",
+    "target": "contact importer",
+    "constraints": [
+      "Line numbers start at 2 because the header is line 1",
+      "Every failing field in a row is reported",
+      "Rows after a bad row are still imported",
+      "Age must be between 0 and 150 inclusive",
+      "Names must not be empty",
+      "A missing column is reported for each row"
+    ]
+  },
+  "rationale": {
+    "teaches": "TypeAdapter over a TypedDict for per-item validation and expanding ValidationError.errors() into user-facing line and field reports.",
+    "why": "Validating the whole list at once or reporting only the first error forces users to fix one cell per upload, and off-by-one line numbers point at the wrong row."
+  },
+  "oracle": "fixtures/test_174_pydantic_typeadapter_row_errors.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Contact",
+        "bases": [
+          "TypedDict"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "_CONTACT"
+      },
+      {
+        "kind": "class",
+        "name": "RowError",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "import_contacts",
+        "params": [
+          "rows"
+        ]
+      }
+    ],
+    "imports": [
+      "pydantic"
+    ],
+    "raises": [],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Contact",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "_CONTACT",
+              "kind": "constant",
+              "depends_on": [
+                "Contact"
+              ]
+            },
+            {
+              "name": "RowError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "import_contacts",
+              "kind": "function",
+              "depends_on": [
+                "Contact",
+                "RowError",
+                "_CONTACT"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Validate imported CSV rows one by one and report every failing field."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Iterable, Mapping",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from dataclasses import dataclass",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Annotated, TypedDict",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import Field, TypeAdapter, ValidationError",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Contact",
+        "source": "class Contact(TypedDict):\n    \"\"\"One imported contact after validation and coercion.\"\"\"\n\n    name: Annotated[str, Field(min_length=1)]\n    age: Annotated[int, Field(ge=0, le=150)]\n    newsletter: bool",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_CONTACT",
+        "source": "_CONTACT: TypeAdapter[Contact] = TypeAdapter(Contact)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "RowError",
+        "source": "@dataclass(frozen=True)\nclass RowError:\n    \"\"\"A validation problem at a file line and field.\"\"\"\n\n    line: int\n    field: str\n    message: str",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "import_contacts",
+        "source": "def import_contacts(\n    rows: Iterable[Mapping[str, str]],\n) -> tuple[list[Contact], list[RowError]]:\n    \"\"\"Return the valid contacts and one error per failing field.\n\n    Line numbers count the CSV header as line 1, so the first row is line 2.\n    \"\"\"\n    contacts: list[Contact] = []\n    errors: list[RowError] = []\n    for line, row in enumerate(rows, start=2):\n        try:\n            contacts.append(_CONTACT.validate_python(dict(row)))\n        except ValidationError as exc:\n            for error in exc.errors():\n                field = \".\".join(str(part) for part in error[\"loc\"])\n                errors.append(RowError(line, field, error[\"msg\"]))\n    return contacts, errors",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Line numbers ignore the header row, so every report points one line too early.",
+      "caught_by": [
+        "test_errors_carry_file_line_and_field",
+        "test_every_failing_field_in_a_row_is_reported",
+        "test_missing_column_is_reported_per_row"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Only the first failing field of each row is reported.",
+      "caught_by": [
+        "test_every_failing_field_in_a_row_is_reported"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The import stops at the first invalid row, dropping every later row.",
+      "caught_by": [
+        "test_errors_carry_file_line_and_field",
+        "test_missing_column_is_reported_per_row"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "lt=150 rejects a contact whose age is exactly 150.",
+      "caught_by": [
+        "test_valid_rows_are_coerced"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Rows with an empty name are imported as valid contacts.",
+      "caught_by": [
+        "test_errors_carry_file_line_and_field",
+        "test_every_failing_field_in_a_row_is_reported"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,223 @@
+{
+  "family_id": "146-sqlalchemy-begin-nested-savepoint-import",
+  "domain": "python",
+  "area": "sqlalchemy",
+  "capability": "begin-nested-savepoint-per-row",
+  "requirement": "Import contact rows so that a malformed or duplicate email only rejects that row while every good row is kept, storing emails lower-case, reporting the rejected emails as given and committing the import.",
+  "skeleton": "Contact declarative model with a unique email, and import_contacts looping over rows, rejecting emails without @, adding each contact inside session.begin_nested and catching IntegrityError, then committing and returning the rejected list.",
+  "caption": "Partial-failure imports with SQLAlchemy 2.0 savepoints. Contact has an id, a unique email of up to 254 characters and a name. import_contacts(session, rows) walks (email, name) pairs; an email without an @ is added to the rejected list without touching the database. Every other row is added as a Contact with the email lower-cased inside with session.begin_nested(), which opens a SAVEPOINT, flushes on exit and releases it; when the unique constraint fails the flush raises IntegrityError from sqlalchemy.exc, the context manager rolls back only to that savepoint, and the loop records the email exactly as given and continues. Earlier good rows stay in the outer transaction, which is committed once at the end, and the list of rejected emails is returned in input order. The fixture gives pysqlite explicit BEGIN handling so savepoints nest inside a real outer transaction, and asserts that importing Bob, Ann's email in upper case, a malformed address, Cy and Bob again rejects A@X.IO, not-an-email and b@x.io while leaving a, b and c stored, that the import survives a later rollback because it was committed, and that E@X.io is stored as e@x.io.",
+  "plan": {
+    "intent": "Import contact lists without all-or-nothing failures",
+    "target": "contact import",
+    "constraints": [
+      "A duplicate or malformed email rejects only its own row",
+      "Good rows before and after a bad row are kept",
+      "Emails are stored lower-case, so duplicates are case-insensitive",
+      "Rejected emails are returned as given, in input order",
+      "The import is committed"
+    ]
+  },
+  "rationale": {
+    "teaches": "session.begin_nested as a per-row SAVEPOINT so an IntegrityError rolls back one row, with a single commit of the outer transaction.",
+    "why": "Rolling back the whole session on one duplicate throws away every good row imported so far, and forgetting to normalize case lets duplicates through, neither of which shows up in a batch without conflicts."
+  },
+  "oracle": "fixtures/test_146_sqlalchemy_begin_nested_savepoint_import.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Base",
+        "bases": [
+          "DeclarativeBase"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Contact",
+        "bases": [
+          "Base"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "import_contacts",
+        "params": [
+          "session",
+          "rows"
+        ]
+      }
+    ],
+    "imports": [
+      "sqlalchemy"
+    ],
+    "raises": [],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Base",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Contact",
+              "kind": "class",
+              "depends_on": [
+                "Base"
+              ]
+            },
+            {
+              "name": "import_contacts",
+              "kind": "function",
+              "depends_on": [
+                "Contact"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Contact import that skips bad rows using one savepoint per row."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Iterable",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy import String",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.exc import IntegrityError",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Base",
+        "source": "class Base(DeclarativeBase):\n    \"\"\"Declarative base for this module's tables.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "Contact",
+        "id": "sqlalchemy_table",
+        "params": {
+          "name": "Contact",
+          "doc": "A contact identified by a unique lower-case email.",
+          "table": "contacts",
+          "columns": [
+            {
+              "column": "id",
+              "type": "int",
+              "value": "mapped_column(primary_key=True)"
+            },
+            {
+              "column": "email",
+              "type": "str",
+              "value": "mapped_column(String(254), unique=True)"
+            },
+            {
+              "column": "name",
+              "type": "str",
+              "value": "mapped_column(String(100))"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "import_contacts",
+        "source": "def import_contacts(session: Session, rows: Iterable[tuple[str, str]]) -> list[str]:\n    \"\"\"Insert rows, each in its own savepoint; return the emails rejected.\"\"\"\n    rejected: list[str] = []\n    for email, name in rows:\n        if \"@\" not in email:\n            rejected.append(email)\n            continue\n        try:\n            with session.begin_nested():\n                session.add(Contact(email=email.lower(), name=name))\n        except IntegrityError:\n            rejected.append(email)\n    session.commit()\n    return rejected",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 1,
+      "literal_blocks": 2
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Without a savepoint a duplicate rolls back the whole session, discarding earlier good rows.",
+      "caught_by": [
+        "test_bad_rows_are_skipped_and_good_rows_kept",
+        "test_the_import_is_committed"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Emails are stored as given, so an upper-case duplicate is inserted as a new contact.",
+      "caught_by": [
+        "test_bad_rows_are_skipped_and_good_rows_kept",
+        "test_emails_are_stored_lower_case"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The outer transaction is only flushed, so a rollback discards the whole import.",
+      "caught_by": [
+        "test_the_import_is_committed"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Malformed emails without an @ are stored instead of rejected.",
+      "caught_by": [
+        "test_bad_rows_are_skipped_and_good_rows_kept"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Rejected duplicates are reported lower-cased instead of as the caller gave them.",
+      "caught_by": [
+        "test_bad_rows_are_skipped_and_good_rows_kept"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,218 @@
+{
+  "family_id": "196-crypto-x25519-key-agreement",
+  "domain": "python",
+  "area": "security",
+  "capability": "x25519-session-key-agreement",
+  "requirement": "Derive a symmetric session key from an X25519 exchange with HKDF-SHA256 so both parties agree, binding it to both public keys and a context, and reject malformed or low-order peer keys.",
+  "skeleton": "A HandshakeError subclass of ValueError, public_bytes exporting raw public keys, and session_key validating the peer and context, exchanging, and running HKDF over a sorted-transcript salt.",
+  "caption": "X25519 key agreement with the cryptography library. HandshakeError subclasses ValueError. public_bytes(key) exports the 32 raw public bytes. session_key(private, peer, *, context) raises HandshakeError saying the peer public key must be 32 bytes when peer has another length, and ValueError saying context must not be empty. It calls private.exchange with X25519PublicKey.from_public_bytes(peer) and turns the ValueError that exchange raises for an all-zero or other low-order point into HandshakeError saying the peer public key is a low-order point. The key is HKDF with hashes.SHA256, length SESSION_KEY_BYTES of 32, salt the two public keys sorted and concatenated so both sides compute the same transcript, and info b'x25519-session/' plus the context. The fixture asserts, against its own HMAC-SHA256 HKDF reference, that Alice and Bob derive the same 32 byte key, that another context or Eve's key changes it, that a 31 byte peer raises HandshakeError naming 32 bytes, that an all-zero peer raises HandshakeError naming low-order, and that an empty context raises ValueError.",
+  "plan": {
+    "intent": "Establish a shared encryption key between two peers",
+    "target": "key agreement",
+    "constraints": [
+      "Both sides derive the same 32 byte key from HKDF-SHA256",
+      "The salt is both public keys sorted and joined, the info is x25519-session/ plus the context",
+      "Peer keys that are not 32 bytes raise HandshakeError",
+      "Low-order peer keys raise HandshakeError instead of a bare ValueError",
+      "An empty context raises ValueError"
+    ]
+  },
+  "rationale": {
+    "teaches": "Never use the raw X25519 output as a key; run it through HKDF with a transcript both sides can rebuild and a purpose string, and map exchange failures to a domain error.",
+    "why": "Order-dependent transcripts make the two sides disagree, and letting low-order points or short keys through as generic errors hides handshake attacks from the caller."
+  },
+  "oracle": "fixtures/test_196_crypto_x25519_key_agreement.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "SESSION_KEY_BYTES"
+      },
+      {
+        "kind": "class",
+        "name": "HandshakeError",
+        "bases": [
+          "ValueError"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "public_bytes",
+        "params": [
+          "key"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "session_key",
+        "params": [
+          "private",
+          "peer",
+          "context"
+        ]
+      }
+    ],
+    "imports": [
+      "cryptography"
+    ],
+    "raises": [
+      "HandshakeError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "SESSION_KEY_BYTES",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "HandshakeError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "public_bytes",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "session_key",
+              "kind": "function",
+              "depends_on": [
+                "HandshakeError",
+                "public_bytes",
+                "SESSION_KEY_BYTES"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "X25519 key agreement that derives a transcript-bound session key."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from cryptography.hazmat.primitives import hashes, serialization",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from cryptography.hazmat.primitives.asymmetric.x25519 import (\n    X25519PrivateKey,\n    X25519PublicKey,\n)",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from cryptography.hazmat.primitives.kdf.hkdf import HKDF",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SESSION_KEY_BYTES",
+        "source": "SESSION_KEY_BYTES = 32",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "HandshakeError",
+        "source": "class HandshakeError(ValueError):\n    \"\"\"The peer's public key cannot be used for the handshake.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "public_bytes",
+        "source": "def public_bytes(key: X25519PrivateKey) -> bytes:\n    \"\"\"Return the 32 raw bytes of the public half of ``key``.\"\"\"\n    return key.public_key().public_bytes(\n        encoding=serialization.Encoding.Raw,\n        format=serialization.PublicFormat.Raw,\n    )",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "session_key",
+        "source": "def session_key(private: X25519PrivateKey, peer: bytes, *, context: bytes) -> bytes:\n    \"\"\"Agree on a session key with the peer whose raw public key is ``peer``.\"\"\"\n    if len(peer) != 32:\n        raise HandshakeError(f\"peer public key must be 32 bytes, got {len(peer)}\")\n    if not context:\n        raise ValueError(\"context must not be empty\")\n    try:\n        shared = private.exchange(X25519PublicKey.from_public_bytes(peer))\n    except ValueError as exc:\n        raise HandshakeError(\"peer public key is a low-order point\") from exc\n    transcript = b\"\".join(sorted((public_bytes(private), peer)))\n    return HKDF(\n        algorithm=hashes.SHA256(),\n        length=SESSION_KEY_BYTES,\n        salt=transcript,\n        info=b\"x25519-session/\" + context,\n    ).derive(shared)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The transcript is ordered by who calls, so the two sides derive different keys.",
+      "caught_by": [
+        "test_both_sides_agree_on_the_reference_key"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A low-order peer key escapes as a bare ValueError instead of HandshakeError.",
+      "caught_by": [
+        "test_low_order_peer_key_is_a_handshake_error"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The info string drops the x25519-session/ label, so keys are not domain-separated.",
+      "caught_by": [
+        "test_both_sides_agree_on_the_reference_key"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Session keys are only 16 bytes instead of 32.",
+      "caught_by": [
+        "test_both_sides_agree_on_the_reference_key"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A short peer key is misreported as a low-order point instead of a length error.",
+      "caught_by": [
+        "test_short_peer_key_is_a_handshake_error"
+      ]
+    }
+  ]
+}

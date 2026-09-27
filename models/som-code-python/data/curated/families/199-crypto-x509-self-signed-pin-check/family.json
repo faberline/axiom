@@ -1,0 +1,185 @@
+{
+  "family_id": "199-crypto-x509-self-signed-pin-check",
+  "domain": "python",
+  "area": "security",
+  "capability": "x509-self-signed-pin-check",
+  "requirement": "Before pinning a self-signed PEM certificate for a host, require a timezone-aware check time inside its validity window, the host among its subjectAltName DNS names, and a signature by its own key.",
+  "skeleton": "A CertificateError subclass of ValueError and check_certificate validating the clock, the validity window, the SAN host match and the self-signature, mapping library errors to CertificateError.",
+  "caption": "Pinning a self-signed certificate with the cryptography x509 module. CertificateError subclasses ValueError. check_certificate(pem, hostname, *, now) raises ValueError saying now must be timezone-aware for a naive datetime, loads the PEM, and compares now with not_valid_before_utc and not_valid_after_utc, both ends inclusive, raising CertificateError saying the certificate is not valid yet or has expired. It reads the SubjectAlternativeName extension, turning x509.ExtensionNotFound into CertificateError saying there is no subjectAltName, and matches the hostname case-insensitively against its DNS names, never the common name, raising CertificateError naming the host. Finally verify_directly_issued_by(cert) must succeed, and its ValueError or InvalidSignature becomes CertificateError saying the certificate is not self-signed. It returns the certificate. The fixture asserts that API.Example.com passes against a two-name SAN, that the exact start and end instants pass, that a day outside either end raises CertificateError, that another host or a missing SAN raise CertificateError, that a foreign issuer or signer raise CertificateError, and that a naive now raises ValueError.",
+  "plan": {
+    "intent": "Decide whether a server's self-signed certificate may be pinned",
+    "target": "certificate checker",
+    "constraints": [
+      "A naive now raises ValueError",
+      "The validity window uses the UTC properties and includes both ends, otherwise CertificateError",
+      "The host must appear case-insensitively in the SAN DNS names, a missing SAN raises CertificateError",
+      "The certificate must verify as issued by itself, otherwise CertificateError",
+      "The loaded certificate is returned on success"
+    ]
+  },
+  "rationale": {
+    "teaches": "Use not_valid_before_utc and not_valid_after_utc, match hosts against subjectAltName rather than the CN, and prove self-signing with verify_directly_issued_by.",
+    "why": "Naive timestamps crash on aware clocks, CN matching is obsolete, and checking only issuer equals subject lets any key forge a look-alike certificate."
+  },
+  "oracle": "fixtures/test_199_crypto_x509_self_signed_pin_check.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "CertificateError",
+        "bases": [
+          "ValueError"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "check_certificate",
+        "params": [
+          "pem",
+          "hostname",
+          "now"
+        ]
+      }
+    ],
+    "imports": [
+      "cryptography"
+    ],
+    "raises": [
+      "CertificateError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "CertificateError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "check_certificate",
+              "kind": "function",
+              "depends_on": [
+                "CertificateError"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Check a self-signed PEM certificate before pinning it for a host."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from datetime import datetime",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from cryptography import x509",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from cryptography.exceptions import InvalidSignature",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "CertificateError",
+        "source": "class CertificateError(ValueError):\n    \"\"\"The certificate cannot be pinned for this host.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "check_certificate",
+        "source": "def check_certificate(pem: bytes, hostname: str, *, now: datetime) -> x509.Certificate:\n    \"\"\"Load ``pem`` and require it to be current, self-signed and name ``hostname``.\"\"\"\n    if now.tzinfo is None:\n        raise ValueError(\"now must be timezone-aware\")\n    cert = x509.load_pem_x509_certificate(pem)\n    if now < cert.not_valid_before_utc:\n        raise CertificateError(\"certificate is not valid yet\")\n    if now > cert.not_valid_after_utc:\n        raise CertificateError(\"certificate has expired\")\n    try:\n        san = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)\n    except x509.ExtensionNotFound as exc:\n        raise CertificateError(\"certificate has no subjectAltName\") from exc\n    names = {name.lower() for name in san.value.get_values_for_type(x509.DNSName)}\n    if hostname.lower() not in names:\n        raise CertificateError(f\"{hostname} is not in subjectAltName\")\n    try:\n        cert.verify_directly_issued_by(cert)\n    except (ValueError, InvalidSignature) as exc:\n        raise CertificateError(\"certificate is not self-signed\") from exc\n    return cert",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The final valid second is treated as expired.",
+      "caught_by": [
+        "test_validity_window_is_inclusive"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Host names are matched case-sensitively, so API.Example.com is refused.",
+      "caught_by": [
+        "test_valid_certificate_is_returned"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A certificate without SAN raises ExtensionNotFound instead of CertificateError.",
+      "caught_by": [
+        "test_host_must_be_in_subject_alt_name"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The self-signature is never checked, so CA-issued or forged certificates pass.",
+      "caught_by": [
+        "test_certificate_must_be_self_signed"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The naive not_valid_before is compared with an aware clock and raises TypeError.",
+      "caught_by": [
+        "test_certificate_must_be_self_signed",
+        "test_host_must_be_in_subject_alt_name",
+        "test_outside_window_is_rejected",
+        "test_valid_certificate_is_returned",
+        "test_validity_window_is_inclusive"
+      ]
+    }
+  ]
+}

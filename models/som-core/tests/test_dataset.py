@@ -258,9 +258,9 @@ def test_split_keeps_validation_rows_for_every_layer() -> None:
 @pytest.mark.skipif(not CURATED.is_dir(), reason="curated corpus not checked out")
 def test_curated_corpus_carries_measured_caught_by_on_every_oracle_family() -> None:
     families = load_corpus(CURATED, as_dicts=False)
-    assert len(families) == 101
+    assert len(families) == 303
     with_oracle = [f for f in families if f.metadata.get("oracle") is not None]
-    assert len(with_oracle) == 98
+    assert len(with_oracle) == 300
     for fam in with_oracle:
         misses = [c for c in fam.candidates if c.kind == "near_miss"]
         assert len(misses) == 5, fam.family_id

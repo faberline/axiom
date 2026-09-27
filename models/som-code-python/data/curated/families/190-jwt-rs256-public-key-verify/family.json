@@ -1,0 +1,225 @@
+{
+  "family_id": "190-jwt-rs256-public-key-verify",
+  "domain": "python",
+  "area": "security",
+  "capability": "jwt-rs256-public-key-verification",
+  "requirement": "Sign tokens with an RSA private key of at least 2048 bits and let verifiers check them with only the public PEM, pinned to RS256 so algorithm confusion is impossible.",
+  "skeleton": "new_signing_key with a size check, public_pem exporting SubjectPublicKeyInfo, sign with RS256, and verify loading the PEM, checking it is RSA and decoding with RS256 only.",
+  "caption": "RS256 JWTs with PyJWT and cryptography where verifiers hold only the public key. new_signing_key(bits=2048) raises ValueError saying RSA keys must be at least 2048 bits for smaller sizes and otherwise calls rsa.generate_private_key with public_exponent 65537. public_pem(key) exports the public half as a SubjectPublicKeyInfo PEM. sign(key, claims) encodes with RS256. verify(pem, token) loads the PEM with serialization.load_pem_public_key, raises TypeError saying the verification key must be an RSA public key for any other key type, and decodes with algorithms pinned to RS256 only, so a token from another key raises jwt.InvalidSignatureError and an HS256 token forged by using the public PEM as an HMAC secret raises jwt.InvalidAlgorithmError. The fixture asserts that the PEM starts with BEGIN PUBLIC KEY, that the header alg is RS256 and the claims round-trip, that a different key raises jwt.InvalidSignatureError, that the forged HS256 token raises jwt.InvalidAlgorithmError, that an EC public key raises TypeError, that 1024 bits raises ValueError, and that the key has exponent 65537 and size 2048.",
+  "plan": {
+    "intent": "Let services verify tokens without the signing secret",
+    "target": "asymmetric JWT signing",
+    "constraints": [
+      "Keys are RSA with exponent 65537 and at least 2048 bits, smaller sizes raise ValueError",
+      "Only the public half is exported, as PEM",
+      "Tokens are signed and verified with RS256 only",
+      "Non-RSA verification keys raise TypeError",
+      "Foreign signatures raise jwt.InvalidSignatureError",
+      "HS256 tokens raise jwt.InvalidAlgorithmError"
+    ]
+  },
+  "rationale": {
+    "teaches": "Pin algorithms to the one that matches the key type and check the loaded key's type, instead of trusting the alg header.",
+    "why": "Accepting HS256 next to RS256 is the classic algorithm confusion attack, where the public key that everyone has becomes an HMAC secret."
+  },
+  "oracle": "fixtures/test_190_jwt_rs256_public_key_verify.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "function",
+        "name": "new_signing_key",
+        "params": [
+          "bits"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "public_pem",
+        "params": [
+          "key"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "sign",
+        "params": [
+          "key",
+          "claims"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "verify",
+        "params": [
+          "pem",
+          "token"
+        ]
+      }
+    ],
+    "imports": [
+      "cryptography",
+      "jwt"
+    ],
+    "raises": [
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "new_signing_key",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "public_pem",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "sign",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "verify",
+              "kind": "function",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Sign JWTs with an RSA private key and verify them with only the public PEM."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Mapping",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import jwt",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from cryptography.hazmat.primitives import serialization",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from cryptography.hazmat.primitives.asymmetric import rsa",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "new_signing_key",
+        "source": "def new_signing_key(bits: int = 2048) -> rsa.RSAPrivateKey:\n    \"\"\"Generate an RSA signing key of at least 2048 bits.\"\"\"\n    if bits < 2048:\n        raise ValueError(\"RSA keys must be at least 2048 bits\")\n    return rsa.generate_private_key(public_exponent=65537, key_size=bits)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "public_pem",
+        "source": "def public_pem(key: rsa.RSAPrivateKey) -> bytes:\n    \"\"\"Export only the public half as a SubjectPublicKeyInfo PEM.\"\"\"\n    return key.public_key().public_bytes(\n        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo\n    )",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "sign",
+        "source": "def sign(key: rsa.RSAPrivateKey, claims: Mapping[str, Any]) -> str:\n    \"\"\"Sign claims with RS256.\"\"\"\n    return jwt.encode(dict(claims), key, algorithm=\"RS256\")",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "verify",
+        "source": "def verify(pem: bytes, token: str) -> dict[str, Any]:\n    \"\"\"Verify an RS256 token against a public PEM, refusing any other algorithm.\"\"\"\n    public_key = serialization.load_pem_public_key(pem)\n    if not isinstance(public_key, rsa.RSAPublicKey):\n        raise TypeError(\"verification key must be an RSA public key\")\n    claims: dict[str, Any] = jwt.decode(token, public_key, algorithms=[\"RS256\"])\n    return claims",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "1024 bit RSA keys are accepted although they are too weak.",
+      "caught_by": [
+        "test_small_keys_are_rejected"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Any key type is passed to the decoder, so an EC key fails with a JWT error instead of TypeError.",
+      "caught_by": [
+        "test_non_rsa_public_key_is_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "HS256 is allowed next to RS256, opening the algorithm confusion path.",
+      "caught_by": [
+        "test_hs256_token_forged_with_the_public_pem_is_refused"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "A public exponent of 3 is used instead of the standard 65537.",
+      "caught_by": [
+        "test_key_parameters"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Tokens are signed with RS512, which the RS256-only verifier refuses.",
+      "caught_by": [
+        "test_other_key_fails_the_signature",
+        "test_round_trip_with_public_pem_only"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,162 @@
+{
+  "family_id": "162-pytest-caplog-module-logger",
+  "domain": "python",
+  "area": "pytest",
+  "capability": "module-logger-lazy-args-caplog",
+  "requirement": "Parse integer amounts from text lines, logging a warning with the line number for each unparseable or negative line through a module-level logger with lazy arguments, an INFO summary on success, and an ERROR plus ValueError when nothing is valid.",
+  "skeleton": "A module-level logger from getLogger(__name__) and parse_amounts enumerating lines from 1, skipping blanks, warning on bad and negative values, then either logging an error and raising or logging an info summary.",
+  "caption": "Logging from library code through a module-level logger from the standard-library logging module, verified with the pytest caplog fixture. The module creates logger with logging.getLogger(__name__) so records carry the module name and callers can tune it. parse_amounts(lines) numbers lines from 1, strips each one and silently skips blank lines while counting the rest as seen. A line that int cannot parse is logged with logger.warning using lazy percent-style arguments, line number and repr of the text, and skipped; a negative value is logged as a negative amount skipped and dropped, while zero is kept. If nothing valid remains it logs an error saying no valid amounts in N lines and raises ValueError saying no valid amounts in input. Otherwise it logs at INFO level parsed K of N lines and returns the amounts. Formatting is left to logging by passing arguments separately, so record.msg stays the template and record.args holds the values. The fixture sets caplog to INFO for the candidate logger and asserts that clean input yields exactly one INFO summary, that bad lines produce warnings for line 2 and line 4 followed by parsed 2 of 4 lines, that every record's name is candidate, that the first record's msg is the template with args one and x, and that all-invalid input logs an ERROR and raises ValueError.",
+  "plan": {
+    "intent": "Make skipped input visible without failing the import",
+    "target": "amount parser",
+    "constraints": [
+      "Records come from the module logger, not the root logger",
+      "Warnings name the 1-based line number and use lazy arguments",
+      "Negative amounts are skipped and zero is kept",
+      "A successful parse logs an INFO summary",
+      "No valid amounts logs an ERROR and raises ValueError"
+    ]
+  },
+  "rationale": {
+    "teaches": "getLogger(__name__) with percent-style lazy arguments and level choice, asserted through caplog records rather than printed text.",
+    "why": "f-strings, the root logger and a debug-level summary all still print something, so the difference only shows when a test inspects record names, templates and levels."
+  },
+  "oracle": "fixtures/test_162_pytest_caplog_module_logger.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "logger"
+      },
+      {
+        "kind": "function",
+        "name": "parse_amounts",
+        "params": [
+          "lines"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "logger",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "parse_amounts",
+              "kind": "function",
+              "depends_on": [
+                "logger"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Parse amounts, logging skipped lines through a module-level logger."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import logging",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Iterable",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "logger",
+        "source": "logger = logging.getLogger(__name__)",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "parse_amounts",
+        "source": "def parse_amounts(lines: Iterable[str]) -> list[int]:\n    \"\"\"Return the non-negative integer amounts, warning about each bad line.\"\"\"\n    amounts: list[int] = []\n    seen = 0\n    for number, line in enumerate(lines, start=1):\n        text = line.strip()\n        if not text:\n            continue\n        seen += 1\n        try:\n            value = int(text)\n        except ValueError:\n            logger.warning(\"line %d: not an integer: %r\", number, text)\n            continue\n        if value < 0:\n            logger.warning(\"line %d: negative amount %d skipped\", number, value)\n            continue\n        amounts.append(value)\n    if not amounts:\n        logger.error(\"no valid amounts in %d lines\", seen)\n        raise ValueError(\"no valid amounts in input\")\n    logger.info(\"parsed %d of %d lines\", len(amounts), seen)\n    return amounts",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The f-string formats eagerly, so record.msg is the finished text and the arguments are lost.",
+      "caught_by": [
+        "test_messages_are_formatted_lazily"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "logging.warning logs through the root logger, so the record is not named after the module.",
+      "caught_by": [
+        "test_records_come_from_the_module_logger"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Lines are numbered from zero, so every warning points one line too early.",
+      "caught_by": [
+        "test_bad_lines_are_warned_with_their_line_number",
+        "test_messages_are_formatted_lazily"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Zero is treated as negative and skipped with a warning.",
+      "caught_by": [
+        "test_clean_input_logs_only_a_summary"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The summary is logged at DEBUG, so it disappears at the default INFO level.",
+      "caught_by": [
+        "test_bad_lines_are_warned_with_their_line_number",
+        "test_clean_input_logs_only_a_summary"
+      ]
+    }
+  ]
+}

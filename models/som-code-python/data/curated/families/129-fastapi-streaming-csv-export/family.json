@@ -1,0 +1,267 @@
+{
+  "family_id": "129-fastapi-streaming-csv-export",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "streaming-csv-response",
+  "requirement": "Export orders as a CSV attachment through a StreamingResponse fed by a generator that writes each row with the csv module into a reused buffer, pulls orders lazily, formats cents as decimal amounts and supports an optional status filter.",
+  "skeleton": "Order TypedDict, ORDERS seed and HEADER, csv_rows generator reusing a StringIO with csv.writer, and a GET /orders.csv handler returning StreamingResponse with a filtered generator.",
+  "caption": "Streaming a CSV download from FastAPI. Order is a TypedDict with id, customer, total_cents and status, and ORDERS holds three seeded rows including a customer name with a comma and one with double quotes. csv_rows(orders) is a generator that creates one io.StringIO with a csv.writer, writes and yields the header line id, customer, total before touching the input, then for each order empties the buffer with seek(0) and truncate(), writes the id, the customer and the total as whole units, a dot and two-digit cents, and yields that single line, so the csv module handles quoting and the CRLF terminator and orders are pulled one at a time. GET /orders.csv takes an optional status query parameter, filters ORDERS with a generator expression and returns fastapi.responses.StreamingResponse over csv_rows with media type text/csv and a Content-Disposition header naming orders.csv as an attachment. The fixture asserts the content type and attachment header, that the body parses back with csv.reader into the header plus one row per order with quoted fields intact, amounts 12.50 and 3.00 and CRLF endings, that status open keeps ids 1 and 3, and that the header is produced before any order is pulled and the first order only on the next step.",
+  "plan": {
+    "intent": "Download large order exports without buffering them",
+    "target": "streaming CSV endpoint",
+    "constraints": [
+      "Rows are written by the csv module so commas and quotes are escaped",
+      "Each yielded chunk is one line; the buffer is emptied between rows",
+      "Orders are consumed lazily, header first",
+      "Totals are rendered with exactly two decimal places",
+      "An optional status query parameter filters the rows"
+    ]
+  },
+  "rationale": {
+    "teaches": "StreamingResponse over a generator that reuses a StringIO and csv.writer, emptying it with seek and truncate between rows.",
+    "why": "Hand-joined lines break on embedded commas and quotes, forgetting to truncate repeats earlier rows, and list() on the source silently buffers everything, so the fixture parses the CSV and watches how far the source has been pulled."
+  },
+  "oracle": "fixtures/test_129_fastapi_streaming_csv_export.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Order",
+        "bases": [
+          "TypedDict"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "ORDERS"
+      },
+      {
+        "kind": "assign",
+        "name": "HEADER"
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "csv_rows",
+        "params": [
+          "orders"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "export_orders",
+        "params": [
+          "status"
+        ],
+        "route": "GET /orders.csv"
+      }
+    ],
+    "imports": [
+      "fastapi"
+    ],
+    "raises": [],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Order",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "ORDERS",
+              "kind": "constant",
+              "depends_on": [
+                "Order"
+              ]
+            },
+            {
+              "name": "HEADER",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "csv_rows",
+              "kind": "function",
+              "depends_on": [
+                "Order",
+                "HEADER"
+              ]
+            },
+            {
+              "name": "export_orders",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "ORDERS",
+                "csv_rows"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Stream an order export as CSV without building the whole file in memory."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import csv",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import io",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Iterable, Iterator",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import TypedDict",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import FastAPI",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi.responses import StreamingResponse",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Order",
+        "source": "class Order(TypedDict):\n    \"\"\"One exported order.\"\"\"\n\n    id: int\n    customer: str\n    total_cents: int\n    status: str",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ORDERS",
+        "source": "ORDERS: list[Order] = [\n    {\"id\": 1, \"customer\": \"Ada, Countess\", \"total_cents\": 1250, \"status\": \"open\"},\n    {\"id\": 2, \"customer\": 'Bob \"the builder\"', \"total_cents\": 300, \"status\": \"paid\"},\n    {\"id\": 3, \"customer\": \"Cy\", \"total_cents\": 99, \"status\": \"open\"},\n]",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "HEADER",
+        "source": "HEADER = (\"id\", \"customer\", \"total\")",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "app",
+        "id": "fastapi_app_titled",
+        "params": {
+          "title": "Order export"
+        },
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "csv_rows",
+        "source": "def csv_rows(orders: Iterable[Order]) -> Iterator[str]:\n    \"\"\"Yield the header line, then one properly quoted line per order.\"\"\"\n    buffer = io.StringIO()\n    writer = csv.writer(buffer)\n    writer.writerow(HEADER)\n    yield buffer.getvalue()\n    for order in orders:\n        buffer.seek(0)\n        buffer.truncate()\n        cents = order[\"total_cents\"]\n        total = f\"{cents // 100}.{cents % 100:02d}\"\n        writer.writerow((order[\"id\"], order[\"customer\"], total))\n        yield buffer.getvalue()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "export_orders",
+        "source": "@app.get(\"/orders.csv\")\ndef export_orders(status: str | None = None) -> StreamingResponse:\n    \"\"\"Stream matching orders as a CSV attachment.\"\"\"\n    selected = (o for o in ORDERS if status is None or o[\"status\"] == status)\n    return StreamingResponse(\n        csv_rows(selected),\n        media_type=\"text/csv\",\n        headers={\"Content-Disposition\": 'attachment; filename=\"orders.csv\"'},\n    )",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 1,
+      "literal_blocks": 5
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The buffer is never emptied, so every chunk repeats all earlier lines.",
+      "caught_by": [
+        "test_body_is_valid_csv_with_quoting",
+        "test_status_filter"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Rows are joined by hand, so names containing commas or quotes corrupt the columns.",
+      "caught_by": [
+        "test_body_is_valid_csv_with_quoting"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Cents are not zero-padded, so three dollars renders as 3.0 instead of 3.00.",
+      "caught_by": [
+        "test_body_is_valid_csv_with_quoting"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The status filter is inverted and keeps only orders with a different status.",
+      "caught_by": [
+        "test_status_filter"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Wrapping the source in list pulls every order into memory before the first row is written.",
+      "caught_by": [
+        "test_rows_are_generated_lazily"
+      ]
+    }
+  ]
+}

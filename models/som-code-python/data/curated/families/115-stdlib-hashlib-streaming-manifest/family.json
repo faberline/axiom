@@ -1,0 +1,192 @@
+{
+  "family_id": "115-stdlib-hashlib-streaming-manifest",
+  "domain": "python",
+  "area": "stdlib",
+  "capability": "chunked-file-digest-manifest-check",
+  "requirement": "Hash files in fixed-size chunks with a named hashlib algorithm, rejecting unknown algorithms and non-positive chunk sizes, and report which manifest entries are missing or have a different hex digest.",
+  "skeleton": "file_digest validating the algorithm and chunk size then streaming the file into hashlib.new, and verify_manifest collecting missing or mismatched names in sorted order.",
+  "caption": "Streaming integrity checks with the standard-library hashlib module and pathlib. file_digest(path, algorithm=\"sha256\", chunk_size=DEFAULT_CHUNK) raises ValueError naming an unsupported algorithm when the name is not in hashlib.algorithms_guaranteed, and raises ValueError saying chunk_size must be positive when it is below one. It creates the hasher with hashlib.new, opens the file in binary mode, feeds it chunk by chunk with a walrus loop so large files never sit in memory, and returns hexdigest. verify_manifest(root, manifest) walks a mapping of relative names to expected hex digests; a name whose file does not exist under root is reported, and an existing file is reported when its sha256 digest differs from the expected value compared in lower case. It returns the reported names sorted. The fixture asserts that a 70-byte file read three bytes at a time gives the same sha256 as a one-shot hash, that sha1 can be selected by name, that the algorithm nope and a chunk size of zero raise ValueError, and that a manifest with an upper-case correct digest, a wrong digest and a missing file reports exactly a.txt and c.txt.",
+  "plan": {
+    "intent": "Verify downloaded files against published digests",
+    "target": "file integrity checker",
+    "constraints": [
+      "Only hashlib guaranteed algorithms are accepted; others raise ValueError",
+      "chunk_size below one raises ValueError",
+      "Files are read in chunks rather than all at once",
+      "Digests are hex strings compared case-insensitively",
+      "Missing files are reported alongside mismatched ones, sorted by name"
+    ]
+  },
+  "rationale": {
+    "teaches": "hashlib.new with a validated algorithm name, chunked update with a walrus read loop, and hexdigest comparison against a manifest.",
+    "why": "Checksum code often slurps whole files, returns raw bytes instead of hex, or silently skips missing entries, and only a small chunk size, mixed-case digests and an absent file expose those shortcuts."
+  },
+  "oracle": "fixtures/test_115_stdlib_hashlib_streaming_manifest.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "DEFAULT_CHUNK"
+      },
+      {
+        "kind": "function",
+        "name": "file_digest",
+        "params": [
+          "path",
+          "algorithm",
+          "chunk_size"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "verify_manifest",
+        "params": [
+          "root",
+          "manifest"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "DEFAULT_CHUNK",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "file_digest",
+              "kind": "function",
+              "depends_on": [
+                "DEFAULT_CHUNK"
+              ]
+            },
+            {
+              "name": "verify_manifest",
+              "kind": "function",
+              "depends_on": [
+                "file_digest"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Stream files through hashlib and check them against a manifest of hex digests."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import hashlib",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Mapping",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pathlib import Path",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "DEFAULT_CHUNK",
+        "source": "DEFAULT_CHUNK = 64 * 1024",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "file_digest",
+        "source": "def file_digest(\n    path: Path, algorithm: str = \"sha256\", chunk_size: int = DEFAULT_CHUNK\n) -> str:\n    \"\"\"Return the hex digest of a file read in fixed-size chunks.\"\"\"\n    if algorithm not in hashlib.algorithms_guaranteed:\n        raise ValueError(f\"unsupported algorithm: {algorithm}\")\n    if chunk_size < 1:\n        raise ValueError(\"chunk_size must be positive\")\n    hasher = hashlib.new(algorithm)\n    with path.open(\"rb\") as handle:\n        while chunk := handle.read(chunk_size):\n            hasher.update(chunk)\n    return hasher.hexdigest()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "verify_manifest",
+        "source": "def verify_manifest(root: Path, manifest: Mapping[str, str]) -> list[str]:\n    \"\"\"Return the sorted names whose file is missing or whose digest differs.\"\"\"\n    bad: list[str] = []\n    for name, expected in manifest.items():\n        target = root / name\n        if not target.is_file():\n            bad.append(name)\n            continue\n        if file_digest(target) != expected.lower():\n            bad.append(name)\n    return sorted(bad)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A chunk size of zero is accepted and the loop ends at once, returning the digest of nothing.",
+      "caught_by": [
+        "test_bad_arguments_are_rejected"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Unknown algorithms reach hashlib.new, whose error does not say unsupported algorithm.",
+      "caught_by": [
+        "test_bad_arguments_are_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "digest returns raw bytes, so it never equals a hex string.",
+      "caught_by": [
+        "test_manifest_reports_changed_and_missing_files",
+        "test_streamed_digest_matches_one_shot_hash"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Missing files are skipped instead of reported.",
+      "caught_by": [
+        "test_manifest_reports_changed_and_missing_files"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The default algorithm is md5, so default digests do not match sha256.",
+      "caught_by": [
+        "test_manifest_reports_changed_and_missing_files",
+        "test_streamed_digest_matches_one_shot_hash"
+      ]
+    }
+  ]
+}

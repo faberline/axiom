@@ -1,0 +1,305 @@
+{
+  "family_id": "126-fastapi-lifespan-app-state",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "lifespan-managed-shared-resource",
+  "requirement": "Open one connection pool per application startup in a lifespan context manager, store it on app.state for handlers to reach through a dependency, and close it on shutdown even if shutdown is reached through an error.",
+  "skeleton": "Pool class with size validation, query and close, a POOLS registry, an asynccontextmanager lifespan creating, storing and finally closing the pool, get_pool reading request.app.state, and /count and /health handlers.",
+  "caption": "Startup and shutdown resources with the FastAPI lifespan hook. Pool(size) raises ValueError saying pool size must be at least 1 below one, counts queries and refuses them after close by raising RuntimeError saying the pool is closed. POOLS records every pool created so behaviour can be inspected. lifespan is a contextlib.asynccontextmanager that creates a Pool of size 5, appends it to POOLS, stores it as application.state.pool, yields inside try, and closes the pool in finally so shutdown always releases it. The app is built with FastAPI(lifespan=lifespan), so each TestClient context runs a full startup and shutdown. get_pool(request) returns request.app.state.pool and is injected through an Annotated PoolDep with Depends. GET /count runs a query and returns its running number with the pool size, and GET /health returns ok with whether the pool is closed. The fixture asserts that two requests in one client see counts 1 and 2 with size 5 and an open pool while exactly one pool is created, that the pool is closed after the client exits, that a second startup gets a new pool starting from 1 with both closed, and that size 0 raises ValueError and a closed pool raises RuntimeError.",
+  "plan": {
+    "intent": "Share one pool across requests for the lifetime of the service",
+    "target": "lifespan-managed pool",
+    "constraints": [
+      "Exactly one pool of size 5 is created per application startup",
+      "Handlers reach the pool through a dependency reading app.state",
+      "The pool is always closed on shutdown",
+      "A size below 1 raises ValueError",
+      "Queries on a closed pool raise RuntimeError"
+    ]
+  },
+  "rationale": {
+    "teaches": "The lifespan asynccontextmanager with try and finally around yield, app.state for the shared resource, and a Request-based dependency to reach it.",
+    "why": "Resources built per request, never closed, or created at import survive quick tests, so the fixture counts pools across startups and checks closure after the client exits."
+  },
+  "oracle": "fixtures/test_126_fastapi_lifespan_app_state.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Pool",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "query",
+          "close"
+        ]
+      },
+      {
+        "kind": "assign",
+        "name": "POOLS"
+      },
+      {
+        "kind": "async_function",
+        "name": "lifespan",
+        "params": [
+          "application"
+        ]
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "get_pool",
+        "params": [
+          "request"
+        ]
+      },
+      {
+        "kind": "assign",
+        "name": "PoolDep"
+      },
+      {
+        "kind": "function",
+        "name": "count",
+        "params": [
+          "pool"
+        ],
+        "route": "GET /count"
+      },
+      {
+        "kind": "function",
+        "name": "health",
+        "params": [
+          "pool"
+        ],
+        "route": "GET /health"
+      }
+    ],
+    "imports": [
+      "fastapi"
+    ],
+    "raises": [
+      "RuntimeError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Pool",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "POOLS",
+              "kind": "constant",
+              "depends_on": [
+                "Pool"
+              ]
+            },
+            {
+              "name": "lifespan",
+              "kind": "function",
+              "depends_on": [
+                "Pool",
+                "POOLS"
+              ]
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": [
+                "lifespan"
+              ]
+            },
+            {
+              "name": "get_pool",
+              "kind": "function",
+              "depends_on": [
+                "Pool"
+              ]
+            },
+            {
+              "name": "PoolDep",
+              "kind": "constant",
+              "depends_on": [
+                "Pool",
+                "get_pool"
+              ]
+            },
+            {
+              "name": "count",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "PoolDep"
+              ]
+            },
+            {
+              "name": "health",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "PoolDep"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Service that opens its connection pool in lifespan and closes it on shutdown."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import AsyncIterator",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from contextlib import asynccontextmanager",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Annotated",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import Depends, FastAPI, Request",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Pool",
+        "source": "class Pool:\n    \"\"\"A stand-in connection pool that refuses work once closed.\"\"\"\n\n    def __init__(self, size: int) -> None:\n        if size < 1:\n            raise ValueError(\"pool size must be at least 1\")\n        self.size = size\n        self.closed = False\n        self.queries = 0\n\n    def query(self, sql: str) -> int:\n        \"\"\"Run a statement and return how many have run on this pool.\"\"\"\n        if self.closed:\n            raise RuntimeError(f\"pool is closed: cannot run {sql!r}\")\n        self.queries += 1\n        return self.queries\n\n    def close(self) -> None:\n        \"\"\"Release every connection.\"\"\"\n        self.closed = True",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "POOLS",
+        "source": "POOLS: list[Pool] = []",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "lifespan",
+        "source": "@asynccontextmanager\nasync def lifespan(application: FastAPI) -> AsyncIterator[None]:\n    \"\"\"Open one pool for the application's lifetime and always close it.\"\"\"\n    pool = Pool(size=5)\n    POOLS.append(pool)\n    application.state.pool = pool\n    try:\n        yield\n    finally:\n        pool.close()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "app",
+        "source": "app = FastAPI(title=\"Pooled service\", lifespan=lifespan)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_pool",
+        "source": "def get_pool(request: Request) -> Pool:\n    \"\"\"Return the pool opened by the running application's lifespan.\"\"\"\n    pool: Pool = request.app.state.pool\n    return pool",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "PoolDep",
+        "source": "PoolDep = Annotated[Pool, Depends(get_pool)]",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "count",
+        "source": "@app.get(\"/count\")\ndef count(pool: PoolDep) -> dict[str, int]:\n    \"\"\"Run a query and report the pool's running total.\"\"\"\n    return {\"n\": pool.query(\"select 1\"), \"size\": pool.size}",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "health",
+        "source": "@app.get(\"/health\")\ndef health(pool: PoolDep) -> dict[str, str | bool]:\n    \"\"\"Report whether the pool is usable.\"\"\"\n    return {\"status\": \"ok\", \"pool_closed\": pool.closed}",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 8
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The pool is never closed on shutdown, so its connections leak.",
+      "caught_by": [
+        "test_each_startup_gets_a_fresh_pool",
+        "test_shutdown_closes_the_pool"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The lifespan opens a pool of size 1 instead of 5.",
+      "caught_by": [
+        "test_requests_share_the_lifespan_pool"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The dependency builds a new pool per request, so counts never accumulate and the lifespan pool is unused.",
+      "caught_by": [
+        "test_requests_share_the_lifespan_pool"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A pool of size zero is accepted.",
+      "caught_by": [
+        "test_pool_rules"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A closed pool still runs queries instead of raising RuntimeError.",
+      "caught_by": [
+        "test_pool_rules"
+      ]
+    }
+  ]
+}

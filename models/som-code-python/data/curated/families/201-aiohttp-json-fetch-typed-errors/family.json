@@ -1,0 +1,193 @@
+{
+  "family_id": "201-aiohttp-json-fetch-typed-errors",
+  "domain": "python",
+  "area": "aiohttp",
+  "capability": "aiohttp-json-fetch-typed-errors",
+  "requirement": "GET a JSON object from an HTTP API with aiohttp, sending query params and an Accept header, and turn error statuses, non-JSON responses and non-object bodies into one typed ApiError with a bounded message.",
+  "skeleton": "An ApiError exception carrying status and message, a MAX_ERROR_CHARS limit, and fetch_json checking status, content type and body shape inside the response context.",
+  "caption": "A typed JSON fetch helper with aiohttp. ApiError(status, message) stores both and formats as status: message. fetch_json(session, url, *, params=None) opens session.get with the params and an Accept application/json header inside async with, so the response is always released. A status of 400 or more raises ApiError with the status and the body text cut to MAX_ERROR_CHARS, 200. A content_type other than application/json raises ApiError saying expected JSON, got that type before resp.json is ever called. A JSON body that is not an object raises ApiError saying expected a JSON object; otherwise the dict is returned. The fixture runs an aiohttp TestServer and asserts that params and the Accept header reach the handler, that a 400 carries status 400 and the body bad input, that a 503 with 300 characters is cut to 200 and formats as 503: x..., that a text/html page raises ApiError naming it, and that a JSON array raises ApiError.",
+  "plan": {
+    "intent": "Call a JSON API and give callers one error type to handle",
+    "target": "HTTP client helper",
+    "constraints": [
+      "Params and Accept application/json are sent with the GET",
+      "Statuses of 400 and above raise ApiError with the body cut to 200 characters",
+      "Non-JSON content types raise ApiError before decoding",
+      "Bodies that are not JSON objects raise ApiError",
+      "The response is released through async with"
+    ]
+  },
+  "rationale": {
+    "teaches": "Check status and content type before decoding, keep error bodies bounded, and validate the decoded shape before returning it.",
+    "why": "Treating 4xx as success, letting decoder errors escape, or returning whatever JSON arrived pushes protocol errors deep into callers."
+  },
+  "oracle": "fixtures/test_201_aiohttp_json_fetch_typed_errors.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "MAX_ERROR_CHARS"
+      },
+      {
+        "kind": "class",
+        "name": "ApiError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": [
+          "__init__"
+        ]
+      },
+      {
+        "kind": "async_function",
+        "name": "fetch_json",
+        "params": [
+          "session",
+          "url",
+          "params"
+        ]
+      }
+    ],
+    "imports": [
+      "aiohttp"
+    ],
+    "raises": [
+      "ApiError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "MAX_ERROR_CHARS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "ApiError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "fetch_json",
+              "kind": "function",
+              "depends_on": [
+                "ApiError",
+                "MAX_ERROR_CHARS"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Fetch a JSON object over HTTP with aiohttp and typed API errors."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import aiohttp",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MAX_ERROR_CHARS",
+        "source": "MAX_ERROR_CHARS = 200",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ApiError",
+        "source": "class ApiError(Exception):\n    \"\"\"The API answered with an error status or an unusable body.\"\"\"\n\n    def __init__(self, status: int, message: str) -> None:\n        super().__init__(f\"{status}: {message}\")\n        self.status = status\n        self.message = message",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "fetch_json",
+        "source": "async def fetch_json(\n    session: aiohttp.ClientSession,\n    url: str,\n    *,\n    params: dict[str, str] | None = None,\n) -> dict[str, Any]:\n    \"\"\"GET ``url`` and return its JSON object body or raise ApiError.\"\"\"\n    async with session.get(\n        url, params=params, headers={\"Accept\": \"application/json\"}\n    ) as resp:\n        if resp.status >= 400:\n            body = await resp.text()\n            raise ApiError(resp.status, body[:MAX_ERROR_CHARS])\n        if resp.content_type != \"application/json\":\n            raise ApiError(resp.status, f\"expected JSON, got {resp.content_type}\")\n        data = await resp.json()\n        if not isinstance(data, dict):\n            raise ApiError(resp.status, \"expected a JSON object\")\n        return data",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Only 5xx statuses are errors, so a 400 body is treated as a success.",
+      "caught_by": [
+        "test_client_error_carries_status_and_body"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "HTML responses reach resp.json and fail with an aiohttp decoding error.",
+      "caught_by": [
+        "test_non_json_content_type_is_an_api_error"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The query params are never sent with the request.",
+      "caught_by": [
+        "test_returns_the_object_and_sends_params_and_accept"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A JSON array is returned where callers expect an object.",
+      "caught_by": [
+        "test_json_array_is_an_api_error"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Error bodies are kept up to 2000 characters instead of 200.",
+      "caught_by": [
+        "test_server_error_body_is_truncated_to_200_chars"
+      ]
+    }
+  ]
+}

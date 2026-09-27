@@ -1,0 +1,284 @@
+{
+  "family_id": "171-pydantic-annotated-reusable-validators",
+  "domain": "python",
+  "area": "pydantic",
+  "capability": "annotated-reusable-before-after-validators",
+  "requirement": "Define reusable annotated field types that accept tags as comma strings or lists, normalize them to at most five sorted lower-case distinct values, serialize them back to a comma string, and bound and lower-case usernames.",
+  "skeleton": "A before-validator splitting strings, an after-validator normalizing and capping tags, a Tags Annotated alias with a join serializer, a Username alias with length bounds and lower-casing, and a SearchQuery model using both.",
+  "caption": "Reusable field types for a pydantic v2 search model, built from typing.Annotated with BeforeValidator, AfterValidator, PlainSerializer and Field metadata. Tags is a list of str annotated in order: a BeforeValidator that, only when the raw input is a string, splits it on commas, strips each part and drops blank parts, so both a b-comma string and a list validate; an AfterValidator that lower-cases, removes duplicates with a set and sorts the tags, raising ValueError saying at most 5 distinct tags when more than MAX_TAGS remain; and a PlainSerializer using str.join with commas and return_type str, so dumps turn the list back into one string. Username is a str with Field min_length=3 and max_length=20 plus an AfterValidator that lower-cases it. SearchQuery uses owner as a Username and tags and exclude as Tags defaulting to empty lists through default_factory. A ValueError from a validator surfaces as pydantic.ValidationError. The fixture asserts that Rust, python ,rust becomes python and rust with the owner lower-cased, that list input is normalized, that blank comma parts disappear, that five distinct tags pass even with a duplicate in another case while six raise ValidationError matching the message, that owners of 2 and 21 characters raise while a 3-character owner passes, and that model_dump renders tags as x,y and an empty exclude as an empty string.",
+  "plan": {
+    "intent": "Share field normalization rules across models",
+    "target": "search query types",
+    "constraints": [
+      "Comma strings and lists both validate as tags",
+      "Blank parts are dropped",
+      "Tags are lower-cased, de-duplicated and sorted",
+      "More than five distinct tags raise ValueError, surfaced as ValidationError",
+      "Usernames are 3 to 20 characters and lower-cased",
+      "Tags serialize back to a comma string"
+    ]
+  },
+  "rationale": {
+    "teaches": "Composing BeforeValidator, AfterValidator and PlainSerializer inside Annotated aliases so normalization is declared once and reused.",
+    "why": "Validation order matters: a splitter run after type validation never sees the string, and per-model validators drift apart while every single case still looks plausible."
+  },
+  "oracle": "fixtures/test_171_pydantic_annotated_reusable_validators.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "MAX_TAGS"
+      },
+      {
+        "kind": "function",
+        "name": "_split_csv",
+        "params": [
+          "value"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "_normalize_tags",
+        "params": [
+          "tags"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "_lower",
+        "params": [
+          "value"
+        ]
+      },
+      {
+        "kind": "assign",
+        "name": "Tags"
+      },
+      {
+        "kind": "assign",
+        "name": "Username"
+      },
+      {
+        "kind": "class",
+        "name": "SearchQuery",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      }
+    ],
+    "imports": [
+      "pydantic"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "MAX_TAGS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "_split_csv",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "_normalize_tags",
+              "kind": "function",
+              "depends_on": [
+                "MAX_TAGS"
+              ]
+            },
+            {
+              "name": "_lower",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "Tags",
+              "kind": "constant",
+              "depends_on": [
+                "_split_csv",
+                "_normalize_tags"
+              ]
+            },
+            {
+              "name": "Username",
+              "kind": "constant",
+              "depends_on": [
+                "_lower"
+              ]
+            },
+            {
+              "name": "SearchQuery",
+              "kind": "class",
+              "depends_on": [
+                "Username",
+                "Tags"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Reusable Annotated types that normalize a search query's fields."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Annotated",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import (\n    AfterValidator,\n    BaseModel,\n    BeforeValidator,\n    Field,\n    PlainSerializer,\n)",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MAX_TAGS",
+        "source": "MAX_TAGS = 5",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_split_csv",
+        "source": "def _split_csv(value: object) -> object:\n    \"\"\"Accept \"a, b\" strings as well as lists; drop blank parts.\"\"\"\n    if isinstance(value, str):\n        return [part.strip() for part in value.split(\",\") if part.strip()]\n    return value",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_normalize_tags",
+        "source": "def _normalize_tags(tags: list[str]) -> list[str]:\n    \"\"\"Lower-case, de-duplicate and sort tags, capping how many there are.\"\"\"\n    unique = sorted({tag.lower() for tag in tags})\n    if len(unique) > MAX_TAGS:\n        raise ValueError(f\"at most {MAX_TAGS} distinct tags\")\n    return unique",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_lower",
+        "source": "def _lower(value: str) -> str:\n    return value.lower()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Tags",
+        "source": "Tags = Annotated[\n    list[str],\n    BeforeValidator(_split_csv),\n    AfterValidator(_normalize_tags),\n    PlainSerializer(\",\".join, return_type=str),\n]",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Username",
+        "source": "Username = Annotated[str, Field(min_length=3, max_length=20), AfterValidator(_lower)]",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "SearchQuery",
+        "id": "pydantic_model",
+        "params": {
+          "name": "SearchQuery",
+          "doc": "Filters for a repository search.",
+          "fields": [
+            {
+              "field": "owner",
+              "declaration": "Username"
+            },
+            {
+              "field": "tags",
+              "declaration": "Tags = Field(default_factory=list)"
+            },
+            {
+              "field": "exclude",
+              "declaration": "Tags = Field(default_factory=list)"
+            }
+          ]
+        },
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 1,
+      "literal_blocks": 6
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Blank comma parts survive as empty-string tags.",
+      "caught_by": [
+        "test_blank_parts_are_dropped"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Tags are not lower-cased, so case variants count as distinct tags.",
+      "caught_by": [
+        "test_comma_string_is_split_normalized_and_sorted",
+        "test_five_distinct_tags_are_allowed",
+        "test_lists_are_normalized_too"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The cap check rejects exactly five distinct tags.",
+      "caught_by": [
+        "test_five_distinct_tags_are_allowed"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Splitting after validation never sees the raw string, which already failed as a list.",
+      "caught_by": [
+        "test_blank_parts_are_dropped",
+        "test_comma_string_is_split_normalized_and_sorted",
+        "test_five_distinct_tags_are_allowed",
+        "test_six_distinct_tags_are_rejected"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "min_length=2 lets two-character owner names through validation.",
+      "caught_by": [
+        "test_owner_length_is_bounded"
+      ]
+    }
+  ]
+}

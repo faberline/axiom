@@ -1,0 +1,260 @@
+{
+  "family_id": "296-celery-chord-callback",
+  "domain": "python",
+  "area": "celery",
+  "capability": "celery-chord-callback",
+  "requirement": "Count words across many documents in parallel Celery tasks and merge the partial counts in a chord callback into a ranked top list.",
+  "skeleton": "A count_words task, a merge_counts callback that sums and ranks, and word_report building a chord with the callback signature bound to top.",
+  "caption": "A Celery map-reduce word count using celery Celery and chord, re and collections Counter, with an eager in-memory app. count_words is a task that counts lower-cased words in one document; merge_counts is the chord callback that sums every header result and returns the top words as [word, count] pairs, ties broken alphabetically. word_report raises ValueError for an empty document list or a top below 1 and returns chord(header, merge_counts.s(top=top)). The fixture asserts the merged ranking across documents, the top limit, alphabetical tie breaking, case folding and the ValueError cases.",
+  "plan": {
+    "intent": "Map-reduce word counts with a chord",
+    "target": "Celery chord callback",
+    "constraints": [
+      "Every header result is summed, not just the last one",
+      "Words are counted case-insensitively",
+      "Ties in count are ordered alphabetically",
+      "Exactly top pairs are returned",
+      "An empty document list raises ValueError",
+      "A top below 1 raises ValueError"
+    ]
+  },
+  "rationale": {
+    "teaches": "Build a header of task signatures, pass the list of results to a callback signature with partial kwargs, and reduce with Counter.update.",
+    "why": "A callback that overwrites instead of accumulating, or ranks without a tie breaker, gives results that depend on task order."
+  },
+  "oracle": "fixtures/test_296_celery_chord_callback.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "assign",
+        "name": "WORD"
+      },
+      {
+        "kind": "function",
+        "name": "count_words",
+        "params": [
+          "text"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "merge_counts",
+        "params": [
+          "results",
+          "top"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "word_report",
+        "params": [
+          "docs",
+          "top"
+        ]
+      }
+    ],
+    "imports": [
+      "celery"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "app.conf.update",
+              "kind": "statement",
+              "depends_on": [
+                "app"
+              ]
+            },
+            {
+              "name": "WORD",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "count_words",
+              "kind": "function",
+              "depends_on": [
+                "app",
+                "WORD"
+              ]
+            },
+            {
+              "name": "merge_counts",
+              "kind": "function",
+              "depends_on": [
+                "app"
+              ]
+            },
+            {
+              "name": "word_report",
+              "kind": "function",
+              "depends_on": [
+                "count_words",
+                "merge_counts"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Fan word counting out over Celery tasks and merge them in a chord callback."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import re",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections import Counter",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from celery import Celery, chord",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "app",
+        "source": "app = Celery(\"wordcount\")",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "app.conf.update",
+        "source": "app.conf.update(\n    task_always_eager=True,\n    task_eager_propagates=True,\n    broker_url=\"memory://\",\n    result_backend=\"cache+memory://\",\n)",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "WORD",
+        "source": "WORD = re.compile(r\"[a-z']+\")",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "count_words",
+        "source": "@app.task\ndef count_words(text: str) -> dict[str, int]:\n    \"\"\"Count the lower-cased words in one document.\"\"\"\n    return dict(Counter(WORD.findall(text.lower())))",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "merge_counts",
+        "source": "@app.task\ndef merge_counts(results: list[dict[str, int]], top: int) -> list[list[Any]]:\n    \"\"\"Sum the per-document counts and return the top words, ties alphabetical.\"\"\"\n    total: Counter[str] = Counter()\n    for counts in results:\n        total.update(counts)\n    ranked = sorted(total.items(), key=lambda item: (-item[1], item[0]))\n    return [[word, count] for word, count in ranked[:top]]",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "word_report",
+        "source": "def word_report(docs: list[str], top: int = 3) -> Any:\n    \"\"\"Return a chord that counts each document in parallel, then merges.\"\"\"\n    if not docs:\n        raise ValueError(\"at least one document is required\")\n    if top < 1:\n        raise ValueError(\"top must be at least 1\")\n    header = [count_words.s(doc) for doc in docs]\n    return chord(header, merge_counts.s(top=top))",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 6
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Each document's counts replace the running total instead of adding.",
+      "caught_by": [
+        "test_chord_merges_every_document",
+        "test_ties_are_broken_alphabetically"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Tied words keep insertion order instead of alphabetical order.",
+      "caught_by": [
+        "test_ties_are_broken_alphabetically"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "One extra word beyond the requested top is returned.",
+      "caught_by": [
+        "test_chord_merges_every_document",
+        "test_single_document_and_top_limit"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Upper-case words are dropped because text is not lower-cased.",
+      "caught_by": [
+        "test_chord_merges_every_document",
+        "test_count_words_is_case_insensitive"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "An empty document list builds an empty chord instead of raising ValueError.",
+      "caught_by": [
+        "test_invalid_arguments"
+      ]
+    }
+  ]
+}

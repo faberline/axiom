@@ -1,0 +1,212 @@
+{
+  "family_id": "276-hypothesis-stateful-lru-cache",
+  "domain": "python",
+  "area": "hypothesis",
+  "capability": "hypothesis-stateful-lru-cache",
+  "requirement": "Property-test an LRU cache with a Hypothesis RuleBasedStateMachine that compares every operation against a simple list model.",
+  "skeleton": "An OrderedDict-backed LRUCache with validated capacity, recency-refreshing get and put, and a RuleBasedStateMachine with put and get rules and an order invariant.",
+  "caption": "An LRU cache verified by a Hypothesis rule-based state machine, using collections OrderedDict and hypothesis strategies and stateful. LRUCache raises ValueError for a capacity below 1; get returns None for a missing key and otherwise moves the key to the most recent end; put refreshes an existing key, stores the value and evicts the oldest key once the size exceeds capacity; keys lists least to most recent. LRUCacheMachine keeps a list model, applies put and get rules to both the cache and the model, and an invariant requires the same recency order. The fixture asserts the machine passes with derandomized settings, get and overwrite refreshing recency, exactly capacity items kept, and the ValueError.",
+  "plan": {
+    "intent": "Model-check an LRU cache",
+    "target": "stateful property test",
+    "constraints": [
+      "A capacity below 1 raises ValueError",
+      "get and overwriting put both mark the key most recently used",
+      "Eviction removes the least recently used key only once size exceeds capacity",
+      "The state machine invariant compares recency order to the model"
+    ]
+  },
+  "rationale": {
+    "teaches": "Pair a real data structure with a trivially correct model and let a rule-based state machine search for diverging operation sequences.",
+    "why": "LRU bugs appear only after specific sequences of reads and writes, which example tests rarely cover but a state machine finds."
+  },
+  "oracle": "fixtures/test_276_hypothesis_stateful_lru_cache.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "KEYS"
+      },
+      {
+        "kind": "class",
+        "name": "LRUCache",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "get",
+          "put",
+          "keys"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "LRUCacheMachine",
+        "bases": [
+          "RuleBasedStateMachine"
+        ],
+        "methods": [
+          "__init__",
+          "_touch",
+          "put",
+          "get",
+          "order_matches_model"
+        ]
+      }
+    ],
+    "imports": [
+      "hypothesis"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "KEYS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "LRUCache",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "LRUCacheMachine",
+              "kind": "class",
+              "depends_on": [
+                "LRUCache",
+                "KEYS"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "An LRU cache checked against a list model by a Hypothesis state machine."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections import OrderedDict",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from hypothesis import strategies as st",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from hypothesis.stateful import RuleBasedStateMachine, invariant, rule",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "KEYS",
+        "source": "KEYS = st.sampled_from([\"a\", \"b\", \"c\", \"d\", \"e\"])",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "LRUCache",
+        "source": "class LRUCache:\n    \"\"\"Keep at most capacity keys, evicting the least recently used.\"\"\"\n\n    def __init__(self, capacity: int) -> None:\n        if capacity < 1:\n            raise ValueError(\"capacity must be at least 1\")\n        self.capacity = capacity\n        self._data: OrderedDict[str, int] = OrderedDict()\n\n    def get(self, key: str) -> int | None:\n        \"\"\"Return the value and mark the key as most recently used.\"\"\"\n        if key not in self._data:\n            return None\n        self._data.move_to_end(key)\n        return self._data[key]\n\n    def put(self, key: str, value: int) -> None:\n        \"\"\"Store the value as most recent and evict the oldest past capacity.\"\"\"\n        if key in self._data:\n            self._data.move_to_end(key)\n        self._data[key] = value\n        if len(self._data) > self.capacity:\n            self._data.popitem(last=False)\n\n    def keys(self) -> list[str]:\n        \"\"\"Return keys from least to most recently used.\"\"\"\n        return list(self._data)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "LRUCacheMachine",
+        "source": "class LRUCacheMachine(RuleBasedStateMachine):\n    \"\"\"Drive LRUCache with random puts and gets and compare to a model.\"\"\"\n\n    CAPACITY = 3\n\n    def __init__(self) -> None:\n        super().__init__()\n        self.cache = LRUCache(self.CAPACITY)\n        self.model: list[tuple[str, int]] = []\n\n    def _touch(self, key: str, value: int) -> None:\n        self.model = [(k, v) for k, v in self.model if k != key] + [(key, value)]\n\n    @rule(key=KEYS, value=st.integers(min_value=0, max_value=9))\n    def put(self, key: str, value: int) -> None:\n        \"\"\"Put into both and trim the model to capacity.\"\"\"\n        self.cache.put(key, value)\n        self._touch(key, value)\n        self.model = self.model[-self.CAPACITY :]\n\n    @rule(key=KEYS)\n    def get(self, key: str) -> None:\n        \"\"\"Get from both and require the same answer.\"\"\"\n        expected = next((v for k, v in self.model if k == key), None)\n        if expected is not None:\n            self._touch(key, expected)\n        assert self.cache.get(key) == expected\n\n    @invariant()\n    def order_matches_model(self) -> None:\n        \"\"\"Require the cache recency order to equal the model's.\"\"\"\n        assert self.cache.keys() == [k for k, _ in self.model]",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Reading a key does not protect it, so a hot key is evicted next.",
+      "caught_by": [
+        "test_cache_matches_the_model_under_random_operations",
+        "test_get_refreshes_recency"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Overwriting an existing key leaves it at its old recency position.",
+      "caught_by": [
+        "test_cache_matches_the_model_under_random_operations",
+        "test_overwrite_refreshes_recency_and_value"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The cache holds one item fewer than its configured capacity.",
+      "caught_by": [
+        "test_cache_holds_exactly_capacity_items",
+        "test_cache_matches_the_model_under_random_operations",
+        "test_get_refreshes_recency",
+        "test_overwrite_refreshes_recency_and_value"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The newest entry is evicted instead of the least recently used one.",
+      "caught_by": [
+        "test_cache_holds_exactly_capacity_items",
+        "test_cache_matches_the_model_under_random_operations",
+        "test_get_refreshes_recency",
+        "test_overwrite_refreshes_recency_and_value"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A zero capacity cache is accepted and silently stores nothing.",
+      "caught_by": [
+        "test_capacity_must_be_positive"
+      ]
+    }
+  ]
+}

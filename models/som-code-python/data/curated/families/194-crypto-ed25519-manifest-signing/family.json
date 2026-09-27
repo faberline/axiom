@@ -1,0 +1,239 @@
+{
+  "family_id": "194-crypto-ed25519-manifest-signing",
+  "domain": "python",
+  "area": "security",
+  "capability": "ed25519-manifest-signing",
+  "requirement": "Sign JSON release manifests with Ed25519 over a canonical serialization and verify a base64 signature against a list of pinned 32 byte public keys, treating malformed signatures as failures.",
+  "skeleton": "canonical JSON serialization, raw_public_key export, sign_manifest returning base64, and verify_manifest validating pinned keys and the signature shape before trying each trusted key.",
+  "caption": "Ed25519 release-manifest signatures with the cryptography library, json and base64. canonical(manifest) is json.dumps with sort_keys and compact separators, encoded, so key order never changes the bytes. raw_public_key(key) exports the 32 raw public bytes for pinning. sign_manifest(key, manifest) returns the base64 of the Ed25519 signature over the canonical bytes. verify_manifest(trusted, manifest, signature) first raises ValueError saying trusted keys must be 32 raw bytes if any pinned key has another length. It returns False when the signature is not strict base64, since b64decode with validate raises a ValueError subclass, or does not decode to 64 bytes. Otherwise it tries every trusted key with Ed25519PublicKey.from_public_bytes and verify, moving on after InvalidSignature, and returns True for the first key that verifies and False if none does. The fixture asserts that a signature verifies against the manifest with reversed key order and decodes to 64 bytes, that changing the version fails, that a signature by the second trusted key passes, that an untrusted signer fails, that non-base64 text and a 10 byte signature return False, and that a 5 byte pinned key raises ValueError.",
+  "plan": {
+    "intent": "Let clients check that a release manifest came from a trusted signer",
+    "target": "manifest signer and verifier",
+    "constraints": [
+      "Signing and verifying use the same key-order-independent JSON",
+      "Any one of the pinned keys may have signed",
+      "Tampered manifests and untrusted signers return False",
+      "Malformed or wrong-length signatures return False",
+      "Pinned keys that are not 32 bytes raise ValueError"
+    ]
+  },
+  "rationale": {
+    "teaches": "Sign a canonical byte form, verify with each pinned public key while catching InvalidSignature, and validate signature encoding before verifying.",
+    "why": "Non-canonical JSON makes honest manifests fail after a harmless reorder, and stopping at the first key breaks key rotation."
+  },
+  "oracle": "fixtures/test_194_crypto_ed25519_manifest_signing.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "function",
+        "name": "canonical",
+        "params": [
+          "manifest"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "raw_public_key",
+        "params": [
+          "key"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "sign_manifest",
+        "params": [
+          "key",
+          "manifest"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "verify_manifest",
+        "params": [
+          "trusted",
+          "manifest",
+          "signature"
+        ]
+      }
+    ],
+    "imports": [
+      "cryptography"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "canonical",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "raw_public_key",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "sign_manifest",
+              "kind": "function",
+              "depends_on": [
+                "canonical"
+              ]
+            },
+            {
+              "name": "verify_manifest",
+              "kind": "function",
+              "depends_on": [
+                "canonical"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Sign release manifests with Ed25519 and verify them against pinned public keys."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import base64",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import json",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Mapping, Sequence",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from cryptography.exceptions import InvalidSignature",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from cryptography.hazmat.primitives import serialization",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from cryptography.hazmat.primitives.asymmetric.ed25519 import (\n    Ed25519PrivateKey,\n    Ed25519PublicKey,\n)",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "canonical",
+        "source": "def canonical(manifest: Mapping[str, Any]) -> bytes:\n    \"\"\"Serialize a manifest the same way for signing and verifying.\"\"\"\n    return json.dumps(manifest, sort_keys=True, separators=(\",\", \":\")).encode()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "raw_public_key",
+        "source": "def raw_public_key(key: Ed25519PrivateKey) -> bytes:\n    \"\"\"Return the 32 raw bytes of the public half, for pinning.\"\"\"\n    return key.public_key().public_bytes(\n        serialization.Encoding.Raw, serialization.PublicFormat.Raw\n    )",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "sign_manifest",
+        "source": "def sign_manifest(key: Ed25519PrivateKey, manifest: Mapping[str, Any]) -> str:\n    \"\"\"Return a base64 Ed25519 signature over the canonical manifest.\"\"\"\n    return base64.b64encode(key.sign(canonical(manifest))).decode()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "verify_manifest",
+        "source": "def verify_manifest(\n    trusted: Sequence[bytes], manifest: Mapping[str, Any], signature: str\n) -> bool:\n    \"\"\"Return whether any trusted key signed this manifest.\"\"\"\n    if any(len(raw) != 32 for raw in trusted):\n        raise ValueError(\"trusted keys must be 32 raw bytes\")\n    try:\n        sig = base64.b64decode(signature, validate=True)\n    except ValueError:\n        return False\n    if len(sig) != 64:\n        return False\n    data = canonical(manifest)\n    for raw in trusted:\n        try:\n            Ed25519PublicKey.from_public_bytes(raw).verify(sig, data)\n        except InvalidSignature:\n            continue\n        return True\n    return False",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Keys are not sorted, so reordering a manifest breaks a valid signature.",
+      "caught_by": [
+        "test_round_trip_ignores_key_order"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Malformed base64 raises instead of counting as a failed verification.",
+      "caught_by": [
+        "test_malformed_signatures_are_false"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Only the first trusted key is tried, so rotated signers are rejected.",
+      "caught_by": [
+        "test_any_trusted_key_may_sign"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Bad pinned keys go unnoticed whenever an earlier key already verifies.",
+      "caught_by": [
+        "test_trusted_keys_must_be_32_bytes"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Signing uses a different serialization than verifying, so no signature ever verifies.",
+      "caught_by": [
+        "test_any_trusted_key_may_sign",
+        "test_round_trip_ignores_key_order"
+      ]
+    }
+  ]
+}

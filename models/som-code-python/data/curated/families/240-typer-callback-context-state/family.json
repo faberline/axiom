@@ -1,0 +1,293 @@
+{
+  "family_id": "240-typer-callback-context-state",
+  "domain": "python",
+  "area": "typer",
+  "capability": "typer-callback-context-state",
+  "requirement": "Build a Typer CLI with global --verbose and --profile options, the profile also read from an environment variable, shared with a nested config command group without re-declaring them.",
+  "skeleton": "A frozen State dataclass, a root callback storing it on ctx.obj, a config sub-app added with add_typer, and show and set commands reading ctx.obj, with set validating its key.",
+  "caption": "A Typer CLI whose root callback resolves global options once and shares them with a nested config group through ctx.obj. The frozen State dataclass holds verbose and profile. The callback main takes --verbose/-v and --profile, which reads the APP_PROFILE environment variable and defaults to default, and stores a State on ctx.obj. config_app is mounted as config with add_typer. config show reads the State from ctx.obj, echoes a debug line to stderr when verbose, and prints profile followed by the name. config set KEY VALUE raises typer.BadParameter for keys outside ALLOWED_KEYS, region and output, so the usage error exits with code 2, and otherwise prints profile.key = value. The fixture asserts, with CliRunner, the default profile with empty stderr, that --profile reaches the nested set command, that APP_PROFILE selects the profile, that verbose logs only to stderr, and that an unknown key exits 2 with the message on stderr.",
+  "plan": {
+    "intent": "Expose shared global flags across a CLI's subcommands",
+    "target": "cli global options",
+    "constraints": [
+      "Global options are resolved in the root callback and stored on ctx.obj",
+      "The profile falls back to APP_PROFILE and then default",
+      "Verbose diagnostics go to stderr, never stdout",
+      "Unknown keys raise typer.BadParameter so the command exits with code 2"
+    ]
+  },
+  "rationale": {
+    "teaches": "Resolve global options in an app.callback, pass them via ctx.obj to nested sub-apps, keep diagnostics on stderr, and signal bad input with BadParameter.",
+    "why": "Re-declaring globals on every command drifts, debug output on stdout breaks piping, and unchecked keys silently write garbage configuration."
+  },
+  "oracle": "fixtures/test_240_typer_callback_context_state.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "ALLOWED_KEYS"
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "assign",
+        "name": "config_app"
+      },
+      {
+        "kind": "class",
+        "name": "State",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "main",
+        "params": [
+          "ctx",
+          "verbose",
+          "profile"
+        ],
+        "route": "command"
+      },
+      {
+        "kind": "function",
+        "name": "show",
+        "params": [
+          "ctx"
+        ],
+        "route": "command"
+      },
+      {
+        "kind": "function",
+        "name": "set_value",
+        "params": [
+          "ctx",
+          "key",
+          "value"
+        ],
+        "route": "command"
+      }
+    ],
+    "imports": [
+      "typer"
+    ],
+    "raises": [
+      "BadParameter"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "ALLOWED_KEYS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "config_app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "app.add_typer",
+              "kind": "statement",
+              "depends_on": [
+                "app",
+                "config_app"
+              ]
+            },
+            {
+              "name": "State",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "main",
+              "kind": "command",
+              "depends_on": [
+                "app",
+                "State"
+              ]
+            },
+            {
+              "name": "show",
+              "kind": "command",
+              "depends_on": [
+                "config_app",
+                "State"
+              ]
+            },
+            {
+              "name": "set_value",
+              "kind": "command",
+              "depends_on": [
+                "config_app",
+                "State",
+                "ALLOWED_KEYS"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Share global Typer options with a subcommand group through ctx.obj."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from dataclasses import dataclass",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Annotated",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import typer",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ALLOWED_KEYS",
+        "source": "ALLOWED_KEYS = frozenset({\"region\", \"output\"})",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "app",
+        "source": "app = typer.Typer(help=\"Cloud CLI.\")",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "config_app",
+        "source": "config_app = typer.Typer(help=\"Inspect and edit configuration.\")",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "app.add_typer",
+        "source": "app.add_typer(config_app, name=\"config\")",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "State",
+        "source": "@dataclass(frozen=True)\nclass State:\n    \"\"\"Global options resolved once in the root callback.\"\"\"\n\n    verbose: bool\n    profile: str",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "main",
+        "source": "@app.callback()\ndef main(\n    ctx: typer.Context,\n    verbose: Annotated[bool, typer.Option(\"--verbose\", \"-v\")] = False,\n    profile: Annotated[str, typer.Option(envvar=\"APP_PROFILE\")] = \"default\",\n) -> None:\n    \"\"\"Resolve global options for every subcommand.\"\"\"\n    ctx.obj = State(verbose=verbose, profile=profile)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "show",
+        "source": "@config_app.command(\"show\")\ndef show(ctx: typer.Context) -> None:\n    \"\"\"Print the active profile.\"\"\"\n    state: State = ctx.obj\n    if state.verbose:\n        typer.echo(f\"[debug] profile={state.profile}\", err=True)\n    typer.echo(f\"profile: {state.profile}\")",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "set_value",
+        "source": "@config_app.command(\"set\")\ndef set_value(ctx: typer.Context, key: str, value: str) -> None:\n    \"\"\"Set KEY to VALUE in the active profile.\"\"\"\n    state: State = ctx.obj\n    if key not in ALLOWED_KEYS:\n        raise typer.BadParameter(f\"unknown key {key!r}\", param_hint=\"KEY\")\n    if state.verbose:\n        typer.echo(f\"[debug] writing {key}\", err=True)\n    typer.echo(f\"{state.profile}.{key} = {value}\")",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 8
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The APP_PROFILE environment variable is ignored when choosing the profile.",
+      "caught_by": [
+        "test_profile_from_environment"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Verbose debug lines are printed to stdout and pollute the command output.",
+      "caught_by": [
+        "test_verbose_logs_to_stderr_only"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Debug lines appear only when verbose is off, the opposite of the flag.",
+      "caught_by": [
+        "test_default_profile",
+        "test_verbose_logs_to_stderr_only"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Unknown configuration keys are accepted and echoed as if they were set.",
+      "caught_by": [
+        "test_unknown_key_is_a_usage_error"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Without an explicit profile the CLI uses dev instead of default.",
+      "caught_by": [
+        "test_default_profile",
+        "test_verbose_logs_to_stderr_only"
+      ]
+    }
+  ]
+}

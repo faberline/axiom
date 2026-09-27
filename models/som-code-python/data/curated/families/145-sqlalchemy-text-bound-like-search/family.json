@@ -1,0 +1,181 @@
+{
+  "family_id": "145-sqlalchemy-text-bound-like-search",
+  "domain": "python",
+  "area": "sqlalchemy",
+  "capability": "text-query-bound-parameters-like-escape",
+  "requirement": "Search users by an email substring with a raw SQL query whose values are bound parameters, treating LIKE wildcards in the search term literally, bounding the result limit and rejecting blank terms.",
+  "skeleton": "A module-level SEARCH text() statement with :pattern and :limit placeholders and an ESCAPE clause, escape_like escaping backslash, percent and underscore, and search_users validating inputs then executing SEARCH with a parameter dict.",
+  "caption": "Raw SQL done safely with SQLAlchemy 2.0 text() and a Connection. SEARCH is a module-level text() statement selecting id and email from users where email LIKE :pattern ESCAPE backslash, ordered by email with LIMIT :limit, so every value travels as a bound parameter and never becomes part of the SQL string. escape_like(term) escapes the backslash first and then percent and underscore with a backslash, so wildcard characters typed by the user match literally and the escapes themselves are not doubled. search_users(conn, term, limit=10) raises ValueError saying the search term must not be blank for an empty or whitespace term and ValueError saying the limit must be between 1 and 50 outside that inclusive range, wraps the escaped term in percent signs and executes SEARCH with a pattern and limit dictionary, returning (id, email) tuples. The fixture asserts ordered results with ids, that a_b does not match axb and 100% does not match 1000, the exact escaping of a backslash, underscore and percent, that the injection string ' OR 1=1 -- returns nothing while all five users still exist, and the limit and blank-term errors.",
+  "plan": {
+    "intent": "Let admins search users by email",
+    "target": "user email search",
+    "constraints": [
+      "Search values are passed as bound parameters, never formatted into SQL",
+      "Percent and underscore in the term match literally",
+      "Results are (id, email) ordered by email",
+      "limit must be between 1 and 50, otherwise ValueError",
+      "Blank search terms raise ValueError"
+    ]
+  },
+  "rationale": {
+    "teaches": "text() with named bind parameters, LIKE with an explicit ESCAPE character, and escaping the escape character before the wildcards.",
+    "why": "Formatting the term into SQL is an injection, and forgetting to escape wildcards or the ESCAPE clause makes searches silently over- or under-match, all invisible on ordinary alphanumeric terms."
+  },
+  "oracle": "fixtures/test_145_sqlalchemy_text_bound_like_search.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "SEARCH"
+      },
+      {
+        "kind": "function",
+        "name": "escape_like",
+        "params": [
+          "term"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "search_users",
+        "params": [
+          "conn",
+          "term",
+          "limit"
+        ]
+      }
+    ],
+    "imports": [
+      "sqlalchemy"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "SEARCH",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "escape_like",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "search_users",
+              "kind": "function",
+              "depends_on": [
+                "escape_like",
+                "SEARCH"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "User search through a raw SQL text() query with bound parameters."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy import Connection, text",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SEARCH",
+        "source": "SEARCH = text(\n    \"SELECT id, email FROM users WHERE email LIKE :pattern ESCAPE '\\\\' \"\n    \"ORDER BY email LIMIT :limit\"\n)",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "escape_like",
+        "source": "def escape_like(term: str) -> str:\n    \"\"\"Make LIKE wildcards in term match literally.\"\"\"\n    return term.replace(\"\\\\\", \"\\\\\\\\\").replace(\"%\", \"\\\\%\").replace(\"_\", \"\\\\_\")",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "search_users",
+        "source": "def search_users(\n    conn: Connection, term: str, *, limit: int = 10\n) -> list[tuple[int, str]]:\n    \"\"\"Return (id, email) for users whose email contains term.\"\"\"\n    if not term.strip():\n        raise ValueError(\"search term must not be blank\")\n    if not 1 <= limit <= 50:\n        raise ValueError(\"limit must be between 1 and 50\")\n    pattern = f\"%{escape_like(term)}%\"\n    rows = conn.execute(SEARCH, {\"pattern\": pattern, \"limit\": limit})\n    return [(row.id, row.email) for row in rows]",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The pattern and limit are formatted into the SQL string, so a quote in the term injects SQL.",
+      "caught_by": [
+        "test_injection_is_just_a_string",
+        "test_wildcards_in_the_term_are_literal"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Underscore is not escaped, so a_b also matches axb.",
+      "caught_by": [
+        "test_escape_like_escapes_backslash_first",
+        "test_wildcards_in_the_term_are_literal"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The backslash is escaped last, doubling the escapes just added for percent and underscore.",
+      "caught_by": [
+        "test_escape_like_escapes_backslash_first",
+        "test_wildcards_in_the_term_are_literal"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The limit may go up to 100, so 51 is accepted.",
+      "caught_by": [
+        "test_limit_and_blank_terms"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Without the ESCAPE clause SQLite treats the backslashes literally and escaped terms never match.",
+      "caught_by": [
+        "test_wildcards_in_the_term_are_literal"
+      ]
+    }
+  ]
+}

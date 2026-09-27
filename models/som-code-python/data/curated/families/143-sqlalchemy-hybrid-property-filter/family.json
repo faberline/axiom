@@ -1,0 +1,201 @@
+{
+  "family_id": "143-sqlalchemy-hybrid-property-filter",
+  "domain": "python",
+  "area": "sqlalchemy",
+  "capability": "hybrid-property-sql-filter",
+  "requirement": "Expose a product's discounted price in whole cents as one definition that works on instances and inside SQL queries, list discounted products at or under a budget cheapest first, and reject discounts outside 0 to 90 percent.",
+  "skeleton": "Product declarative model with price_cents and discount_pct, a validates hook bounding the discount, a hybrid_property computing the sale price with floor division, and on_sale_under selecting names filtered and ordered by that hybrid.",
+  "caption": "Shared Python and SQL expressions with SQLAlchemy 2.0 hybrid_property from sqlalchemy.ext.hybrid. Product has an id, a name, an integer price_cents and an integer discount_pct defaulting to 0. A validates hook on discount_pct raises ValueError saying the discount must be between 0 and 90 for any value outside that inclusive range, so bad data fails at construction. sale_price_cents is a hybrid_property returning price_cents * (100 - discount_pct) // 100; on an instance it is a Python int rounded down, and on the class the same expression becomes SQL, so it can be used in where and order_by. on_sale_under(session, max_cents) selects product names where discount_pct is greater than 0 and sale_price_cents is at most max_cents, ordered by sale_price_cents and then name, and returns them as a list. The fixture asserts that a 999 cent lamp at 25 percent costs 749 as an int, that a budget of 799 returns mug then lamp, that 800 also includes the chair at exactly 800, that 749 is inclusive, that the undiscounted pen never appears even for a huge budget, and that discounts of 95 and -1 raise ValueError.",
+  "plan": {
+    "intent": "Find discounted products within a budget",
+    "target": "product sale prices",
+    "constraints": [
+      "The sale price is whole cents rounded down and is an int",
+      "The same sale price definition is used in Python and in the SQL query",
+      "Only discounted products are listed",
+      "The budget is inclusive and results are cheapest first, ties by name",
+      "Discounts outside 0 to 90 raise ValueError"
+    ]
+  },
+  "rationale": {
+    "teaches": "hybrid_property so one expression serves instance access and SQL filtering, plus validates for column-level invariants.",
+    "why": "Duplicating the price formula in Python and SQL lets the two drift, and true division turns cents into floats on instances while SQLite still divides integers, so the two sides disagree silently."
+  },
+  "oracle": "fixtures/test_143_sqlalchemy_hybrid_property_filter.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Base",
+        "bases": [
+          "DeclarativeBase"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Product",
+        "bases": [
+          "Base"
+        ],
+        "methods": [
+          "_check_discount",
+          "sale_price_cents"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "on_sale_under",
+        "params": [
+          "session",
+          "max_cents"
+        ]
+      }
+    ],
+    "imports": [
+      "sqlalchemy"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Base",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Product",
+              "kind": "class",
+              "depends_on": [
+                "Base"
+              ]
+            },
+            {
+              "name": "on_sale_under",
+              "kind": "function",
+              "depends_on": [
+                "Product"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Products whose sale price is one expression usable in Python and in SQL."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy import String, select",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.ext.hybrid import hybrid_property",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, validates",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Base",
+        "source": "class Base(DeclarativeBase):\n    \"\"\"Declarative base for this module's tables.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Product",
+        "source": "class Product(Base):\n    \"\"\"A product with a list price and a percentage discount.\"\"\"\n\n    __tablename__ = \"products\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    name: Mapped[str] = mapped_column(String(50))\n    price_cents: Mapped[int]\n    discount_pct: Mapped[int] = mapped_column(default=0)\n\n    @validates(\"discount_pct\")\n    def _check_discount(self, _key: str, value: int) -> int:\n        if not 0 <= value <= 90:\n            raise ValueError(\"discount must be between 0 and 90\")\n        return value\n\n    @hybrid_property\n    def sale_price_cents(self) -> int:\n        \"\"\"Discounted price in whole cents, rounded down.\"\"\"\n        return self.price_cents * (100 - self.discount_pct) // 100",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "on_sale_under",
+        "source": "def on_sale_under(session: Session, max_cents: int) -> list[str]:\n    \"\"\"Names of discounted products costing at most max_cents, cheapest first.\"\"\"\n    stmt = (\n        select(Product.name)\n        .where(Product.discount_pct > 0)\n        .where(Product.sale_price_cents <= max_cents)\n        .order_by(Product.sale_price_cents, Product.name)\n    )\n    return list(session.scalars(stmt))",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "True division makes the instance price a float with fractional cents.",
+      "caught_by": [
+        "test_bound_is_inclusive_and_undiscounted_items_are_skipped",
+        "test_sale_price_is_whole_cents_rounded_down"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Without the discount filter undiscounted products such as the pen are listed.",
+      "caught_by": [
+        "test_bound_is_inclusive_and_undiscounted_items_are_skipped",
+        "test_query_filters_and_orders_on_the_sale_price"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The strict comparison excludes products priced exactly at the budget.",
+      "caught_by": [
+        "test_bound_is_inclusive_and_undiscounted_items_are_skipped"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The validator allows discounts up to 100 percent, so 95 is accepted.",
+      "caught_by": [
+        "test_discount_is_validated"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Results are ordered by name alone instead of cheapest first.",
+      "caught_by": [
+        "test_bound_is_inclusive_and_undiscounted_items_are_skipped",
+        "test_query_filters_and_orders_on_the_sale_price"
+      ]
+    }
+  ]
+}

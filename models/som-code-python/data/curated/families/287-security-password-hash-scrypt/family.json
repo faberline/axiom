@@ -1,0 +1,371 @@
+{
+  "family_id": "287-security-password-hash-scrypt",
+  "domain": "python",
+  "area": "security",
+  "capability": "security-password-hash-scrypt",
+  "requirement": "Store user passwords with scrypt, random salts and embedded cost parameters, verify them in constant time and detect hashes that need upgrading.",
+  "skeleton": "A HashFormatError, hash_password, parse_hash, verify_password and needs_rehash over a dollar-separated scrypt format.",
+  "caption": "A password hasher built on hashlib.scrypt with base64, hmac and secrets. hash_password raises ValueError for an empty password, draws a random 16-byte salt and stores 'scrypt$n$r$p$salt$key'. parse_hash raises HashFormatError, a ValueError subclass, for a wrong scheme, wrong field count, non-integer costs, invalid base64 or an n that is not a power of two. verify_password compares with hmac.compare_digest and needs_rehash flags any cost triple other than the current one. The fixture asserts the round trip, random salts, default costs and rehash, the empty-password ValueError and each HashFormatError case.",
+  "plan": {
+    "intent": "Store login passwords safely",
+    "target": "scrypt password hashing",
+    "constraints": [
+      "An empty password raises ValueError",
+      "Every hash gets a fresh random salt",
+      "Malformed stored strings raise HashFormatError, including invalid base64 and a non power-of-two n",
+      "Verification uses hmac.compare_digest",
+      "Any change to n, r or p requires a rehash"
+    ]
+  },
+  "rationale": {
+    "teaches": "Embed the cost parameters with the salt, parse strictly, and compare derived keys with hmac.compare_digest.",
+    "why": "Fixed salts, lenient base64 decoding and partial cost checks quietly weaken stored passwords or break upgrades."
+  },
+  "oracle": "fixtures/test_287_security_password_hash_scrypt.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "N"
+      },
+      {
+        "kind": "assign",
+        "name": "R"
+      },
+      {
+        "kind": "assign",
+        "name": "P"
+      },
+      {
+        "kind": "assign",
+        "name": "SALT_BYTES"
+      },
+      {
+        "kind": "assign",
+        "name": "KEY_BYTES"
+      },
+      {
+        "kind": "class",
+        "name": "HashFormatError",
+        "bases": [
+          "ValueError"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "_b64",
+        "params": [
+          "data"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "_unb64",
+        "params": [
+          "text"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "_derive",
+        "params": [
+          "password",
+          "salt",
+          "params"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "hash_password",
+        "params": [
+          "password",
+          "params"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "parse_hash",
+        "params": [
+          "stored"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "verify_password",
+        "params": [
+          "password",
+          "stored"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "needs_rehash",
+        "params": [
+          "stored"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "HashFormatError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "N",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "SALT_BYTES",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "KEY_BYTES",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "HashFormatError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "_b64",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "_unb64",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "_derive",
+              "kind": "function",
+              "depends_on": [
+                "KEY_BYTES"
+              ]
+            },
+            {
+              "name": "hash_password",
+              "kind": "function",
+              "depends_on": [
+                "N",
+                "SALT_BYTES",
+                "_derive",
+                "_b64"
+              ]
+            },
+            {
+              "name": "parse_hash",
+              "kind": "function",
+              "depends_on": [
+                "HashFormatError",
+                "_unb64"
+              ]
+            },
+            {
+              "name": "verify_password",
+              "kind": "function",
+              "depends_on": [
+                "parse_hash",
+                "_derive"
+              ]
+            },
+            {
+              "name": "needs_rehash",
+              "kind": "function",
+              "depends_on": [
+                "parse_hash",
+                "N"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Hash and verify passwords with hashlib.scrypt in a self-describing format."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import base64",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import hashlib",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import hmac",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import secrets",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "N",
+        "source": "N, R, P = 2**14, 8, 1",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SALT_BYTES",
+        "source": "SALT_BYTES = 16",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "KEY_BYTES",
+        "source": "KEY_BYTES = 32",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "HashFormatError",
+        "source": "class HashFormatError(ValueError):\n    \"\"\"Raised when a stored hash string cannot be parsed.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_b64",
+        "source": "def _b64(data: bytes) -> str:\n    return base64.b64encode(data).decode(\"ascii\")",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_unb64",
+        "source": "def _unb64(text: str) -> bytes:\n    return base64.b64decode(text, validate=True)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_derive",
+        "source": "def _derive(password: str, salt: bytes, params: tuple[int, int, int]) -> bytes:\n    n, r, p = params\n    return hashlib.scrypt(\n        password.encode(\"utf-8\"), salt=salt, n=n, r=r, p=p, dklen=KEY_BYTES\n    )",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "hash_password",
+        "source": "def hash_password(password: str, params: tuple[int, int, int] = (N, R, P)) -> str:\n    \"\"\"Return 'scrypt$n$r$p$salt$key' with a fresh random salt.\"\"\"\n    if not password:\n        raise ValueError(\"password must not be empty\")\n    salt = secrets.token_bytes(SALT_BYTES)\n    key = _derive(password, salt, params)\n    return \"$\".join([\"scrypt\", *map(str, params), _b64(salt), _b64(key)])",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "parse_hash",
+        "source": "def parse_hash(stored: str) -> tuple[tuple[int, int, int], bytes, bytes]:\n    \"\"\"Split a stored hash into its cost parameters, salt and key.\"\"\"\n    parts = stored.split(\"$\")\n    if len(parts) != 6 or parts[0] != \"scrypt\":\n        raise HashFormatError(\"not an scrypt hash\")\n    try:\n        n, r, p = (int(part) for part in parts[1:4])\n        salt, key = _unb64(parts[4]), _unb64(parts[5])\n    except ValueError as exc:\n        raise HashFormatError(\"malformed scrypt hash\") from exc\n    if n < 2 or n & (n - 1):\n        raise HashFormatError(\"n must be a power of two\")\n    return (n, r, p), salt, key",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "verify_password",
+        "source": "def verify_password(password: str, stored: str) -> bool:\n    \"\"\"Return whether the password matches, comparing in constant time.\"\"\"\n    params, salt, key = parse_hash(stored)\n    return hmac.compare_digest(_derive(password, salt, params), key)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "needs_rehash",
+        "source": "def needs_rehash(stored: str) -> bool:\n    \"\"\"Return whether the stored hash uses cost parameters other than the current.\"\"\"\n    params, _, _ = parse_hash(stored)\n    return params != (N, R, P)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 11
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "A constant all-zero salt makes identical passwords hash identically.",
+      "caught_by": [
+        "test_salts_are_random"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "An empty password is hashed instead of raising ValueError.",
+      "caught_by": [
+        "test_empty_password_is_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Invalid base64 characters are silently discarded instead of rejected.",
+      "caught_by": [
+        "test_malformed_hashes_raise_format_error"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A non power-of-two n leaks a raw scrypt ValueError, not HashFormatError.",
+      "caught_by": [
+        "test_malformed_hashes_raise_format_error"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Only n is compared, so a hash with a weaker r is never upgraded.",
+      "caught_by": [
+        "test_default_cost_and_rehash"
+      ]
+    }
+  ]
+}

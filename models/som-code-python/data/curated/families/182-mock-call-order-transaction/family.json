@@ -1,0 +1,200 @@
+{
+  "family_id": "182-mock-call-order-transaction",
+  "domain": "python",
+  "area": "unittest.mock",
+  "capability": "mock-calls-ordering-on-parent",
+  "requirement": "Run a list of SQL statements in one transaction that commits only when all succeed and rolls back otherwise, with a spec-limited connection fake whose recorded calls prove the order.",
+  "skeleton": "Connection protocol, fake_connection building a spec_set Mock with a failing execute side_effect, and migrate cleaning statements, validating, calling begin, executing inside try with rollback and re-raise, then committing.",
+  "caption": "Transaction call order verified on a single unittest.mock.Mock. Connection is a typing.Protocol with begin, execute(sql), commit and rollback. fake_connection(fail_on=None) builds Mock(spec_set=Connection), so any other method such as close raises AttributeError, and gives execute a side_effect that raises RuntimeError saying the statement failed when the SQL equals fail_on. Because every child call is recorded on the parent, mock_calls shows the exact interleaving of begin, execute, commit and rollback. migrate(conn, statements) strips each statement and drops blank ones; if nothing remains it raises ValueError saying there are no statements to run, before touching the connection. Otherwise it calls begin, executes the cleaned statements in order inside try, and on any exception calls rollback and re-raises, so later statements never run and commit is never called. After the loop succeeds it commits and returns the number of statements run. The fixture asserts that the mock_calls for a success are begin, execute create a, execute create b and commit with blanks dropped and padding stripped, that a failure on create b records begin, two executes and rollback with commit never called, that only blank input raises ValueError with empty mock_calls, that assert_has_calls finds b then c among three executes, and that calling close raises AttributeError.",
+  "plan": {
+    "intent": "Test transactional ordering of connection calls",
+    "target": "migration runner",
+    "constraints": [
+      "Blank statements are dropped and the rest are stripped",
+      "Empty input raises ValueError before begin",
+      "Statements run in order between begin and commit",
+      "A failing statement triggers rollback, stops the run and re-raises its RuntimeError",
+      "commit is never called after a failure",
+      "The fake rejects methods the protocol lacks"
+    ]
+  },
+  "rationale": {
+    "teaches": "Children of one Mock record into the parent's mock_calls, so a single list equality with call.begin() and friends checks cross-method ordering.",
+    "why": "Per-method assert_called checks pass even when commit runs after a failure or begin runs on empty input; only the combined call list exposes the order."
+  },
+  "oracle": "fixtures/test_182_mock_call_order_transaction.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Connection",
+        "bases": [
+          "Protocol"
+        ],
+        "methods": [
+          "begin",
+          "execute",
+          "commit",
+          "rollback"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "fake_connection",
+        "params": [
+          "fail_on"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "migrate",
+        "params": [
+          "conn",
+          "statements"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "RuntimeError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Connection",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "fake_connection",
+              "kind": "function",
+              "depends_on": [
+                "Connection"
+              ]
+            },
+            {
+              "name": "migrate",
+              "kind": "function",
+              "depends_on": [
+                "Connection"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Verify transaction call order on one spec'd mock through mock_calls."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Sequence",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Protocol",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from unittest.mock import Mock",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Connection",
+        "source": "class Connection(Protocol):\n    \"\"\"The transactional slice of a database connection.\"\"\"\n\n    def begin(self) -> None:\n        \"\"\"Open a transaction.\"\"\"\n\n    def execute(self, sql: str) -> None:\n        \"\"\"Run one statement inside the open transaction.\"\"\"\n\n    def commit(self) -> None:\n        \"\"\"Make the transaction's changes permanent.\"\"\"\n\n    def rollback(self) -> None:\n        \"\"\"Discard the transaction's changes.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "fake_connection",
+        "source": "def fake_connection(fail_on: str | None = None) -> Mock:\n    \"\"\"A spec'd connection mock whose execute raises RuntimeError for fail_on.\"\"\"\n\n    def execute(sql: str) -> None:\n        if sql == fail_on:\n            raise RuntimeError(f\"statement failed: {sql}\")\n\n    conn = Mock(spec_set=Connection)\n    conn.execute.side_effect = execute\n    return conn",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "migrate",
+        "source": "def migrate(conn: Connection, statements: Sequence[str]) -> int:\n    \"\"\"Run the non-blank statements in one transaction, committing only on success.\"\"\"\n    cleaned = [sql.strip() for sql in statements if sql.strip()]\n    if not cleaned:\n        raise ValueError(\"no statements to run\")\n    conn.begin()\n    try:\n        for sql in cleaned:\n            conn.execute(sql)\n    except Exception:\n        conn.rollback()\n        raise\n    conn.commit()\n    return len(cleaned)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Whitespace-only statements are executed and padding is not stripped.",
+      "caught_by": [
+        "test_nothing_to_run_touches_nothing",
+        "test_success_runs_in_order_then_commits"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "A failure re-raises without rolling back the open transaction.",
+      "caught_by": [
+        "test_failure_rolls_back_and_stops"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "begin runs before the empty check, leaving a transaction open on invalid input.",
+      "caught_by": [
+        "test_nothing_to_run_touches_nothing"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The finally block commits partial work after a failed statement instead of rolling back.",
+      "caught_by": [
+        "test_failure_rolls_back_and_stops"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "An unspecced Mock accepts close and any other method the connection lacks.",
+      "caught_by": [
+        "test_fake_rejects_methods_the_protocol_lacks"
+      ]
+    }
+  ]
+}

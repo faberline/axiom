@@ -1,0 +1,164 @@
+{
+  "family_id": "261-playwright-console-error-collector",
+  "domain": "python",
+  "area": "playwright",
+  "capability": "playwright-console-error-collector",
+  "requirement": "Make every Playwright test fail when the page logs a console error or throws an uncaught exception, with an ignore list for known noise and without masking the test's own failure.",
+  "skeleton": "A ConsoleErrorCollector context manager holding ignore patterns and errors, with an ignore check, console and pageerror handlers, enter registering them, and exit removing them and asserting.",
+  "caption": "A context manager for Playwright tests, written in the standard library against a duck-typed page with on and remove_listener methods and no third-party imports, that fails the block when the browser logs errors. ConsoleErrorCollector(page, *, ignore=()) keeps substring patterns to ignore and a list of errors. Its console handler records a message's text only when its type is error and no pattern occurs in it; its pageerror handler records the string form of an uncaught error unless ignored. Entering registers both handlers with page.on for console and pageerror. Exiting removes both with page.remove_listener and, only when the block raised nothing, raises AssertionError listing the errors joined by semicolons, so a real test failure is not masked. The fixture asserts a clean run detaching listeners, failing on console errors but not warnings, page errors, substring ignores, no collection after exit, and an unmasked original exception.",
+  "plan": {
+    "intent": "Catch silent frontend errors in end-to-end tests",
+    "target": "console error guard",
+    "constraints": [
+      "Only console messages of type error are collected",
+      "Uncaught page errors are collected",
+      "Ignore patterns match substrings",
+      "Both listeners are removed on exit",
+      "AssertionError is raised only when the block itself succeeded"
+    ]
+  },
+  "rationale": {
+    "teaches": "Register console and pageerror listeners on enter, always remove both on exit, filter by type and substring, and assert only when exc_type is None.",
+    "why": "Leaked listeners keep collecting into finished tests, asserting over an in-flight exception replaces the real failure with a noisy one, and exact-match ignores never match real log lines."
+  },
+  "oracle": "fixtures/test_261_playwright_console_error_collector.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "ConsoleErrorCollector",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "_ignored",
+          "_on_console",
+          "_on_page_error",
+          "__enter__",
+          "__exit__"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "AssertionError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "ConsoleErrorCollector",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Fail a Playwright test on browser console errors and uncaught page errors."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Iterable",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from types import TracebackType",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ConsoleErrorCollector",
+        "source": "class ConsoleErrorCollector:\n    \"\"\"Listen to console and pageerror events while the block runs.\"\"\"\n\n    def __init__(self, page: Any, *, ignore: Iterable[str] = ()) -> None:\n        self._page = page\n        self._ignore = tuple(ignore)\n        self.errors: list[str] = []\n\n    def _ignored(self, text: str) -> bool:\n        return any(pattern in text for pattern in self._ignore)\n\n    def _on_console(self, message: Any) -> None:\n        if message.type == \"error\" and not self._ignored(message.text):\n            self.errors.append(message.text)\n\n    def _on_page_error(self, error: Any) -> None:\n        text = str(error)\n        if not self._ignored(text):\n            self.errors.append(text)\n\n    def __enter__(self) -> ConsoleErrorCollector:\n        self._page.on(\"console\", self._on_console)\n        self._page.on(\"pageerror\", self._on_page_error)\n        return self\n\n    def __exit__(\n        self,\n        exc_type: type[BaseException] | None,\n        exc: BaseException | None,\n        tb: TracebackType | None,\n    ) -> None:\n        self._page.remove_listener(\"console\", self._on_console)\n        self._page.remove_listener(\"pageerror\", self._on_page_error)\n        if exc_type is None and self.errors:\n            raise AssertionError(\"console errors: \" + \"; \".join(self.errors))",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Console warnings are treated as errors and fail clean pages.",
+      "caught_by": [
+        "test_console_errors_fail_the_block"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The console listener stays attached after the block and keeps collecting.",
+      "caught_by": [
+        "test_clean_run_passes_and_detaches_listeners",
+        "test_events_after_exit_are_not_collected",
+        "test_test_failure_is_not_masked"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "An AssertionError about console errors replaces the test's real exception.",
+      "caught_by": [
+        "test_test_failure_is_not_masked"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Ignore patterns must match the whole text, so known noise still fails.",
+      "caught_by": [
+        "test_ignore_patterns_match_substrings"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Uncaught page exceptions are never observed and the test passes.",
+      "caught_by": [
+        "test_clean_run_passes_and_detaches_listeners",
+        "test_test_failure_is_not_masked",
+        "test_uncaught_page_errors_are_collected"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,192 @@
+{
+  "family_id": "161-pytest-warns-deprecation-stacklevel",
+  "domain": "python",
+  "area": "pytest",
+  "capability": "deprecation-warning-stacklevel-pytest-warns",
+  "requirement": "Provide a decorator that marks a function deprecated in favour of a named replacement, emitting a DeprecationWarning on every call attributed to the caller and preserving the wrapped function's metadata, and apply it to an old alias of a row-fetching function.",
+  "skeleton": "A ParamSpec-generic deprecated factory validating the replacement, a decorate closure building the message and a functools.wraps wrapper that warns with stacklevel 2, plus fetch_rows and a decorated fetch_all alias.",
+  "caption": "Deprecating an old function name with the standard-library warnings module and functools.wraps, verified with pytest.warns. deprecated(replacement) is a decorator factory generic over a ParamSpec and a return type; it raises ValueError saying the replacement must be named when given an empty string. The decorator builds the message old name is deprecated; use replacement instead from the wrapped function's __name__, and wraps the function with functools.wraps so its name and docstring survive. Every call of the wrapper calls warnings.warn with category DeprecationWarning and stacklevel 2, so the warning is attributed to the caller's file and line rather than to the decorator module, then returns the wrapped function's result; exceptions such as ValueError propagate unchanged. fetch_rows(limit=3) raises ValueError saying limit must not be negative and returns the ids 1 through limit. fetch_all is decorated with deprecated naming fetch_rows and simply delegates to it. The fixture asserts that fetch_all warns with the exact message and still returns rows, that the recorded warning's filename is the test file, that two calls under an always filter record two DeprecationWarning entries, that __name__ and __doc__ are preserved, that fetch_rows raises nothing under an error filter, that a negative limit raises ValueError through the wrapper, and that an empty replacement raises ValueError.",
+  "plan": {
+    "intent": "Rename a public function without breaking callers",
+    "target": "deprecation decorator",
+    "constraints": [
+      "Each call of the old name emits DeprecationWarning naming the replacement",
+      "The warning is attributed to the caller, not the decorator",
+      "The wrapper keeps the original name and docstring",
+      "An empty replacement raises ValueError",
+      "ValueError from the wrapped function propagates unchanged"
+    ]
+  },
+  "rationale": {
+    "teaches": "warnings.warn with the right category and stacklevel inside a functools.wraps wrapper, asserted with pytest.warns and its recorded filename.",
+    "why": "A wrong stacklevel sends users to the decorator instead of their own call site and the wrong category is hidden by default filters, and neither shows up unless a test inspects the recorded warning."
+  },
+  "oracle": "fixtures/test_161_pytest_warns_deprecation_stacklevel.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "function",
+        "name": "deprecated",
+        "params": [
+          "replacement"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "fetch_rows",
+        "params": [
+          "limit"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "fetch_all",
+        "params": [
+          "limit"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "deprecated",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "fetch_rows",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "fetch_all",
+              "kind": "function",
+              "depends_on": [
+                "deprecated",
+                "fetch_rows"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Deprecate an old function with a warning that points at the caller."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import warnings",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from functools import wraps",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "deprecated",
+        "source": "def deprecated[**P, R](replacement: str) -> Callable[[Callable[P, R]], Callable[P, R]]:\n    \"\"\"Wrap a function so each call warns and names its replacement.\"\"\"\n    if not replacement:\n        raise ValueError(\"replacement must be named\")\n\n    def decorate(func: Callable[P, R]) -> Callable[P, R]:\n        message = f\"{func.__name__} is deprecated; use {replacement} instead\"\n\n        @wraps(func)\n        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:\n            warnings.warn(message, DeprecationWarning, stacklevel=2)\n            return func(*args, **kwargs)\n\n        return wrapper\n\n    return decorate",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "fetch_rows",
+        "source": "def fetch_rows(limit: int = 3) -> list[int]:\n    \"\"\"Return the first limit row ids.\"\"\"\n    if limit < 0:\n        raise ValueError(\"limit must not be negative\")\n    return list(range(1, limit + 1))",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "fetch_all",
+        "source": "@deprecated(\"fetch_rows\")\ndef fetch_all(limit: int = 3) -> list[int]:\n    \"\"\"Old name for fetch_rows.\"\"\"\n    return fetch_rows(limit)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "stacklevel 1 attributes the warning to the decorator module instead of the caller.",
+      "caught_by": [
+        "test_warning_points_at_the_caller"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "Without functools.wraps the alias reports its name as wrapper and loses its docstring.",
+      "caught_by": [
+        "test_wrapper_keeps_metadata"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "UserWarning is not a DeprecationWarning, so tooling that filters deprecations misses it.",
+      "caught_by": [
+        "test_errors_propagate_through_the_wrapper",
+        "test_every_call_warns",
+        "test_old_name_warns_and_still_works",
+        "test_warning_points_at_the_caller"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "An empty replacement is accepted and produces a message telling users to use nothing.",
+      "caught_by": [
+        "test_replacement_is_required"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The message swaps the names and tells users the new function is deprecated.",
+      "caught_by": [
+        "test_old_name_warns_and_still_works"
+      ]
+    }
+  ]
+}

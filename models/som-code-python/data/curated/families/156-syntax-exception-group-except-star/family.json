@@ -1,0 +1,185 @@
+{
+  "family_id": "156-syntax-exception-group-except-star",
+  "domain": "python",
+  "area": "syntax",
+  "capability": "exception-group-except-star-aggregation",
+  "requirement": "Validate every field of a user record and report all invalid fields together as an ExceptionGroup of FieldError, then import a batch of records handling those groups with except* to count accepted records and list failing fields per index.",
+  "skeleton": "FieldError subclass of ValueError carrying the field, validate_user collecting errors into a list and raising ExceptionGroup, and import_users using try, except* FieldError and else over enumerated records.",
+  "caption": "Collecting every validation failure at once with the built-in ExceptionGroup and the except* syntax from Python 3.11. FieldError is a ValueError subclass whose message is the field name, a colon and the reason, and which keeps the field name as an attribute. validate_user(record) checks a mapping without stopping at the first problem: name must be a string that is not blank after strip, age must be an int that is not a bool and lies from 0 to 150 inclusive, and email must be a string containing @. Each failure appends a FieldError to a list, and if the list is not empty the function raises ExceptionGroup with the message invalid user and all of them, so the caller sees every bad field instead of only the first. import_users(records) enumerates the records from index 0, calls validate_user inside try, and uses except* FieldError to receive the matching subgroup, recording the sorted field names of its exceptions under the record index; records that raise nothing increase the accepted count in the else branch. It returns the accepted count and the failures dictionary. The fixture asserts that a valid record returns None at ages 0 and 150, that an empty name, a string age and an email without @ raise one ExceptionGroup whose FieldError members name age, email and name, that ages 151, -1, True, 36.0 and None each fail only the age field, that a blank name reports name: required, and that importing four records yields two accepted and failures at indexes 1 and 3.",
+  "plan": {
+    "intent": "Report every invalid field of an imported record at once",
+    "target": "user record import",
+    "constraints": [
+      "Every invalid field is reported in one ExceptionGroup of FieldError",
+      "FieldError is a ValueError whose message is field: reason",
+      "Age must be an int, not a bool, from 0 to 150 inclusive",
+      "Blank names after stripping are rejected",
+      "import_users handles groups with except* and indexes records from 0"
+    ]
+  },
+  "rationale": {
+    "teaches": "Accumulate errors into a list, raise ExceptionGroup once, and split the group with except* on the consumer side.",
+    "why": "Raising the first error hides the rest and a bare exception breaks callers expecting a group, while bool passing as int and off-by-one bounds slip through unless each edge is tested."
+  },
+  "oracle": "fixtures/test_156_syntax_exception_group_except_star.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "FieldError",
+        "bases": [
+          "ValueError"
+        ],
+        "methods": [
+          "__init__"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "validate_user",
+        "params": [
+          "record"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "import_users",
+        "params": [
+          "records"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ExceptionGroup"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "FieldError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "validate_user",
+              "kind": "function",
+              "depends_on": [
+                "FieldError"
+              ]
+            },
+            {
+              "name": "import_users",
+              "kind": "function",
+              "depends_on": [
+                "validate_user",
+                "FieldError"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Report every invalid field at once with ExceptionGroup and except*."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Iterable, Mapping",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "FieldError",
+        "source": "class FieldError(ValueError):\n    \"\"\"One field of a record failed validation.\"\"\"\n\n    def __init__(self, field: str, message: str) -> None:\n        super().__init__(f\"{field}: {message}\")\n        self.field = field",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "validate_user",
+        "source": "def validate_user(record: Mapping[str, object]) -> None:\n    \"\"\"Raise an ExceptionGroup of FieldError listing every invalid field.\"\"\"\n    errors: list[FieldError] = []\n    name = record.get(\"name\")\n    if not isinstance(name, str) or not name.strip():\n        errors.append(FieldError(\"name\", \"required\"))\n    age = record.get(\"age\")\n    if not isinstance(age, int) or isinstance(age, bool) or not 0 <= age <= 150:\n        errors.append(FieldError(\"age\", \"must be an integer from 0 to 150\"))\n    email = record.get(\"email\")\n    if not isinstance(email, str) or \"@\" not in email:\n        errors.append(FieldError(\"email\", \"must contain @\"))\n    if errors:\n        raise ExceptionGroup(\"invalid user\", errors)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "import_users",
+        "source": "def import_users(\n    records: Iterable[Mapping[str, object]],\n) -> tuple[int, dict[int, list[str]]]:\n    \"\"\"Return how many records passed and the failing fields by record index.\"\"\"\n    accepted = 0\n    failures: dict[int, list[str]] = {}\n    for index, record in enumerate(records):\n        try:\n            validate_user(record)\n        except* FieldError as group:\n            failures[index] = sorted(\n                e.field for e in group.exceptions if isinstance(e, FieldError)\n            )\n        else:\n            accepted += 1\n    return accepted, failures",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The upper bound is exclusive, so an age of exactly 150 is rejected.",
+      "caught_by": [
+        "test_valid_record_passes"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "bool is a subclass of int, so True is accepted as an age of 1.",
+      "caught_by": [
+        "test_bad_ages"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Without strip a name of only spaces counts as present and passes validation.",
+      "caught_by": [
+        "test_blank_name_is_required"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Raising only the first FieldError drops the other invalid fields and is not an ExceptionGroup.",
+      "caught_by": [
+        "test_bad_ages",
+        "test_blank_name_is_required",
+        "test_every_invalid_field_is_reported_together",
+        "test_import_collects_failures_by_index"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Counting from one shifts every failure to the wrong record index.",
+      "caught_by": [
+        "test_import_collects_failures_by_index"
+      ]
+    }
+  ]
+}

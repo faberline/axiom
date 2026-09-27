@@ -1,0 +1,188 @@
+{
+  "family_id": "283-shutil-copytree-ignore-patterns",
+  "domain": "python",
+  "area": "shutil",
+  "capability": "shutil-copytree-ignore-patterns",
+  "requirement": "Copy a project into a build directory with shutil.copytree, skipping caches and VCS data, keeping symlinks, and refusing to copy a tree into itself.",
+  "skeleton": "A CopyError and a copy_project function that validates paths, calls copytree with ignore_patterns, symlinks and dirs_exist_ok, and lists the copied files.",
+  "caption": "A build-directory copier using shutil and pathlib. CopyError is a ValueError subclass. copy_project resolves both paths, raises CopyError when the source is not a directory or the destination equals or lies inside the source, then calls shutil.copytree with shutil.ignore_patterns over the default ignores for __pycache__, compiled files, .git and temp files plus any extra patterns, symlinks=True so links stay links, and dirs_exist_ok=True so an existing destination is merged. It returns the sorted relative POSIX paths of files and links in the destination. The fixture asserts ignored names are skipped, extra ignores apply, symlinks are copied as links, an existing destination is merged, and the CopyError cases.",
+  "plan": {
+    "intent": "Stage a project for packaging",
+    "target": "filtered tree copy",
+    "constraints": [
+      "A missing source or a destination inside the source raises CopyError",
+      "Default and extra ignore patterns are both applied",
+      "Symlinks are copied as symlinks",
+      "An existing destination directory is merged instead of failing"
+    ]
+  },
+  "rationale": {
+    "teaches": "Pass ignore_patterns, symlinks and dirs_exist_ok explicitly and validate the destination against the resolved source first.",
+    "why": "copytree defaults follow symlinks, fail on existing destinations and happily copy a tree into a subdirectory of itself."
+  },
+  "oracle": "fixtures/test_283_shutil_copytree_ignore_patterns.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "DEFAULT_IGNORES"
+      },
+      {
+        "kind": "class",
+        "name": "CopyError",
+        "bases": [
+          "ValueError"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "copy_project",
+        "params": [
+          "src",
+          "dst",
+          "extra_ignores"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "CopyError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "DEFAULT_IGNORES",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "CopyError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "copy_project",
+              "kind": "function",
+              "depends_on": [
+                "CopyError",
+                "DEFAULT_IGNORES"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Copy a project tree into a build directory with shutil.copytree."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import shutil",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pathlib import Path",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "DEFAULT_IGNORES",
+        "source": "DEFAULT_IGNORES = (\"__pycache__\", \"*.pyc\", \".git\", \"*.tmp\")",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "CopyError",
+        "source": "class CopyError(ValueError):\n    \"\"\"Raised when the source is missing or the destination is inside it.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "copy_project",
+        "source": "def copy_project(\n    src: Path, dst: Path, extra_ignores: tuple[str, ...] = ()\n) -> list[str]:\n    \"\"\"Copy src into dst, skipping ignored names, and list the copied files.\"\"\"\n    src = src.resolve()\n    dst = dst.resolve()\n    if not src.is_dir():\n        raise CopyError(f\"{src} is not a directory\")\n    if dst == src or dst.is_relative_to(src):\n        raise CopyError(\"destination must not be inside the source\")\n    shutil.copytree(\n        src,\n        dst,\n        ignore=shutil.ignore_patterns(*DEFAULT_IGNORES, *extra_ignores),\n        symlinks=True,\n        dirs_exist_ok=True,\n    )\n    return sorted(\n        path.relative_to(dst).as_posix()\n        for path in dst.rglob(\"*\")\n        if path.is_file() or path.is_symlink()\n    )",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Caller-supplied ignore patterns are dropped, so secrets are copied into the build.",
+      "caught_by": [
+        "test_extra_ignores_are_applied"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Symlinks are dereferenced and copied as regular files.",
+      "caught_by": [
+        "test_symlinks_are_copied_as_links"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Copying into an existing build directory fails with FileExistsError.",
+      "caught_by": [
+        "test_existing_destination_is_merged"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A destination nested inside the source is accepted and copied into itself.",
+      "caught_by": [
+        "test_bad_source_or_destination_raises"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A missing source raises a raw FileNotFoundError instead of CopyError.",
+      "caught_by": [
+        "test_bad_source_or_destination_raises"
+      ]
+    }
+  ]
+}
