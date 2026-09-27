@@ -1,0 +1,479 @@
+{
+  "family_id": "13-fastapi-complex-dependency-trees",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "complex-dependency-trees-and-generator-lifecycle",
+  "requirement": "Create a multi-tier SaaS dependency tree: get_api_key -> get_tenant_context -> get_scoped_repository with generator yield and finally: repo.close(), admin tenant override guard, and dependency caching.",
+  "skeleton": "FastAPI multi-tier dependency hierarchy with generator lifecycle management and role-based tenant routing.",
+  "caption": "A FastAPI service whose request handling is a three-level dependency chain over an in-memory key store. UserAuth and TenantContext are pydantic models; ScopedRepository is a plain class holding a tenant_id, an is_closed flag, and an operations list, whose perform_action raises RuntimeError once the repository is closed and otherwise records the action and returns tenant:action, and whose close sets the flag. API_KEYS_DB maps key-admin-1 to an admin user with home tenant tenant-corp and key-member-1 to a member with home tenant tenant-acme; OPEN_REPOSITORIES collects every repository built, and reset_db empties it. get_api_key reads the X-API-Key header and raises HTTPException 401 when it is missing or unknown, returning the UserAuth record otherwise. get_tenant_context depends on get_api_key and reads an optional X-Tenant-Override header: when the override is present and the role is not admin it raises HTTPException 403, when the caller is admin the override becomes the active tenant, and without an override the home tenant is used. get_scoped_repository depends on get_tenant_context and is a generator: it builds the repository, appends it to OPEN_REPOSITORIES, yields it, and closes it in a finally clause so the close runs even when the route raises. AuditService wraps a repository, and get_audit_service depends on get_scoped_repository with FastAPI's default dependency caching, so a route that depends on both the repository and the audit service receives one shared instance per request. POST /data/action performs the action and returns the tenant id, the result, whether the two repository references are the same object, and the count of repositories opened; GET /tenants/current returns the resolved tenant context.",
+  "plan": {
+    "intent": "Resolve a tenant-scoped repository through a chain of request dependencies",
+    "target": "ScopedRepository",
+    "constraints": [
+      "A missing or unknown API key raises HTTPException 401",
+      "A tenant override from a non-admin raises HTTPException 403, while an admin override switches the tenant",
+      "The repository is closed after every request, including one that raised",
+      "Using a closed repository raises RuntimeError",
+      "Routes needing both the repository and the audit service share one instance per request"
+    ]
+  },
+  "rationale": {
+    "teaches": "A three-level dependency chain where the leaf is a generator with finally-close, an admin-only tenant override, and default dependency caching so one request builds one repository.",
+    "why": "Dependency trees are assembled from snippets that each look right in isolation. Whether the repo closes, whether a non-admin can hop tenants, and whether the cache is on can only be seen by exercising the whole chain, which the fixture does."
+  },
+  "oracle": "fixtures/test_13_fastapi_complex_dependency_trees.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "UserAuth",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "TenantContext",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ScopedRepository",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "perform_action",
+          "close"
+        ]
+      },
+      {
+        "kind": "assign",
+        "name": "API_KEYS_DB"
+      },
+      {
+        "kind": "assign",
+        "name": "OPEN_REPOSITORIES"
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "get_api_key",
+        "params": [
+          "x_api_key"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "get_tenant_context",
+        "params": [
+          "auth",
+          "x_tenant_override"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "get_scoped_repository",
+        "params": [
+          "tenant_ctx"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "AuditService",
+        "bases": [],
+        "methods": [
+          "__init__"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "get_audit_service",
+        "params": [
+          "repo"
+        ]
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "run_action",
+        "params": [
+          "action",
+          "repo",
+          "audit_service"
+        ],
+        "route": "POST /data/action"
+      },
+      {
+        "kind": "function",
+        "name": "get_current_tenant",
+        "params": [
+          "tenant_ctx"
+        ],
+        "route": "GET /tenants/current"
+      }
+    ],
+    "imports": [
+      "fastapi",
+      "pydantic"
+    ],
+    "raises": [
+      "HTTPException",
+      "RuntimeError"
+    ],
+    "status_codes": [
+      401,
+      403
+    ],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "UserAuth",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "TenantContext",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "ScopedRepository",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "API_KEYS_DB",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "OPEN_REPOSITORIES",
+              "kind": "constant",
+              "depends_on": [
+                "ScopedRepository"
+              ]
+            },
+            {
+              "name": "reset_db",
+              "kind": "function",
+              "depends_on": [
+                "OPEN_REPOSITORIES"
+              ]
+            },
+            {
+              "name": "get_api_key",
+              "kind": "function",
+              "depends_on": [
+                "UserAuth",
+                "API_KEYS_DB"
+              ]
+            },
+            {
+              "name": "get_tenant_context",
+              "kind": "function",
+              "depends_on": [
+                "UserAuth",
+                "get_api_key",
+                "TenantContext"
+              ]
+            },
+            {
+              "name": "get_scoped_repository",
+              "kind": "function",
+              "depends_on": [
+                "TenantContext",
+                "get_tenant_context",
+                "ScopedRepository",
+                "OPEN_REPOSITORIES"
+              ]
+            },
+            {
+              "name": "AuditService",
+              "kind": "class",
+              "depends_on": [
+                "ScopedRepository"
+              ]
+            },
+            {
+              "name": "get_audit_service",
+              "kind": "function",
+              "depends_on": [
+                "ScopedRepository",
+                "get_scoped_repository",
+                "AuditService"
+              ]
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "run_action",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "ScopedRepository",
+                "get_scoped_repository",
+                "AuditService",
+                "get_audit_service",
+                "OPEN_REPOSITORIES"
+              ]
+            },
+            {
+              "name": "get_current_tenant",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "TenantContext",
+                "get_tenant_context"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Tenant-scoped repositories built from a tree of shared FastAPI dependencies."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Generator",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import Depends, FastAPI, Header, HTTPException, status",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel",
+        "group": 1
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "UserAuth",
+        "id": "pydantic_model",
+        "params": {
+          "name": "UserAuth",
+          "doc": "The caller identified by an API key.",
+          "fields": [
+            {
+              "field": "user_id",
+              "declaration": "str"
+            },
+            {
+              "field": "role",
+              "declaration": "str"
+            },
+            {
+              "field": "home_tenant",
+              "declaration": "str"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "TenantContext",
+        "id": "pydantic_model",
+        "params": {
+          "name": "TenantContext",
+          "doc": "The tenant a request acts on, with the caller who chose it.",
+          "fields": [
+            {
+              "field": "tenant_id",
+              "declaration": "str"
+            },
+            {
+              "field": "user_id",
+              "declaration": "str"
+            },
+            {
+              "field": "role",
+              "declaration": "str"
+            },
+            {
+              "field": "home_tenant",
+              "declaration": "str"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ScopedRepository",
+        "source": "class ScopedRepository:\n    \"\"\"A per-request repository bound to one tenant.\"\"\"\n\n    def __init__(self, tenant_id: str) -> None:\n        self.tenant_id = tenant_id\n        self.is_closed = False\n        self.operations: list[str] = []\n\n    def perform_action(self, action: str) -> str:\n        \"\"\"Record an action and return it qualified by the tenant.\"\"\"\n        if self.is_closed:\n            raise RuntimeError(\"Repository is already closed\")\n        self.operations.append(action)\n        return f\"{self.tenant_id}:{action}\"\n\n    def close(self) -> None:\n        \"\"\"Refuse any further action.\"\"\"\n        self.is_closed = True",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "API_KEYS_DB",
+        "source": "API_KEYS_DB: dict[str, dict[str, str]] = {\n    \"key-admin-1\": {\n        \"user_id\": \"user-admin\",\n        \"role\": \"admin\",\n        \"home_tenant\": \"tenant-corp\",\n    },\n    \"key-member-1\": {\n        \"user_id\": \"user-member\",\n        \"role\": \"member\",\n        \"home_tenant\": \"tenant-acme\",\n    },\n}",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "OPEN_REPOSITORIES",
+        "source": "OPEN_REPOSITORIES: list[ScopedRepository] = []",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db",
+        "source": "def reset_db() -> None:\n    \"\"\"Forget every repository opened so far.\"\"\"\n    OPEN_REPOSITORIES.clear()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_api_key",
+        "source": "def get_api_key(\n    x_api_key: str | None = Header(default=None, alias=\"X-API-Key\"),\n) -> UserAuth:\n    \"\"\"Resolve the X-API-Key header to a user, or answer 401.\"\"\"\n    if not x_api_key or x_api_key not in API_KEYS_DB:\n        raise HTTPException(\n            status_code=status.HTTP_401_UNAUTHORIZED,\n            detail=\"Invalid or missing API key\",\n        )\n    record = API_KEYS_DB[x_api_key]\n    return UserAuth(\n        user_id=record[\"user_id\"],\n        role=record[\"role\"],\n        home_tenant=record[\"home_tenant\"],\n    )",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_tenant_context",
+        "source": "def get_tenant_context(\n    auth: UserAuth = Depends(get_api_key),\n    x_tenant_override: str | None = Header(default=None, alias=\"X-Tenant-Override\"),\n) -> TenantContext:\n    \"\"\"Choose the active tenant; only an admin may override it.\"\"\"\n    if x_tenant_override:\n        if auth.role != \"admin\":\n            raise HTTPException(\n                status_code=status.HTTP_403_FORBIDDEN,\n                detail=\"Tenant override requires admin privileges\",\n            )\n        active_tenant = x_tenant_override\n    else:\n        active_tenant = auth.home_tenant\n\n    return TenantContext(\n        tenant_id=active_tenant,\n        user_id=auth.user_id,\n        role=auth.role,\n        home_tenant=auth.home_tenant,\n    )",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_scoped_repository",
+        "source": "def get_scoped_repository(\n    tenant_ctx: TenantContext = Depends(get_tenant_context),\n) -> Generator[ScopedRepository, None, None]:\n    \"\"\"Open one repository per request and close it after the response.\"\"\"\n    repo = ScopedRepository(tenant_id=tenant_ctx.tenant_id)\n    OPEN_REPOSITORIES.append(repo)\n    try:\n        yield repo\n    finally:\n        repo.close()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "AuditService",
+        "source": "class AuditService:\n    \"\"\"A service that shares the request's repository.\"\"\"\n\n    def __init__(self, repo: ScopedRepository) -> None:\n        self.repo = repo",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_audit_service",
+        "source": "def get_audit_service(\n    repo: ScopedRepository = Depends(get_scoped_repository),\n) -> AuditService:\n    \"\"\"Build the audit service on the request's repository.\"\"\"\n    return AuditService(repo=repo)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "app",
+        "id": "fastapi_app_titled",
+        "params": {
+          "title": "SaaS Scoped Dependency Service"
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "run_action",
+        "source": "@app.post(\"/data/action\")\ndef run_action(\n    action: str = \"query\",\n    repo: ScopedRepository = Depends(get_scoped_repository),\n    audit_service: AuditService = Depends(get_audit_service),\n) -> dict[str, str | bool | int]:\n    \"\"\"Run an action and report whether both dependencies share a repository.\"\"\"\n    result = repo.perform_action(action)\n    is_shared = repo is audit_service.repo\n    return {\n        \"tenant_id\": repo.tenant_id,\n        \"result\": result,\n        \"shared_repo_instance\": is_shared,\n        \"instance_count\": len(OPEN_REPOSITORIES),\n    }",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_current_tenant",
+        "source": "@app.get(\"/tenants/current\")\ndef get_current_tenant(\n    tenant_ctx: TenantContext = Depends(get_tenant_context),\n) -> dict[str, str]:\n    \"\"\"Return the tenant context of the request.\"\"\"\n    return {\n        \"tenant_id\": tenant_ctx.tenant_id,\n        \"user_id\": tenant_ctx.user_id,\n        \"role\": tenant_ctx.role,\n        \"home_tenant\": tenant_ctx.home_tenant,\n    }",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 3,
+      "literal_blocks": 11
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The repository is yielded without a finally block, so a route that raises leaves it open.",
+      "caught_by": [
+        "test_scoped_repository_closed_in_finally_cleanup"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Any authenticated user can override the tenant, so a regular user reads another tenant's data.",
+      "caught_by": [
+        "test_non_admin_cannot_override_tenant_403"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The admin override is ignored and the home tenant is used, so the override header has no effect.",
+      "caught_by": [
+        "test_admin_override_sets_override_tenant"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The dependency returns the repository instead of yielding it, so close is never called at all.",
+      "caught_by": [
+        "test_get_scoped_repository_is_generator_dependency",
+        "test_scoped_repository_closed_in_finally_cleanup"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "use_cache=False rebuilds the repository for every parameter that depends on it, so one request opens multiple repositories.",
+      "caught_by": [
+        "test_dependency_caching_shares_repo_instance"
+      ]
+    }
+  ]
+}

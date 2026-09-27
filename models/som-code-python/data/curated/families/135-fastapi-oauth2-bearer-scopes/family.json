@@ -1,0 +1,285 @@
+{
+  "family_id": "135-fastapi-oauth2-bearer-scopes",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "oauth2-bearer-security-scopes",
+  "requirement": "Protect routes with bearer tokens where each route declares its required OAuth2 scopes, answering 401 with a Bearer challenge naming the scopes for missing or unknown tokens and 403 with an insufficient_scope challenge when a granted scope is missing.",
+  "skeleton": "Principal dataclass and TOKENS table, an OAuth2PasswordBearer with scopes and auto_error disabled, current_principal taking SecurityScopes and raising 401 or 403 with WWW-Authenticate, and read and delete routes using Security with scopes.",
+  "caption": "Scoped bearer authentication with FastAPI security utilities. Principal is a frozen dataclass holding a name and a frozenset of granted scopes, and TOKENS maps three tokens to a reader, a writer and a write-only caller. oauth2 is an OAuth2PasswordBearer from fastapi.security declaring items:read and items:write with auto_error false, so a missing token reaches our own handler instead of the library's generic error. current_principal(security_scopes, token) builds a challenge Bearer scope= followed by SecurityScopes.scope_str; an absent or unknown token raises HTTPException 401 saying invalid token with that WWW-Authenticate header, and each declared scope the principal lacks raises HTTPException 403 saying missing scope and the scope name, with a challenge carrying error insufficient_scope and the declared scopes. GET /items uses Security(current_principal, scopes items:read) and DELETE /items/{item_id} requires items:read and items:write. The fixture asserts that the reader lists items, that no token and a forged token get 401 with the scope challenge, that the reader deleting gets 403 naming items:write with the insufficient_scope challenge, that the writer deletes, and that the write-only token cannot list.",
+  "plan": {
+    "intent": "Let tokens do only what their scopes allow",
+    "target": "scoped bearer auth",
+    "constraints": [
+      "Missing or unknown tokens raise HTTPException 401 with a Bearer scope challenge",
+      "A missing declared scope raises HTTPException 403 with an insufficient_scope challenge",
+      "Listing requires items:read",
+      "Deleting requires both items:read and items:write",
+      "The bearer scheme does not raise its own generic error"
+    ]
+  },
+  "rationale": {
+    "teaches": "SecurityScopes with Security(..., scopes=...) per route, and RFC 6750 style WWW-Authenticate challenges for 401 and 403.",
+    "why": "Relying on the library's auto error, confusing 401 with 403, or declaring the wrong scope set still admits the writer, so the fixture probes every token against every route and reads the challenge headers."
+  },
+  "oracle": "fixtures/test_135_fastapi_oauth2_bearer_scopes.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Principal",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "TOKENS"
+      },
+      {
+        "kind": "assign",
+        "name": "oauth2"
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "current_principal",
+        "params": [
+          "security_scopes",
+          "token"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "list_items",
+        "params": [
+          "who"
+        ],
+        "route": "GET /items"
+      },
+      {
+        "kind": "function",
+        "name": "delete_item",
+        "params": [
+          "item_id",
+          "who"
+        ],
+        "route": "DELETE /items/{item_id}"
+      }
+    ],
+    "imports": [
+      "fastapi"
+    ],
+    "raises": [
+      "HTTPException"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Principal",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "TOKENS",
+              "kind": "constant",
+              "depends_on": [
+                "Principal"
+              ]
+            },
+            {
+              "name": "oauth2",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "current_principal",
+              "kind": "function",
+              "depends_on": [
+                "oauth2",
+                "Principal",
+                "TOKENS"
+              ]
+            },
+            {
+              "name": "list_items",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "Principal",
+                "current_principal"
+              ]
+            },
+            {
+              "name": "delete_item",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "Principal",
+                "current_principal"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Bearer-token API where each route declares the OAuth2 scopes it needs."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from dataclasses import dataclass",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Annotated",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import Depends, FastAPI, HTTPException, Security, status",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi.security import OAuth2PasswordBearer, SecurityScopes",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Principal",
+        "source": "@dataclass(frozen=True)\nclass Principal:\n    \"\"\"The caller behind a token and the scopes it was granted.\"\"\"\n\n    name: str\n    scopes: frozenset[str]",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "TOKENS",
+        "source": "TOKENS = {\n    \"reader-token\": Principal(\"rita\", frozenset({\"items:read\"})),\n    \"writer-token\": Principal(\"wes\", frozenset({\"items:read\", \"items:write\"})),\n    \"write-only-token\": Principal(\"wally\", frozenset({\"items:write\"})),\n}",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "oauth2",
+        "source": "oauth2 = OAuth2PasswordBearer(\n    tokenUrl=\"token\",\n    scopes={\"items:read\": \"Read items\", \"items:write\": \"Delete items\"},\n    auto_error=False,\n)",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "app",
+        "id": "fastapi_app_titled",
+        "params": {
+          "title": "Items"
+        },
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "current_principal",
+        "source": "def current_principal(\n    security_scopes: SecurityScopes, token: Annotated[str | None, Depends(oauth2)]\n) -> Principal:\n    \"\"\"Resolve the token, then require every scope the route declared.\"\"\"\n    challenge = f'Bearer scope=\"{security_scopes.scope_str}\"'\n    principal = TOKENS.get(token or \"\")\n    if principal is None:\n        raise HTTPException(\n            status.HTTP_401_UNAUTHORIZED,\n            detail=\"invalid token\",\n            headers={\"WWW-Authenticate\": challenge},\n        )\n    for scope in security_scopes.scopes:\n        if scope not in principal.scopes:\n            raise HTTPException(\n                status.HTTP_403_FORBIDDEN,\n                detail=f\"missing scope {scope}\",\n                headers={\n                    \"WWW-Authenticate\": 'Bearer error=\"insufficient_scope\", '\n                    f'scope=\"{security_scopes.scope_str}\"'\n                },\n            )\n    return principal",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "list_items",
+        "source": "@app.get(\"/items\")\ndef list_items(\n    who: Annotated[Principal, Security(current_principal, scopes=[\"items:read\"])],\n) -> dict[str, str | list[str]]:\n    \"\"\"List items for any reader.\"\"\"\n    return {\"user\": who.name, \"items\": [\"a\", \"b\"]}",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "delete_item",
+        "source": "@app.delete(\"/items/{item_id}\")\ndef delete_item(\n    item_id: str,\n    who: Annotated[\n        Principal, Security(current_principal, scopes=[\"items:read\", \"items:write\"])\n    ],\n) -> dict[str, str]:\n    \"\"\"Delete an item; needs read and write scopes.\"\"\"\n    return {\"deleted\": item_id, \"by\": who.name}",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 1,
+      "literal_blocks": 6
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "With auto_error on, a missing token gets the library's generic challenge without the required scope.",
+      "caught_by": [
+        "test_missing_token_is_401_with_challenge"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Unknown tokens get 403 instead of 401, telling clients to stop rather than authenticate.",
+      "caught_by": [
+        "test_missing_token_is_401_with_challenge",
+        "test_unknown_token_is_401"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Deleting declares only items:write, so the challenge advertises the wrong scope set.",
+      "caught_by": [
+        "test_missing_scope_is_403_with_insufficient_scope"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Listing declares no scope, so a write-only token can read items.",
+      "caught_by": [
+        "test_missing_token_is_401_with_challenge",
+        "test_unknown_token_is_401",
+        "test_write_only_token_cannot_read"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The 401 response carries no WWW-Authenticate challenge, so clients cannot learn the required scope.",
+      "caught_by": [
+        "test_missing_token_is_401_with_challenge",
+        "test_unknown_token_is_401"
+      ]
+    }
+  ]
+}

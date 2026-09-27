@@ -1,0 +1,221 @@
+{
+  "family_id": "247-secrets-password-policy-generator",
+  "domain": "python",
+  "area": "secrets",
+  "capability": "secrets-password-policy-generator",
+  "requirement": "Generate strong random passwords that always contain lowercase, uppercase, digit and symbol characters, at a configurable minimum-checked length, using only cryptographically secure randomness.",
+  "skeleton": "Length and character-class constants and a generate_password function validating length, taking one secure pick per class, filling from the full alphabet, and shuffling with SystemRandom.",
+  "caption": "Generating random passwords with the secrets module that always satisfy a policy requiring lowercase, uppercase, digit and symbol characters. MIN_LENGTH is 12, SYMBOLS holds ten punctuation marks, CLASSES groups the four string character sets and ALPHABET joins them. generate_password(length=16) raises ValueError saying the length must be at least MIN_LENGTH when shorter. It picks one secrets.choice from each class, fills the remaining length with secrets.choice over the whole ALPHABET, shuffles the list with secrets.SystemRandom so the required characters are not in fixed positions, and joins it. The fixture asserts over 400 samples the default length of 16 and alphabet, that every class appears in every password, that the first and last characters vary in class so the list was shuffled, that digits average above two per password, custom lengths including exactly 12, ValueError for 11, and that seeding random does not reproduce a password.",
+  "plan": {
+    "intent": "Issue initial passwords to new accounts",
+    "target": "password generator",
+    "constraints": [
+      "Lengths below 12 raise ValueError",
+      "Every password contains each character class",
+      "Remaining characters come from the full alphabet",
+      "The required characters are shuffled into random positions",
+      "All randomness comes from secrets"
+    ]
+  },
+  "rationale": {
+    "teaches": "Guarantee class coverage by seeding one pick per class, fill from the full alphabet, and shuffle with SystemRandom so the structure leaks nothing.",
+    "why": "Fixed positions for required classes shrink the search space attackers must cover, and restricting the fill alphabet lowers entropy per character."
+  },
+  "oracle": "fixtures/test_247_secrets_password_policy_generator.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "MIN_LENGTH"
+      },
+      {
+        "kind": "assign",
+        "name": "SYMBOLS"
+      },
+      {
+        "kind": "assign",
+        "name": "CLASSES"
+      },
+      {
+        "kind": "assign",
+        "name": "ALPHABET"
+      },
+      {
+        "kind": "function",
+        "name": "generate_password",
+        "params": [
+          "length"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "MIN_LENGTH",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "SYMBOLS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "CLASSES",
+              "kind": "constant",
+              "depends_on": [
+                "SYMBOLS"
+              ]
+            },
+            {
+              "name": "ALPHABET",
+              "kind": "constant",
+              "depends_on": [
+                "CLASSES"
+              ]
+            },
+            {
+              "name": "generate_password",
+              "kind": "function",
+              "depends_on": [
+                "MIN_LENGTH",
+                "CLASSES",
+                "ALPHABET"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Generate passwords that satisfy a character-class policy with secrets."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import secrets",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import string",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MIN_LENGTH",
+        "source": "MIN_LENGTH = 12",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SYMBOLS",
+        "source": "SYMBOLS = \"!@#$%^&*-_\"",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "CLASSES",
+        "source": "CLASSES = (string.ascii_lowercase, string.ascii_uppercase, string.digits, SYMBOLS)",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ALPHABET",
+        "source": "ALPHABET = \"\".join(CLASSES)",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "generate_password",
+        "source": "def generate_password(length: int = 16) -> str:\n    \"\"\"Return a random password containing every character class.\"\"\"\n    if length < MIN_LENGTH:\n        raise ValueError(f\"length must be at least {MIN_LENGTH}\")\n    chars = [secrets.choice(cls) for cls in CLASSES]\n    chars += [secrets.choice(ALPHABET) for _ in range(length - len(chars))]\n    secrets.SystemRandom().shuffle(chars)\n    return \"\".join(chars)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 5
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Required characters always sit in the first four positions in class order.",
+      "caught_by": [
+        "test_required_characters_are_shuffled"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A length of exactly 12 is rejected though it meets the policy.",
+      "caught_by": [
+        "test_custom_length_and_minimum"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Passwords come out four characters longer than requested.",
+      "caught_by": [
+        "test_custom_length_and_minimum",
+        "test_default_length_and_alphabet"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The filler draws only letters so digits and symbols are underrepresented.",
+      "caught_by": [
+        "test_remaining_characters_use_the_full_alphabet"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Default passwords are the 12-character minimum instead of 16.",
+      "caught_by": [
+        "test_default_length_and_alphabet"
+      ]
+    }
+  ]
+}

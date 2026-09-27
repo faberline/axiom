@@ -1,0 +1,146 @@
+{
+  "family_id": "67-bs4-parser-selection",
+  "domain": "python",
+  "area": "bs4",
+  "capability": "markup-parser-selection-cdata",
+  "requirement": "Implement StructuredMarkupParser wrapping BeautifulSoup with explicit parser feature configuration ('lxml-xml' for XML and 'lxml' for HTML), preventing parser guessing warnings, preserving case-sensitive XML tag hierarchies, properly parsing self-closing non-HTML tags, and extracting CDATA section content without entity distortion.",
+  "skeleton": "StructuredMarkupParser class with __init__, parse, and extract_tag_values using bs4.BeautifulSoup and bs4.CData.",
+  "caption": "A BeautifulSoup markup parser, from the beautifulsoup package, that always names its parser engine explicitly instead of letting the library guess, so XML keeps its case-sensitive tags and CDATA sections survive intact. StructuredMarkupParser takes a mode defaulting to xml, raises ValueError when the mode is anything other than xml or html, and selects the lxml-xml feature for XML and the lxml feature for HTML. parse raises ValueError when the markup is empty or whitespace only and otherwise returns a BeautifulSoup built with the configured feature, so no guessing warning is emitted and the XML builder is used for XML documents. extract_tag_values raises ValueError for an empty tag name, parses the markup, and finds every tag with exactly the requested name, without lowercasing it. For each match it concatenates the text of its children, taking a CData node verbatim so angle brackets and ampersands inside the section are neither escaped nor stripped, and appends the stripped result. Self-closing elements that are not HTML void tags are parsed as siblings instead of being nested inside one another. The fixture asserts that a CDATA block holding a raw_json element with an ampersand comes back verbatim, that a mixed-case tag and a lowercase tag are looked up independently and return DEV-9901 and lowercase-tag, that two self-closing items share the same parent, that XML mode uses lxml-xml and produces an XML builder while HTML mode uses lxml, and that a bad mode, empty markup, and an empty tag name each raise ValueError naming the argument.",
+  "plan": {
+    "intent": "Parse markup with an explicitly chosen parser engine",
+    "target": "StructuredMarkupParser",
+    "constraints": [
+      "A mode other than xml or html, empty markup, or an empty tag name raises ValueError",
+      "XML mode uses lxml-xml and HTML mode uses lxml",
+      "Tag lookup is case-sensitive",
+      "CDATA content is returned verbatim",
+      "Self-closing XML elements are parsed as siblings"
+    ]
+  },
+  "rationale": {
+    "teaches": "BeautifulSoup with an explicit parser feature per mode, case-preserving XML tag lookup, CDATA text extracted verbatim, and a validated mode.",
+    "why": "Letting BeautifulSoup guess the parser warns and lowercases XML tags, so case-sensitive lookups silently return nothing. The fixture uses mixed-case tags and CDATA containing angle brackets."
+  },
+  "oracle": "fixtures/test_67_bs4_parser_selection.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "StructuredMarkupParser",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "parse",
+          "extract_tag_values"
+        ]
+      }
+    ],
+    "imports": [
+      "bs4"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "StructuredMarkupParser",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Structured markup parser with explicit parser features and CDATA support."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from bs4 import BeautifulSoup, CData",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "StructuredMarkupParser",
+        "source": "class StructuredMarkupParser:\n    \"\"\"Parse HTML or XML with an explicitly chosen parser and keep CDATA content.\"\"\"\n\n    def __init__(self, mode: str = \"xml\") -> None:\n        if mode not in (\"xml\", \"html\"):\n            raise ValueError(\"mode must be either 'xml' or 'html'\")\n        self.mode = mode\n        self.parser_feature = \"lxml-xml\" if mode == \"xml\" else \"lxml\"\n\n    def parse(self, markup: str) -> BeautifulSoup:\n        \"\"\"Create a BeautifulSoup instance with the configured parser feature.\"\"\"\n        if not markup or not markup.strip():\n            raise ValueError(\"markup cannot be empty\")\n        return BeautifulSoup(markup, features=self.parser_feature)\n\n    def extract_tag_values(self, markup: str, tag_name: str) -> list[str]:\n        \"\"\"Extract text or CDATA values for a specified tag, honoring casing rules.\"\"\"\n        if not tag_name or not tag_name.strip():\n            raise ValueError(\"tag_name cannot be empty\")\n        soup = self.parse(markup)\n        results: list[str] = []\n        for tag in soup.find_all(tag_name):\n            text_parts = []\n            for child in tag.children:\n                if isinstance(child, CData):\n                    text_parts.append(str(child))\n                elif string := getattr(child, \"string\", None):\n                    text_parts.append(str(string))\n            results.append(\"\".join(text_parts).strip())\n        return results",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "XML mode uses the HTML parser, so tag names are lowercased and self-closing tags are mangled.",
+      "caught_by": [
+        "test_explicit_parser_feature",
+        "test_xml_case_sensitivity",
+        "test_xml_cdata_extraction"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "No parser feature is passed, so BeautifulSoup guesses, warns, and may lowercase tags.",
+      "caught_by": [
+        "test_explicit_parser_feature",
+        "test_xml_case_sensitivity",
+        "test_xml_cdata_extraction"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Tag lookups are lowercased, so mixed-case XML tags are never found.",
+      "caught_by": [
+        "test_xml_case_sensitivity",
+        "test_xml_cdata_extraction"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Angle brackets are stripped from CDATA text, so markup inside CDATA is corrupted.",
+      "caught_by": [
+        "test_xml_cdata_extraction"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "An unknown mode is accepted and falls through to the HTML parser.",
+      "caught_by": [
+        "test_validation_errors"
+      ]
+    }
+  ]
+}

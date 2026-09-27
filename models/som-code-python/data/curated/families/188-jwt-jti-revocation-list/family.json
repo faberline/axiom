@@ -1,0 +1,187 @@
+{
+  "family_id": "188-jwt-jti-revocation-list",
+  "domain": "python",
+  "area": "security",
+  "capability": "jwt-jti-revocation-list",
+  "requirement": "Give every issued JWT a unique jti, reject revoked tokens by jti, keep revocation idempotent, and let the list shrink once revoked tokens have expired anyway.",
+  "skeleton": "RevokedTokenError and a TokenService class with a secret length check, issue adding a uuid jti, a private _decode requiring jti, verify checking the list, revoke storing jti to exp, and purge by exp.",
+  "caption": "Per-token JWT revocation with PyJWT, HS256 and uuid. RevokedTokenError subclasses jwt.InvalidTokenError. TokenService(secret, ttl) raises ValueError saying the secret must be at least 32 bytes when its UTF-8 encoding is shorter, and keeps an instance dict mapping revoked jti to exp. issue(subject) signs sub, a fresh uuid4 hex jti, iat and exp = now plus ttl. A private _decode pins algorithms to HS256 and requires sub, jti and exp, so a token without jti raises jwt.MissingRequiredClaimError. verify(token) decodes and raises RevokedTokenError naming the jti when it is on the list. revoke(token) uses _decode, not verify, so revoking twice is harmless, and stores the jti with its integer exp. purge(now) forgets every revocation whose exp is at or before now and returns how many it forgot; revoked_count is a property with the list size. The fixture asserts that a revoked token raises RevokedTokenError, that revoking one of two tokens for alice leaves the other valid, that revoking twice leaves a count of 1, that purge at exp minus 1 forgets nothing while purge at exp forgets it, that a token without jti raises jwt.MissingRequiredClaimError, and that a 31 byte secret raises ValueError while 32 bytes is accepted.",
+  "plan": {
+    "intent": "Log out individual tokens before they expire",
+    "target": "token revocation list",
+    "constraints": [
+      "Every token gets its own random jti",
+      "Revoked tokens raise RevokedTokenError while other tokens stay valid",
+      "Revoking the same token twice is harmless",
+      "Revocations are forgotten once now reaches their exp",
+      "A token without jti raises jwt.MissingRequiredClaimError",
+      "Secrets shorter than 32 bytes raise ValueError"
+    ]
+  },
+  "rationale": {
+    "teaches": "Revoke by a per-token jti, require it at decode time, and bound the list by each token's exp so it never grows forever.",
+    "why": "Revoking by subject logs out every device, a shared jti revokes unrelated tokens, and a list that is never purged grows with every logout."
+  },
+  "oracle": "fixtures/test_188_jwt_jti_revocation_list.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "RevokedTokenError",
+        "bases": [
+          "jwt.InvalidTokenError"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "TokenService",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "revoked_count",
+          "issue",
+          "_decode",
+          "verify",
+          "revoke",
+          "purge"
+        ]
+      }
+    ],
+    "imports": [
+      "jwt"
+    ],
+    "raises": [
+      "RevokedTokenError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "RevokedTokenError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "TokenService",
+              "kind": "class",
+              "depends_on": [
+                "RevokedTokenError"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Revoke individual JWTs by jti and forget each revocation once the token expires."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import datetime as dt",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import uuid",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import jwt",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "RevokedTokenError",
+        "source": "class RevokedTokenError(jwt.InvalidTokenError):\n    \"\"\"The token's jti is on the revocation list.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "TokenService",
+        "source": "class TokenService:\n    \"\"\"Issue HS256 tokens with a unique jti and keep a revocation list.\"\"\"\n\n    def __init__(self, secret: str, ttl: dt.timedelta) -> None:\n        if len(secret.encode()) < 32:\n            raise ValueError(\"secret must be at least 32 bytes\")\n        self._secret = secret\n        self._ttl = ttl\n        self._revoked: dict[str, int] = {}\n\n    @property\n    def revoked_count(self) -> int:\n        \"\"\"Number of revocations currently remembered.\"\"\"\n        return len(self._revoked)\n\n    def issue(self, subject: str) -> str:\n        \"\"\"Sign a token for subject with a fresh random jti.\"\"\"\n        now = dt.datetime.now(dt.UTC)\n        claims = {\n            \"sub\": subject,\n            \"jti\": uuid.uuid4().hex,\n            \"iat\": now,\n            \"exp\": now + self._ttl,\n        }\n        return jwt.encode(claims, self._secret, algorithm=\"HS256\")\n\n    def _decode(self, token: str) -> dict[str, Any]:\n        claims: dict[str, Any] = jwt.decode(\n            token,\n            self._secret,\n            algorithms=[\"HS256\"],\n            options={\"require\": [\"sub\", \"jti\", \"exp\"]},\n        )\n        return claims\n\n    def verify(self, token: str) -> dict[str, Any]:\n        \"\"\"Return the claims unless the token is invalid or revoked.\"\"\"\n        claims = self._decode(token)\n        if claims[\"jti\"] in self._revoked:\n            raise RevokedTokenError(f\"token {claims['jti']} was revoked\")\n        return claims\n\n    def revoke(self, token: str) -> None:\n        \"\"\"Put the token's jti on the list until its exp; revoking twice is fine.\"\"\"\n        claims = self._decode(token)\n        self._revoked[claims[\"jti\"]] = int(claims[\"exp\"])\n\n    def purge(self, now: int) -> int:\n        \"\"\"Forget revocations of tokens expired at now; return how many.\"\"\"\n        expired = [jti for jti, exp in self._revoked.items() if exp <= now]\n        for jti in expired:\n            self._revoked.pop(jti)\n        return len(expired)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "shared_default_factory",
+      "why_wrong": "The jti is generated once per service, so revoking one token revokes every token it issued.",
+      "caught_by": [
+        "test_revocation_is_per_token"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "verify never consults the revocation list, so revoked tokens keep working.",
+      "caught_by": [
+        "test_revoked_token_stops_verifying"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A revocation whose exp equals now is kept one tick too long.",
+      "caught_by": [
+        "test_purge_forgets_only_expired_revocations"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "jti is not required, so a token without it crashes with KeyError instead of a JWT error.",
+      "caught_by": [
+        "test_jti_is_required"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "revoke goes through verify, so revoking an already revoked token raises.",
+      "caught_by": [
+        "test_revoke_is_idempotent"
+      ]
+    }
+  ]
+}

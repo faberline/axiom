@@ -1,0 +1,190 @@
+{
+  "family_id": "32-syntax-late-binding-closures",
+  "domain": "python",
+  "area": "syntax",
+  "capability": "late-binding-closures",
+  "requirement": "Implement RulePipeline with proper closure scope binding in generator and scaler loops, boundary validation, and history management.",
+  "skeleton": "RulePipeline class with register_threshold_checks, build_indexed_scalers, evaluate, and clear methods.",
+  "caption": "A standard-library rule pipeline whose closures bind loop variables early. RulePipeline holds a rules list of callables and a private history list. register_threshold_checks raises TypeError when thresholds is not a list and ValueError when it holds more than 20 items, so exactly twenty is accepted; for each threshold it appends a lambda that takes the value and a default parameter bound to the current threshold, returning whether the value is at or above that bound. Because the bound is captured through the default argument at definition time, each checker keeps its own threshold instead of all reading the final loop value. build_indexed_scalers raises TypeError for a non-list and ValueError with the message factors cannot be empty for an empty list, then appends one lambda per factor, again binding the factor through a default parameter, so scalers built from factors 2, 3, and 5 multiply 10 into 20, 30, and 50 rather than 50 three times. evaluate raises ValueError for a mode other than all or any, returns True when no rules are registered, applies all() over the rules in all mode and any() in any mode, records the value, mode, and result in the history, and returns the result, so a value that satisfies one threshold but not another fails in all mode. clear empties both the rules and the history, and history_count reports the number of recorded evaluations.",
+  "plan": {
+    "intent": "Build rule closures that each keep their own loop value",
+    "target": "RulePipeline",
+    "constraints": [
+      "Each closure binds its threshold or factor through a default argument at definition time",
+      "A non-list input raises TypeError; more than 20 thresholds or an empty factor list raises ValueError",
+      "A mode other than all or any raises ValueError",
+      "An empty pipeline evaluates to True",
+      "Every evaluation is recorded in the history until cleared"
+    ]
+  },
+  "rationale": {
+    "teaches": "Late-binding closures in loops: capture the loop variable through a default argument, reject an empty factor list, allow exactly 20 thresholds, require all rules to pass, and clear history fully.",
+    "why": "A closure over a loop variable returns the last value for every scaler, a bug that is only visible when more than one closure is called after the loop ends. The fixture builds several and calls each."
+  },
+  "oracle": "fixtures/test_32_syntax_late_binding_closures.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "function",
+        "name": "_at_least",
+        "params": [
+          "bound"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "_scale_by",
+        "params": [
+          "factor"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "RulePipeline",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "register_threshold_checks",
+          "build_indexed_scalers",
+          "evaluate",
+          "clear",
+          "history_count"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "_at_least",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "_scale_by",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "RulePipeline",
+              "kind": "class",
+              "depends_on": [
+                "_at_least",
+                "_scale_by"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Build rule and scaler callables that bind loop values when they are made."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_at_least",
+        "source": "def _at_least(bound: float) -> Callable[[float], bool]:\n    \"\"\"Return a check bound to this threshold rather than the loop variable.\"\"\"\n    return lambda val: val >= bound",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_scale_by",
+        "source": "def _scale_by(factor: int) -> Callable[[int], int]:\n    \"\"\"Return a scaler bound to this factor rather than the loop variable.\"\"\"\n    return lambda x: x * factor",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "RulePipeline",
+        "source": "class RulePipeline:\n    \"\"\"Threshold rules and scalers evaluated against incoming values.\"\"\"\n\n    def __init__(self) -> None:\n        self.rules: list[Callable[[float], bool]] = []\n        self._history: list[dict[str, Any]] = []\n\n    def register_threshold_checks(\n        self, thresholds: list[float]\n    ) -> list[Callable[[float], bool]]:\n        \"\"\"Add one at-least check per threshold and return the new checks.\"\"\"\n        if not isinstance(thresholds, list):\n            raise TypeError(\"thresholds must be a list\")\n        if len(thresholds) > 20:\n            raise ValueError(\"thresholds cannot exceed 20 items\")\n\n        checkers: list[Callable[[float], bool]] = []\n        for threshold in thresholds:\n            checkers.append(_at_least(threshold))\n        self.rules.extend(checkers)\n        return checkers\n\n    def build_indexed_scalers(self, factors: list[int]) -> list[Callable[[int], int]]:\n        \"\"\"Return one multiplier per factor, each bound to its own factor.\"\"\"\n        if not isinstance(factors, list):\n            raise TypeError(\"factors must be a list\")\n        if not factors:\n            raise ValueError(\"factors cannot be empty\")\n\n        scalers: list[Callable[[int], int]] = []\n        for factor in factors:\n            scalers.append(_scale_by(factor))\n        return scalers\n\n    def evaluate(self, val: float, mode: str = \"all\") -> bool:\n        \"\"\"Check val against every rule in all or any mode and log the outcome.\"\"\"\n        if mode not in (\"all\", \"any\"):\n            raise ValueError(f\"Unknown mode: {mode}\")\n        if not self.rules:\n            return True\n        if mode == \"all\":\n            result = all(rule(val) for rule in self.rules)\n        else:\n            result = any(rule(val) for rule in self.rules)\n        self._history.append({\"val\": val, \"mode\": mode, \"result\": result})\n        return result\n\n    def clear(self) -> None:\n        \"\"\"Drop every rule and the evaluation history.\"\"\"\n        self.rules.clear()\n        self._history.clear()\n\n    def history_count(self) -> int:\n        \"\"\"Return how many evaluations were recorded.\"\"\"\n        return len(self._history)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The lambda closes over the loop variable, so every scaler multiplies by the last factor.",
+      "caught_by": [
+        "test_scalers_early_binding"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "An empty factor list is accepted and yields no scalers instead of raising ValueError.",
+      "caught_by": [
+        "test_empty_factors_validation"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Exactly 20 thresholds is rejected even though 20 is the documented maximum.",
+      "caught_by": [
+        "test_thresholds_boundary_twenty_allowed"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "evaluate passes when any rule holds instead of all, so a value failing one threshold is accepted.",
+      "caught_by": [
+        "test_evaluate_mode_all"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "clear leaves the evaluation history in place, so history grows across resets.",
+      "caught_by": [
+        "test_clear_resets_history_and_rules"
+      ]
+    }
+  ]
+}

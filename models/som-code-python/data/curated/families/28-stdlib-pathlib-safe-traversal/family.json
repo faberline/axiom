@@ -1,0 +1,149 @@
+{
+  "family_id": "28-stdlib-pathlib-safe-traversal",
+  "domain": "python",
+  "area": "stdlib",
+  "capability": "pathlib-safe-traversal",
+  "requirement": "Implement SafeFileSandbox with safe path resolution, path traversal prevention, symlink escape detection, and safe read/write operations.",
+  "skeleton": "SafeFileSandbox class with resolve_safe_path, safe_read_text, and safe_write_text.",
+  "caption": "A pathlib-based file sandbox with no third-party dependencies. SafeFileSandbox resolves its root directory once in the constructor with Path.resolve so symlinks in the root itself are collapsed. resolve_safe_path takes an untrusted relative path string: it strips leading forward and back slashes with lstrip so an absolute-looking input is treated as relative to the sandbox rather than replacing the root, joins the cleaned string onto the root, and calls resolve on the result so dot-dot segments and symlinks are collapsed to the real target before any check. Only then does it test containment with is_relative_to against the resolved root, which compares path components rather than string prefixes, so a sibling directory whose name merely starts with the root's name is rejected. Any path that lands outside raises PermissionError with a message naming the offending input and the root, never a silent fallback to the root itself. safe_read_text resolves the path through that guard and returns read_text with the given encoding, defaulting to UTF-8. safe_write_text resolves the path the same way, creates the parent directories with mkdir using parents and exist_ok, writes the content with write_text, and returns the resolved path. A dot-dot traversal, a symlink inside the sandbox pointing outside it, and a same-prefix sibling directory all raise, while a leading-slash path and an ordinary nested path read and write inside the root.",
+  "plan": {
+    "intent": "Confine file reads and writes to a sandbox directory",
+    "target": "SafeFileSandbox",
+    "constraints": [
+      "The root and every requested path are resolved before any check, collapsing dot-dot and symlinks",
+      "Leading slashes are stripped so absolute-looking input stays inside the root",
+      "Containment is a path-component comparison, so a same-prefix sibling directory is rejected",
+      "Any escape raises PermissionError naming the input and the root",
+      "Writes create missing parent directories inside the sandbox"
+    ]
+  },
+  "rationale": {
+    "teaches": "Sandboxed path resolution: strip leading separators, resolve symlinks before checking, use is_relative_to for containment, and raise PermissionError on escape.",
+    "why": "Path traversal defenses fail on the case the author did not test: a sibling directory with the same prefix, an absolute path, or a symlink out of the root. Each miss passes the plain dot-dot test and fails one of those."
+  },
+  "oracle": "fixtures/test_28_stdlib_pathlib_safe_traversal.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "SafeFileSandbox",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "resolve_safe_path",
+          "safe_read_text",
+          "safe_write_text"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "PermissionError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "SafeFileSandbox",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Read and write files only inside one sandbox directory."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pathlib import Path",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SafeFileSandbox",
+        "source": "class SafeFileSandbox:\n    \"\"\"File access confined to one resolved root directory.\"\"\"\n\n    def __init__(self, root_dir: str | Path) -> None:\n        self.root_dir = Path(root_dir).resolve()\n\n    def resolve_safe_path(self, untrusted_path: str) -> Path:\n        \"\"\"Resolve an untrusted path, refusing any that escapes the root.\"\"\"\n        clean = untrusted_path.lstrip(\"/\\\\\")\n        resolved = (self.root_dir / clean).resolve()\n        if not resolved.is_relative_to(self.root_dir):\n            raise PermissionError(\n                f\"Access denied: path '{untrusted_path}' escapes sandbox root \"\n                f\"'{self.root_dir}'\"\n            )\n        return resolved\n\n    def safe_read_text(self, untrusted_path: str, encoding: str = \"utf-8\") -> str:\n        \"\"\"Read a sandboxed file as text.\"\"\"\n        safe_p = self.resolve_safe_path(untrusted_path)\n        return safe_p.read_text(encoding=encoding)\n\n    def safe_write_text(\n        self, untrusted_path: str, content: str, encoding: str = \"utf-8\"\n    ) -> Path:\n        \"\"\"Write text to a sandboxed file, creating its parent directories.\"\"\"\n        safe_p = self.resolve_safe_path(untrusted_path)\n        safe_p.parent.mkdir(parents=True, exist_ok=True)\n        safe_p.write_text(content, encoding=encoding)\n        return safe_p",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Containment is a string prefix check, so /sandbox_evil passes as inside /sandbox.",
+      "caught_by": [
+        "test_sibling_directory_bypass_rejected"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Leading slashes are not stripped, so an absolute path replaces the root and escapes the sandbox.",
+      "caught_by": [
+        "test_leading_slash_treated_relative_to_sandbox"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The check runs on the unresolved path, so a symlink inside the root that points outside passes.",
+      "caught_by": [
+        "test_dotdot_traversal_rejected",
+        "test_sibling_directory_bypass_rejected",
+        "test_symlink_escape_rejected",
+        "test_traversal_raises_permission_error_not_root"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The prefix check runs before resolve, so dot-dot segments pass the check and then resolve outside the root.",
+      "caught_by": [
+        "test_dotdot_traversal_rejected",
+        "test_sibling_directory_bypass_rejected",
+        "test_symlink_escape_rejected",
+        "test_traversal_raises_permission_error_not_root"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "An escaping path silently resolves to the sandbox root instead of raising, so the caller reads or writes the wrong file.",
+      "caught_by": [
+        "test_dotdot_traversal_rejected",
+        "test_sibling_directory_bypass_rejected",
+        "test_symlink_escape_rejected",
+        "test_traversal_raises_permission_error_not_root"
+      ]
+    }
+  ]
+}

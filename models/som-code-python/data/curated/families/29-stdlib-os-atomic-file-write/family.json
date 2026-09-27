@@ -1,0 +1,168 @@
+{
+  "family_id": "29-stdlib-os-atomic-file-write",
+  "domain": "python",
+  "area": "stdlib",
+  "capability": "os-atomic-file-write",
+  "requirement": "Implement AtomicFileOps providing write_text_atomic and write_json_atomic with temp file in target parent dir, fsync durability, atomic replacement, and cleanup on failure.",
+  "skeleton": "AtomicFileOps class with static methods write_text_atomic and write_json_atomic.",
+  "caption": "A standard-library atomic file writer exposed as two static methods on AtomicFileOps. write_text_atomic resolves the target path, creates its parent directory with mkdir using parents and exist_ok, and opens a tempfile.NamedTemporaryFile in text mode with the requested encoding, with dir set to the target's parent directory and delete=False, so the temporary file lives on the same filesystem as the target and the final rename cannot fail with a cross-device error. Inside a try block it writes the content, flushes, calls os.fsync on the file descriptor so the bytes reach disk before the swap, closes the handle, and then calls os.replace to move the temporary file over the target in one atomic step that also overwrites an existing target on Windows. On any exception it closes the handle, unlinks the temporary file if it still exists while ignoring an OSError from the unlink, and re-raises, so a failure mid-write leaves the original target bytes intact and no stray file next to it. write_json_atomic serializes the data with json.dumps at the given indent, defaulting to 2, and delegates to write_text_atomic. The target is therefore either the complete old file or the complete new file at every instant, a write that fails with an OSError preserves the previous content, fsync runs before replace, and the parent directory holds no leftover temporary files afterwards.",
+  "plan": {
+    "intent": "Replace a file's contents so readers never see a partial write",
+    "target": "AtomicFileOps",
+    "constraints": [
+      "The temporary file is created in the target's own directory",
+      "Content is flushed and fsynced before os.replace swaps it in",
+      "A failure during the write removes the temporary file and re-raises, keeping the old contents",
+      "No temporary file remains next to the target afterwards",
+      "JSON output is serialized and written through the same atomic path"
+    ]
+  },
+  "rationale": {
+    "teaches": "Atomic file replacement: a temp file in the target's directory, fsync before rename, os.replace for the swap, and temp-file cleanup on failure.",
+    "why": "Every miss writes the correct bytes on the happy path. Only a failure injected mid-write shows a truncated target, a leaked temp file, or a cross-device rename error."
+  },
+  "oracle": "fixtures/test_29_stdlib_os_atomic_file_write.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "AtomicFileOps",
+        "bases": [],
+        "methods": [
+          "write_text_atomic",
+          "write_json_atomic"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "AtomicFileOps",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Replace files atomically so readers never see a partial write."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import contextlib",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import json",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import os",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import tempfile",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pathlib import Path",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "AtomicFileOps",
+        "source": "class AtomicFileOps:\n    \"\"\"Write-then-rename helpers that leave the target whole on failure.\"\"\"\n\n    @staticmethod\n    def write_text_atomic(\n        target_path: str | Path, content: str, encoding: str = \"utf-8\"\n    ) -> None:\n        \"\"\"Write content to a synced temp file beside target, then swap it in.\"\"\"\n        target = Path(target_path).resolve()\n        target.parent.mkdir(parents=True, exist_ok=True)\n        temp_path: Path | None = None\n        try:\n            with tempfile.NamedTemporaryFile(\n                mode=\"w\", encoding=encoding, dir=target.parent, delete=False\n            ) as temp_file:\n                temp_path = Path(temp_file.name)\n                temp_file.write(content)\n                temp_file.flush()\n                os.fsync(temp_file.fileno())\n            os.replace(temp_path, target)\n        except Exception:\n            if temp_path is not None:\n                with contextlib.suppress(OSError):\n                    temp_path.unlink()\n            raise\n\n    @staticmethod\n    def write_json_atomic(target_path: str | Path, data: Any, indent: int = 2) -> None:\n        \"\"\"Serialize data as JSON and write it atomically.\"\"\"\n        content = json.dumps(data, indent=indent)\n        AtomicFileOps.write_text_atomic(target_path, content)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The target is opened directly for writing, so a failure mid-write leaves a truncated file in place.",
+      "caught_by": [
+        "test_original_file_preserved_on_write_failure",
+        "test_temp_file_created_in_same_parent_directory"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The temp file lives in the system temp directory, so the rename can cross filesystems and fail with EXDEV.",
+      "caught_by": [
+        "test_temp_file_created_in_same_parent_directory"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "fsync is skipped, so the rename can land before the data reaches disk.",
+      "caught_by": [
+        "test_fsync_called_before_replace",
+        "test_temp_file_cleaned_up_on_failure"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The temp file is not removed when writing fails, so each failure leaks a file next to the target.",
+      "caught_by": [
+        "test_temp_file_cleaned_up_on_failure"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "os.rename is used instead of os.replace, so on Windows an existing target makes the swap fail.",
+      "caught_by": [
+        "test_atomic_replace_called"
+      ]
+    }
+  ]
+}

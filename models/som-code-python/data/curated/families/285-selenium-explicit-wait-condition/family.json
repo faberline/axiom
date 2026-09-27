@@ -1,0 +1,336 @@
+{
+  "family_id": "285-selenium-explicit-wait-condition",
+  "domain": "python",
+  "area": "selenium",
+  "capability": "selenium-explicit-wait-condition",
+  "requirement": "Wait for a page element with an explicit wait that polls a condition, ignores missing elements and times out, like Selenium's WebDriverWait.",
+  "skeleton": "WaitTimeoutError and NoSuchElementError, a Wait class with an injectable clock and an until method, and two expected-condition factories.",
+  "caption": "An explicit-wait helper modeled on Selenium's WebDriverWait, written in the standard library with time, typing Protocol and collections.abc and no third-party imports. Wait raises ValueError for a non-positive timeout or poll, and until evaluates the condition, returns the first truthy value, ignores NoSuchElementError, checks the deadline after each attempt with a strict comparison and raises WaitTimeoutError with the message. visibility_of_element_located and text_to_be_present build conditions over a duck-typed driver. The fixture asserts the polling schedule, the attempt count at timeout, falsy values keep polling, the text condition, and error propagation.",
+  "plan": {
+    "intent": "Wait for a button to appear",
+    "target": "explicit wait polling",
+    "constraints": [
+      "A non-positive timeout or poll raises ValueError",
+      "NoSuchElementError is ignored while polling, other exceptions propagate",
+      "Only truthy condition values end the wait",
+      "The deadline is checked after each attempt and exceeding it raises WaitTimeoutError",
+      "Visibility requires is_displayed to be true"
+    ]
+  },
+  "rationale": {
+    "teaches": "Evaluate first, return on truthiness, swallow only the missing-element error and compare against the deadline strictly after each try.",
+    "why": "Explicit waits fail subtly when they return hidden elements, treat empty values as success or give up one poll early."
+  },
+  "oracle": "fixtures/test_285_selenium_explicit_wait_condition.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "T"
+      },
+      {
+        "kind": "class",
+        "name": "WaitTimeoutError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "NoSuchElementError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Element",
+        "bases": [
+          "Protocol"
+        ],
+        "methods": [
+          "is_displayed",
+          "text"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "Driver",
+        "bases": [
+          "Protocol"
+        ],
+        "methods": [
+          "find_element"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "SystemClock",
+        "bases": [],
+        "methods": [
+          "now",
+          "sleep"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "Wait",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "until",
+          "timeout"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "visibility_of_element_located",
+        "params": [
+          "by",
+          "value"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "text_to_be_present",
+        "params": [
+          "by",
+          "value",
+          "text"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError",
+      "WaitTimeoutError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "T",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "WaitTimeoutError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "NoSuchElementError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Element",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Driver",
+              "kind": "class",
+              "depends_on": [
+                "Element"
+              ]
+            },
+            {
+              "name": "SystemClock",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Wait",
+              "kind": "class",
+              "depends_on": [
+                "Driver",
+                "SystemClock",
+                "T",
+                "NoSuchElementError",
+                "WaitTimeoutError"
+              ]
+            },
+            {
+              "name": "visibility_of_element_located",
+              "kind": "function",
+              "depends_on": [
+                "Driver",
+                "Element"
+              ]
+            },
+            {
+              "name": "text_to_be_present",
+              "kind": "function",
+              "depends_on": [
+                "Driver"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Poll a condition against a driver the way Selenium's WebDriverWait does."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import time",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Protocol, TypeVar",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "T",
+        "source": "T = TypeVar(\"T\")",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "WaitTimeoutError",
+        "source": "class WaitTimeoutError(Exception):\n    \"\"\"Raised when the condition never became truthy before the deadline.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "NoSuchElementError",
+        "source": "class NoSuchElementError(Exception):\n    \"\"\"Raised by a driver when a locator matches nothing.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Element",
+        "source": "class Element(Protocol):\n    \"\"\"The part of a WebElement the conditions use.\"\"\"\n\n    def is_displayed(self) -> bool:\n        \"\"\"Return whether the element is visible.\"\"\"\n\n    @property\n    def text(self) -> str:\n        \"\"\"Return the element's visible text.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Driver",
+        "source": "class Driver(Protocol):\n    \"\"\"The part of a WebDriver the conditions use.\"\"\"\n\n    def find_element(self, by: str, value: str) -> Element:\n        \"\"\"Return the first element matching the locator.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SystemClock",
+        "source": "class SystemClock:\n    \"\"\"Monotonic time and real sleeping.\"\"\"\n\n    def now(self) -> float:\n        \"\"\"Return monotonic seconds.\"\"\"\n        return time.monotonic()\n\n    def sleep(self, seconds: float) -> None:\n        \"\"\"Block for the given number of seconds.\"\"\"\n        time.sleep(seconds)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Wait",
+        "source": "class Wait:\n    \"\"\"Repeatedly evaluate a condition until it is truthy or time runs out.\"\"\"\n\n    def __init__(\n        self,\n        driver: Driver,\n        timeout: float,\n        poll: float = 0.5,\n        clock: SystemClock | None = None,\n    ) -> None:\n        if timeout <= 0 or poll <= 0:\n            raise ValueError(\"timeout and poll must be positive\")\n        self._driver = driver\n        self._timeout = timeout\n        self._poll = poll\n        self._clock = clock or SystemClock()\n\n    def until(self, condition: Callable[[Driver], T], message: str = \"\") -> T:\n        \"\"\"Return the first truthy condition value, ignoring missing elements.\"\"\"\n        end = self._clock.now() + self._timeout\n        while True:\n            try:\n                value = condition(self._driver)\n                if value:\n                    return value\n            except NoSuchElementError:\n                pass\n            if self._clock.now() > end:\n                raise WaitTimeoutError(message)\n            self._clock.sleep(self._poll)\n\n    @property\n    def timeout(self) -> float:\n        \"\"\"Return the configured timeout in seconds.\"\"\"\n        return self._timeout",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "visibility_of_element_located",
+        "source": "def visibility_of_element_located(\n    by: str, value: str\n) -> Callable[[Driver], Element | None]:\n    \"\"\"Return the located element once it is displayed, otherwise None.\"\"\"\n\n    def condition(driver: Driver) -> Element | None:\n        element = driver.find_element(by, value)\n        return element if element.is_displayed() else None\n\n    return condition",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "text_to_be_present",
+        "source": "def text_to_be_present(by: str, value: str, text: str) -> Callable[[Driver], bool]:\n    \"\"\"Return whether the located element's text contains the given text.\"\"\"\n\n    def condition(driver: Driver) -> bool:\n        return text in driver.find_element(by, value).text\n\n    return condition",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 9
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The wait gives up one poll early when the clock lands exactly on the deadline.",
+      "caught_by": [
+        "test_timeout_checks_after_the_last_poll"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "A missing element aborts the wait instead of being retried.",
+      "caught_by": [
+        "test_timeout_checks_after_the_last_poll",
+        "test_waits_through_missing_and_hidden_states"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A present but hidden element is returned as if it were visible.",
+      "caught_by": [
+        "test_waits_through_missing_and_hidden_states"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "An empty string or zero ends the wait because only None is treated as pending.",
+      "caught_by": [
+        "test_falsy_values_keep_polling",
+        "test_text_condition"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A zero timeout or zero poll interval is accepted instead of raising ValueError.",
+      "caught_by": [
+        "test_other_errors_propagate_and_bad_config_is_rejected"
+      ]
+    }
+  ]
+}

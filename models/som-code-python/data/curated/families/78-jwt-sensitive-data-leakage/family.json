@@ -1,0 +1,173 @@
+{
+  "family_id": "78-jwt-sensitive-data-leakage",
+  "domain": "python",
+  "area": "security",
+  "capability": "jwt-claim-sanitization",
+  "requirement": "JWT claim sanitizer preventing leakage of plaintext sensitive credentials (passwords, secrets, private keys, API keys, SSNs, credit card numbers) in unencrypted JWT claims, recursively inspecting nested dictionaries and normalizing key casing.",
+  "skeleton": "JWTClaimSanitizer class with create_safe_token and decode_token methods using PyJWT.",
+  "caption": "A PyJWT claim sanitizer that refuses to sign any payload carrying credential-like fields, because a JWT body is only base64-encoded and readable by anyone who holds the token. SENSITIVE_KEY_PATTERNS lists password, secret, api_key, token, private_key, ssn, and credit_card. JWTClaimSanitizer raises ValueError when the signing secret is shorter than 16 characters. Its validation helper walks every key of the claims, normalizes it by lowercasing, turning hyphens into underscores, and trimming, and raises ValueError reporting that the named claim is forbidden in an unencrypted JWT payload whenever any sensitive pattern occurs inside the normalized key, so mixed-case and hyphenated spellings are caught. The decision depends only on the key, never on the value's type or length, so short passwords and numeric identifiers are refused too, and values are refused rather than encoded or masked. When a value is itself a dictionary the helper recurses into it, catching secrets nested inside profile objects. create_safe_token raises TypeError when the payload is not a dictionary, validates it, and signs it with HS256. decode_token decodes with HS256 only and converts any PyJWTError into ValueError reporting that token decoding failed. The fixture asserts that a clean payload round-trips with sub user_42 and role analyst, that a top-level password claim is rejected by name, that mixed-case sensitive keys and a password nested inside a dictionary are rejected as forbidden in an unencrypted JWT payload, and that a tampered token fails to decode.",
+  "plan": {
+    "intent": "Refuse to sign JWT payloads that carry credential-like claims",
+    "target": "JWTClaimSanitizer",
+    "constraints": [
+      "A short signing secret raises ValueError",
+      "Keys are normalized by lowercasing, turning hyphens into underscores, and trimming before pattern checks",
+      "A key containing a sensitive pattern raises ValueError naming it, whatever its value",
+      "Nested dictionaries are checked recursively",
+      "A non-dict payload raises TypeError and decode errors become ValueError"
+    ]
+  },
+  "rationale": {
+    "teaches": "A claim sanitizer that refuses any claim whose normalized key contains a sensitive pattern, recursing into nested dicts, regardless of value type or length.",
+    "why": "A JWT payload is base64, not encrypted, so a password claim is readable by anyone holding the token. The fixture tries mixed-case keys, nested dicts, and short values and expects each to be refused."
+  },
+  "oracle": "fixtures/test_78_jwt_sensitive_data_leakage.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "SENSITIVE_KEY_PATTERNS"
+      },
+      {
+        "kind": "class",
+        "name": "JWTClaimSanitizer",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "_validate_clean_claims",
+          "create_safe_token",
+          "decode_token"
+        ]
+      }
+    ],
+    "imports": [
+      "jwt"
+    ],
+    "raises": [
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "SENSITIVE_KEY_PATTERNS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "JWTClaimSanitizer",
+              "kind": "class",
+              "depends_on": [
+                "SENSITIVE_KEY_PATTERNS"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Refuse to sign JWT payloads that carry credentials in readable claims."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import jwt",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SENSITIVE_KEY_PATTERNS",
+        "source": "SENSITIVE_KEY_PATTERNS = {\n    \"password\",\n    \"secret\",\n    \"api_key\",\n    \"token\",\n    \"private_key\",\n    \"ssn\",\n    \"credit_card\",\n}",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "JWTClaimSanitizer",
+        "source": "class JWTClaimSanitizer:\n    \"\"\"Sign JWTs only when no claim, at any depth, names a sensitive field.\"\"\"\n\n    def __init__(self, secret_key: str) -> None:\n        if not secret_key or len(secret_key) < 16:\n            raise ValueError(\"Secret key must be at least 16 characters\")\n        self._secret_key = secret_key\n\n    def _validate_clean_claims(self, claims: dict[str, Any]) -> None:\n        \"\"\"Raise ValueError when any key, at any nesting depth, looks sensitive.\"\"\"\n        for key, value in claims.items():\n            normalized_key = str(key).lower().replace(\"-\", \"_\").strip()\n            for sensitive_pattern in SENSITIVE_KEY_PATTERNS:\n                if sensitive_pattern in normalized_key:\n                    raise ValueError(\n                        f\"Sensitive claim '{key}' is forbidden in unencrypted JWT \"\n                        \"payload\"\n                    )\n            if isinstance(value, dict):\n                self._validate_clean_claims(value)\n\n    def create_safe_token(self, payload: dict[str, Any]) -> str:\n        \"\"\"Sign payload after checking that it carries no sensitive claim.\"\"\"\n        if not isinstance(payload, dict):\n            raise TypeError(\"Payload must be a dictionary\")\n        self._validate_clean_claims(payload)\n        return jwt.encode(payload, self._secret_key, algorithm=\"HS256\")\n\n    def decode_token(self, token: str) -> dict[str, Any]:\n        \"\"\"Verify token and return its claims, raising ValueError when invalid.\"\"\"\n        try:\n            return jwt.decode(token, self._secret_key, algorithms=[\"HS256\"])\n        except jwt.PyJWTError as exc:\n            raise ValueError(f\"Token decoding failed: {exc}\") from exc",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "No sanitization runs, so a password claim is encoded into the token in plaintext.",
+      "caught_by": [
+        "test_case_insensitive_sensitive_claim_rejected",
+        "test_nested_sensitive_claim_rejected",
+        "test_top_level_sensitive_claim_rejected"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Keys are matched exactly and case-sensitively, so API_KEY and Password pass.",
+      "caught_by": [
+        "test_case_insensitive_sensitive_claim_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Nested dicts are not inspected, so a password inside a profile object passes.",
+      "caught_by": [
+        "test_nested_sensitive_claim_rejected"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Sensitive values are base64-encoded instead of refused, so the secret is still recoverable from the token.",
+      "caught_by": [
+        "test_case_insensitive_sensitive_claim_rejected",
+        "test_nested_sensitive_claim_rejected",
+        "test_top_level_sensitive_claim_rejected"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Only string values longer than 20 characters are checked, so a short password or a numeric SSN passes.",
+      "caught_by": [
+        "test_case_insensitive_sensitive_claim_rejected",
+        "test_nested_sensitive_claim_rejected",
+        "test_top_level_sensitive_claim_rejected"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,474 @@
+{
+  "family_id": "01-fastapi-query-pagination",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "query-pagination-envelope",
+  "requirement": "Implement GET /items with validated page (ge=1) and size (ge=1, le=100) parameters, calculating correct (page-1)*size offset, total count via func.count(), ceiling pages, and deterministic ascending order.",
+  "skeleton": "FastAPI route with Query parameters and SQLAlchemy pagination metadata envelope.",
+  "caption": "A FastAPI listing service over an in-memory SQLite database managed by SQLAlchemy. Module setup creates a StaticPool engine, a sessionmaker, a DeclarativeBase, and an Item table with integer id and non-null name; seed_database inserts twenty-five rows named Item 1 through Item 25 when the table is empty, reset_db drops, recreates, and reseeds, and get_db yields one session per request inside try/finally. Two pydantic models shape the response: ItemOut with id and name read from ORM attributes, and PaginatedResponse carrying items, total, page, size, and pages. The single GET /items route takes page as a Query parameter defaulting to 1 with ge=1 and size defaulting to 10 with ge=1 and le=100, so page zero fails validation before the handler runs. Inside, total comes from a select of func.count over the whole table, pages is computed as ceiling division, total plus size minus one floor-divided by size, or zero when the table is empty, and the offset is page minus one times size. The row query orders by ascending id, applies the offset, limits to size, and the handler returns the envelope with the fetched rows and the exact numbers it computed, so walking pages 1, 2, and 3 at size 10 covers every row exactly once and the last page holds five rows.",
+  "plan": {
+    "intent": "List stored items one page at a time with totals",
+    "target": "Item",
+    "constraints": [
+      "page must be at least 1 and size between 1 and 100, refused by validation otherwise",
+      "The offset is (page - 1) * size and rows are ordered by ascending id",
+      "The response carries the page rows, the total count, the page, the size, and the ceiling page count",
+      "An empty table reports zero pages"
+    ]
+  },
+  "rationale": {
+    "teaches": "Offset pagination arithmetic and a truthful envelope: offset is (page-1)*size, total comes from a count query, pages rounds up, ordering is stable, and page=0 is a 422.",
+    "why": "Pagination bugs are silent: every response is well-formed and only the numbers are wrong. Inserting a known number of rows and walking every page makes each arithmetic slip observable and deterministic."
+  },
+  "oracle": "fixtures/test_01_fastapi_query_pagination.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "engine"
+      },
+      {
+        "kind": "assign",
+        "name": "session_factory"
+      },
+      {
+        "kind": "class",
+        "name": "Base",
+        "bases": [
+          "DeclarativeBase"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Item",
+        "bases": [
+          "Base"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "seed_database",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "get_db",
+        "params": []
+      },
+      {
+        "kind": "class",
+        "name": "ItemOut",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "PaginatedResponse",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "list_items",
+        "params": [
+          "page",
+          "size",
+          "db"
+        ],
+        "route": "GET /items"
+      }
+    ],
+    "imports": [
+      "fastapi",
+      "pydantic",
+      "sqlalchemy"
+    ],
+    "raises": [],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "engine",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "session_factory",
+              "kind": "constant",
+              "depends_on": [
+                "engine"
+              ]
+            },
+            {
+              "name": "Base",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Item",
+              "kind": "class",
+              "depends_on": [
+                "Base"
+              ]
+            },
+            {
+              "name": "Base.metadata.create_all",
+              "kind": "statement",
+              "depends_on": [
+                "Base",
+                "engine"
+              ]
+            },
+            {
+              "name": "seed_database",
+              "kind": "function",
+              "depends_on": [
+                "session_factory",
+                "Item"
+              ]
+            },
+            {
+              "name": "seed_database#2",
+              "kind": "statement",
+              "depends_on": [
+                "seed_database"
+              ]
+            },
+            {
+              "name": "reset_db",
+              "kind": "function",
+              "depends_on": [
+                "Base",
+                "engine",
+                "seed_database"
+              ]
+            },
+            {
+              "name": "get_db",
+              "kind": "function",
+              "depends_on": [
+                "session_factory"
+              ]
+            },
+            {
+              "name": "ItemOut",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "PaginatedResponse",
+              "kind": "class",
+              "depends_on": [
+                "ItemOut"
+              ]
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "list_items",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "PaginatedResponse",
+                "get_db",
+                "Item",
+                "ItemOut"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Item service that lists items page by page with total and page counts."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Generator",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import Depends, FastAPI, Query",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel, ConfigDict",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy import create_engine, func, select",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.pool import StaticPool",
+        "group": 1
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "engine",
+        "id": "sqlalchemy_memory_engine",
+        "params": {},
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "session_factory",
+        "id": "sqlalchemy_session_factory",
+        "params": {
+          "name": "session_factory"
+        },
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "Base",
+        "id": "sqlalchemy_declarative_base",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "Item",
+        "id": "sqlalchemy_table",
+        "params": {
+          "name": "Item",
+          "doc": "A persisted catalog item.",
+          "table": "items",
+          "columns": [
+            {
+              "column": "id",
+              "type": "int",
+              "value": "mapped_column(primary_key=True, index=True, autoincrement=True)"
+            },
+            {
+              "column": "name",
+              "type": "str",
+              "value": "mapped_column(nullable=False)"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "Base.metadata.create_all",
+        "id": "sqlalchemy_create_all",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "seed_database",
+        "source": "def seed_database() -> None:\n    \"\"\"Insert 25 numbered items when the table is empty.\"\"\"\n    db = session_factory()\n    try:\n        if db.scalar(select(func.count()).select_from(Item)) == 0:\n            for i in range(1, 26):\n                db.add(Item(id=i, name=f\"Item {i}\"))\n            db.commit()\n    finally:\n        db.close()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "seed_database#2",
+        "source": "seed_database()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "reset_db",
+        "id": "sqlalchemy_reset_db_seeded",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "get_db",
+        "id": "sqlalchemy_get_db",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "ItemOut",
+        "id": "pydantic_orm_model",
+        "params": {
+          "name": "ItemOut",
+          "doc": "Item representation returned to clients.",
+          "fields": [
+            {
+              "field": "id",
+              "declaration": "int"
+            },
+            {
+              "field": "name",
+              "declaration": "str"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "PaginatedResponse",
+        "id": "pydantic_model",
+        "params": {
+          "name": "PaginatedResponse",
+          "doc": "One page of items plus the counts a client needs to page further.",
+          "fields": [
+            {
+              "field": "items",
+              "declaration": "list[ItemOut]"
+            },
+            {
+              "field": "total",
+              "declaration": "int"
+            },
+            {
+              "field": "page",
+              "declaration": "int"
+            },
+            {
+              "field": "size",
+              "declaration": "int"
+            },
+            {
+              "field": "pages",
+              "declaration": "int"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "app",
+        "id": "fastapi_app_titled",
+        "params": {
+          "title": "Item Pagination Service"
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "list_items",
+        "source": "@app.get(\"/items\", response_model=PaginatedResponse)\ndef list_items(\n    page: int = Query(1, ge=1),\n    size: int = Query(10, ge=1, le=100),\n    db: Session = Depends(get_db),\n) -> PaginatedResponse:\n    \"\"\"Return the requested page of items ordered by id.\"\"\"\n    total = db.scalar(select(func.count()).select_from(Item)) or 0\n    pages = (total + size - 1) // size if total > 0 else 0\n    offset = (page - 1) * size\n\n    stmt = select(Item).order_by(Item.id.asc()).offset(offset).limit(size)\n    items = db.scalars(stmt).all()\n\n    return PaginatedResponse(\n        items=[ItemOut.model_validate(item) for item in items],\n        total=total,\n        page=page,\n        size=size,\n        pages=pages,\n    )",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 10,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The offset starts at page*size, so the first page of items is never returned to anyone.",
+      "caught_by": [
+        "test_pagination_deterministic_ascending_order",
+        "test_pagination_first_page_correct_offset",
+        "test_pagination_second_page_correct_offset"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "total is the length of the current page, so total and pages are capped at the page size and the envelope under-reports the collection.",
+      "caught_by": [
+        "test_pagination_pages_calculation_ceiling",
+        "test_pagination_second_page_correct_offset",
+        "test_pagination_total_count_not_truncated"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "pages uses floor division, so a partial last page is not counted and clients stop one page early.",
+      "caught_by": [
+        "test_pagination_pages_calculation_ceiling",
+        "test_pagination_second_page_correct_offset"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Rows come back in descending id order, so page 1 shows the newest rows instead of the ascending order the contract promises.",
+      "caught_by": [
+        "test_pagination_deterministic_ascending_order",
+        "test_pagination_first_page_correct_offset",
+        "test_pagination_second_page_correct_offset"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "page=0 is accepted and clamped to the first page instead of being rejected with 422, so an invalid request silently succeeds.",
+      "caught_by": [
+        "test_pagination_rejects_page_zero"
+      ]
+    }
+  ]
+}

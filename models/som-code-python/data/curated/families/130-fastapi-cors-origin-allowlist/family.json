@@ -1,0 +1,221 @@
+{
+  "family_id": "130-fastapi-cors-origin-allowlist",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "cors-explicit-origin-allowlist",
+  "requirement": "Configure CORS so only listed browser origins may call the API with credentials, only listed methods pass preflight, preflight results are cached for an hour, and a custom response header is exposed to scripts.",
+  "skeleton": "ALLOWED_ORIGINS list, CORSMiddleware registration with origins, credentials, methods, headers, expose_headers and max_age, a GET note handler setting X-Note-Version, and a DELETE handler answering 204.",
+  "caption": "Cross-origin access control with FastAPI and Starlette's CORSMiddleware, imported from fastapi.middleware.cors. ALLOWED_ORIGINS names two exact HTTPS origins instead of a wildcard, because a wildcard combined with credentials lets any site read authenticated responses. The middleware is added with allow_origins set to that list, allow_credentials true, allow_methods limited to GET, POST and DELETE, allow_headers limited to Authorization and Content-Type, expose_headers containing X-Note-Version so browser code can read it, and max_age 3600 so preflights are cached for an hour. GET /notes/{note_id} sets X-Note-Version to 3 on the Response and returns the note, and DELETE /notes/{note_id} answers 204. The fixture asserts that the list holds no wildcard, that a DELETE preflight from the app origin returns 200 echoing the origin with credentials true, DELETE among the allowed methods and max age 3600, that an unknown origin gets 400 on preflight and no allow-origin header on a simple GET, that a PUT preflight is refused with 400, and that a simple GET from the app origin echoes the origin and lists X-Note-Version in the exposed headers.",
+  "plan": {
+    "intent": "Let the company's web apps call the API from the browser and nobody else",
+    "target": "CORS policy",
+    "constraints": [
+      "Only exact listed origins are echoed; no wildcard",
+      "Credentials are allowed for listed origins",
+      "Only GET, POST and DELETE pass preflight",
+      "Preflight results are cached for 3600 seconds",
+      "X-Note-Version is exposed to browser scripts; DELETE answers 204"
+    ]
+  },
+  "rationale": {
+    "teaches": "CORSMiddleware with an explicit origin list, credentials, restricted methods, expose_headers and max_age.",
+    "why": "A wildcard or a missing method still works from the developer's own origin, so the fixture probes a hostile origin, an unlisted method and the headers a browser actually reads."
+  },
+  "oracle": "fixtures/test_130_fastapi_cors_origin_allowlist.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "ALLOWED_ORIGINS"
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "read_note",
+        "params": [
+          "note_id",
+          "response"
+        ],
+        "route": "GET /notes/{note_id}"
+      },
+      {
+        "kind": "function",
+        "name": "delete_note",
+        "params": [
+          "note_id"
+        ],
+        "route": "DELETE /notes/{note_id}"
+      }
+    ],
+    "imports": [
+      "fastapi"
+    ],
+    "raises": [],
+    "status_codes": [
+      204
+    ],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "ALLOWED_ORIGINS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "app.add_middleware",
+              "kind": "statement",
+              "depends_on": [
+                "app",
+                "ALLOWED_ORIGINS"
+              ]
+            },
+            {
+              "name": "read_note",
+              "kind": "route",
+              "depends_on": [
+                "app"
+              ]
+            },
+            {
+              "name": "delete_note",
+              "kind": "route",
+              "depends_on": [
+                "app"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Notes API that lets only named browser origins call it with credentials."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import FastAPI, Response",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi.middleware.cors import CORSMiddleware",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ALLOWED_ORIGINS",
+        "source": "ALLOWED_ORIGINS = [\"https://app.example.com\", \"https://admin.example.com\"]",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "app",
+        "id": "fastapi_app_titled",
+        "params": {
+          "title": "Notes"
+        },
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "app.add_middleware",
+        "source": "app.add_middleware(\n    CORSMiddleware,\n    allow_origins=ALLOWED_ORIGINS,\n    allow_credentials=True,\n    allow_methods=[\"GET\", \"POST\", \"DELETE\"],\n    allow_headers=[\"Authorization\", \"Content-Type\"],\n    expose_headers=[\"X-Note-Version\"],\n    max_age=3600,\n)",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "read_note",
+        "source": "@app.get(\"/notes/{note_id}\")\ndef read_note(note_id: int, response: Response) -> dict[str, int | str]:\n    \"\"\"Return a note and its version header.\"\"\"\n    response.headers[\"X-Note-Version\"] = \"3\"\n    return {\"id\": note_id, \"text\": \"hello\"}",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "delete_note",
+        "source": "@app.delete(\"/notes/{note_id}\", status_code=204)\ndef delete_note(note_id: int) -> None:\n    \"\"\"Pretend to delete a note.\"\"\"\n    del note_id",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 1,
+      "literal_blocks": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A wildcard origin with credentials lets any site read authenticated responses.",
+      "caught_by": [
+        "test_simple_request_exposes_custom_header",
+        "test_unknown_origin_is_not_echoed"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Credentials are disallowed, so browsers drop cookies and authorization on cross-origin calls.",
+      "caught_by": [
+        "test_allowed_origin_preflight"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "DELETE is missing from the allowed methods, so browsers cannot delete notes.",
+      "caught_by": [
+        "test_allowed_origin_preflight"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Without max_age the preflight cache falls back to 600 seconds instead of an hour.",
+      "caught_by": [
+        "test_allowed_origin_preflight"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "X-Note-Version is not exposed, so browser scripts cannot read the version header.",
+      "caught_by": [
+        "test_simple_request_exposes_custom_header"
+      ]
+    }
+  ]
+}

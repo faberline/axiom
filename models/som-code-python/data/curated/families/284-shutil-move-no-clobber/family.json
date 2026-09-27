@@ -1,0 +1,219 @@
+{
+  "family_id": "284-shutil-move-no-clobber",
+  "domain": "python",
+  "area": "shutil",
+  "capability": "shutil-move-no-clobber",
+  "requirement": "Move files into an inbox directory with shutil.move without ever overwriting an existing name, numbering collisions like a file manager.",
+  "skeleton": "A MoveError, a free_name helper that numbers collisions before the suffix, and a move_all function that creates the inbox and moves each regular file.",
+  "caption": "An inbox mover using shutil, pathlib and collections.abc Iterable. MoveError is raised for sources that are not regular files and when no free name is left. free_name returns directory/name or the first free 'stem (n).suffix' for n from 1 to MAX_SUFFIX inclusive, treating dangling symlinks as taken. move_all creates the inbox with parents, moves each file with shutil.move to its free name and returns the new paths. The fixture asserts nested inbox creation, numbered collision names, dangling symlinks counted as taken, the MoveError cases and the inclusive suffix limit.",
+  "plan": {
+    "intent": "File an upload into an inbox",
+    "target": "collision-free move",
+    "constraints": [
+      "A source that is not a regular file raises MoveError",
+      "Running out of numbered names raises MoveError",
+      "Collisions become 'stem (n).suffix' starting at 1",
+      "Dangling symlinks count as taken names",
+      "The inbox and its parents are created"
+    ]
+  },
+  "rationale": {
+    "teaches": "Probe with exists() or is_symlink(), number before the suffix, and validate each source is a regular file before moving it.",
+    "why": "shutil.move silently replaces an existing target and exists() is False for a dangling symlink, so naive checks clobber data."
+  },
+  "oracle": "fixtures/test_284_shutil_move_no_clobber.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "MAX_SUFFIX"
+      },
+      {
+        "kind": "class",
+        "name": "MoveError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "free_name",
+        "params": [
+          "directory",
+          "name"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "move_all",
+        "params": [
+          "sources",
+          "inbox"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "MoveError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "MAX_SUFFIX",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "MoveError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "free_name",
+              "kind": "function",
+              "depends_on": [
+                "MAX_SUFFIX",
+                "MoveError"
+              ]
+            },
+            {
+              "name": "move_all",
+              "kind": "function",
+              "depends_on": [
+                "MoveError",
+                "free_name"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Move files into an inbox with shutil.move without overwriting names."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import shutil",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Iterable",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pathlib import Path",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MAX_SUFFIX",
+        "source": "MAX_SUFFIX = 999",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MoveError",
+        "source": "class MoveError(Exception):\n    \"\"\"Raised for non-file sources or when no free name is left.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "free_name",
+        "source": "def free_name(directory: Path, name: str) -> Path:\n    \"\"\"Return directory/name, or 'stem (n).suffix' for the first free n.\"\"\"\n    stem, suffix = Path(name).stem, Path(name).suffix\n    candidate = directory / name\n    counter = 1\n    while candidate.exists() or candidate.is_symlink():\n        if counter > MAX_SUFFIX:\n            raise MoveError(f\"no free name for {name!r} in {directory}\")\n        candidate = directory / f\"{stem} ({counter}){suffix}\"\n        counter += 1\n    return candidate",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "move_all",
+        "source": "def move_all(sources: Iterable[Path], inbox: Path) -> list[Path]:\n    \"\"\"Move each file into inbox, creating it, and return the new paths.\"\"\"\n    inbox.mkdir(parents=True, exist_ok=True)\n    moved: list[Path] = []\n    for source in sources:\n        if not source.is_file():\n            raise MoveError(f\"{source} is not a regular file\")\n        target = free_name(inbox, source.name)\n        moved.append(Path(shutil.move(source, target)))\n    return moved",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "A dangling symlink looks free, so the move replaces the existing link.",
+      "caught_by": [
+        "test_dangling_symlinks_count_as_taken"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The last allowed numbered name is refused as if the limit were exclusive.",
+      "caught_by": [
+        "test_suffix_limit_is_inclusive"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "A nested inbox is not created because parents are not made.",
+      "caught_by": [
+        "test_files_move_into_a_new_nested_inbox"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Directories pass the check and are moved into the inbox.",
+      "caught_by": [
+        "test_only_regular_files_are_moved"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The counter is appended after the extension, giving 'a.txt (1)'.",
+      "caught_by": [
+        "test_collisions_get_numbered_names",
+        "test_dangling_symlinks_count_as_taken",
+        "test_suffix_limit_is_inclusive"
+      ]
+    }
+  ]
+}

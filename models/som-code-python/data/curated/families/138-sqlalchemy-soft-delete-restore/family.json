@@ -1,0 +1,270 @@
+{
+  "family_id": "138-sqlalchemy-soft-delete-restore",
+  "domain": "python",
+  "area": "sqlalchemy",
+  "capability": "soft-delete-timestamp-filter-restore",
+  "requirement": "Hide notes by stamping a deleted_at timestamp instead of deleting rows, list only live notes by title, keep the first deletion time when a note is trashed twice, restore trashed notes, and commit every change.",
+  "skeleton": "Declarative Note model with a nullable timezone-aware deleted_at column, an active_notes query filtering deleted_at IS NULL, a _load helper raising LookupError, and soft_delete and restore functions that report whether they changed anything.",
+  "caption": "Soft delete with SQLAlchemy 2.0 typed declarative mapping and the standard-library datetime module. Note has an integer primary key, a title of up to 100 characters and a nullable DateTime(timezone=True) deleted_at column that defaults to None; a non-null value means the note is in the trash but the row still exists. active_notes(session) selects notes whose deleted_at is None using is_(None) and orders them by title. A private _load helper uses session.get and raises LookupError with the message note N not found for an unknown id. soft_delete(session, note_id, now=...) takes the timestamp as a keyword argument, returns False without touching anything when the note is already trashed, so the first deletion time is kept, and otherwise sets deleted_at, commits and returns True. restore(session, note_id) returns False when the note is not trashed and otherwise clears deleted_at, commits and returns True. The fixture asserts that a trashed note disappears from active_notes while the table still counts three rows, that a second soft_delete returns False and keeps the original timestamp, that restore brings the note back in title order and returns False the second time, that unknown ids raise LookupError from both functions, and that a soft delete survives a session rollback because it was committed.",
+  "plan": {
+    "intent": "Let users trash and restore notes without losing data",
+    "target": "soft-deletable notes",
+    "constraints": [
+      "Deleting stamps deleted_at instead of removing the row",
+      "Listing shows only notes without deleted_at, ordered by title",
+      "Deleting an already trashed note returns False and keeps the first timestamp",
+      "Restoring clears deleted_at and returns False for a note that is not trashed",
+      "Unknown note ids raise LookupError",
+      "Every change is committed"
+    ]
+  },
+  "rationale": {
+    "teaches": "A nullable timestamp column filtered with is_(None) as a soft delete flag, with idempotent delete and restore that commit their changes.",
+    "why": "Soft delete bugs are silent: a missing filter resurrects trashed rows in listings, re-stamping loses the original deletion time, and an uncommitted change vanishes on rollback, none of which a happy-path test notices."
+  },
+  "oracle": "fixtures/test_138_sqlalchemy_soft_delete_restore.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Base",
+        "bases": [
+          "DeclarativeBase"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Note",
+        "bases": [
+          "Base"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "active_notes",
+        "params": [
+          "session"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "_load",
+        "params": [
+          "session",
+          "note_id"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "soft_delete",
+        "params": [
+          "session",
+          "note_id",
+          "now"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "restore",
+        "params": [
+          "session",
+          "note_id"
+        ]
+      }
+    ],
+    "imports": [
+      "sqlalchemy"
+    ],
+    "raises": [
+      "LookupError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Base",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Note",
+              "kind": "class",
+              "depends_on": [
+                "Base"
+              ]
+            },
+            {
+              "name": "active_notes",
+              "kind": "function",
+              "depends_on": [
+                "Note"
+              ]
+            },
+            {
+              "name": "_load",
+              "kind": "function",
+              "depends_on": [
+                "Note"
+              ]
+            },
+            {
+              "name": "soft_delete",
+              "kind": "function",
+              "depends_on": [
+                "_load"
+              ]
+            },
+            {
+              "name": "restore",
+              "kind": "function",
+              "depends_on": [
+                "_load"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Notes that are hidden by a deleted_at timestamp instead of being removed."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Sequence",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from datetime import datetime",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy import DateTime, String, select",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Base",
+        "source": "class Base(DeclarativeBase):\n    \"\"\"Declarative base for this module's tables.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Note",
+        "source": "class Note(Base):\n    \"\"\"A note; a non-null deleted_at means it is in the trash.\"\"\"\n\n    __tablename__ = \"notes\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    title: Mapped[str] = mapped_column(String(100))\n    deleted_at: Mapped[datetime | None] = mapped_column(\n        DateTime(timezone=True), default=None\n    )",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "active_notes",
+        "source": "def active_notes(session: Session) -> Sequence[Note]:\n    \"\"\"Return notes not in the trash, ordered by title.\"\"\"\n    stmt = select(Note).where(Note.deleted_at.is_(None)).order_by(Note.title)\n    return session.scalars(stmt).all()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_load",
+        "source": "def _load(session: Session, note_id: int) -> Note:\n    note = session.get(Note, note_id)\n    if note is None:\n        raise LookupError(f\"note {note_id} not found\")\n    return note",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "soft_delete",
+        "source": "def soft_delete(session: Session, note_id: int, *, now: datetime) -> bool:\n    \"\"\"Trash a note; return False if it was already trashed.\"\"\"\n    note = _load(session, note_id)\n    if note.deleted_at is not None:\n        return False\n    note.deleted_at = now\n    session.commit()\n    return True",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "restore",
+        "source": "def restore(session: Session, note_id: int) -> bool:\n    \"\"\"Take a note out of the trash; return False if it was not trashed.\"\"\"\n    note = _load(session, note_id)\n    if note.deleted_at is None:\n        return False\n    note.deleted_at = None\n    session.commit()\n    return True",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 6
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The listing has no deleted_at filter, so trashed notes still appear.",
+      "caught_by": [
+        "test_changes_are_committed",
+        "test_soft_delete_hides_but_keeps_the_row"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Deleting a trashed note again overwrites the first timestamp and reports True.",
+      "caught_by": [
+        "test_deleting_twice_keeps_the_first_timestamp"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "flush instead of commit leaves the soft delete inside the open transaction, so a rollback undoes it.",
+      "caught_by": [
+        "test_changes_are_committed"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The restore guard is inverted, so trashed notes are never restored and live ones report True.",
+      "caught_by": [
+        "test_restore_brings_it_back"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Live notes are ordered by id rather than title, so the listing order is wrong.",
+      "caught_by": [
+        "test_changes_are_committed",
+        "test_restore_brings_it_back"
+      ]
+    }
+  ]
+}

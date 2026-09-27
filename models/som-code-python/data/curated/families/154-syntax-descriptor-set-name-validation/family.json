@@ -1,0 +1,165 @@
+{
+  "family_id": "154-syntax-descriptor-set-name-validation",
+  "domain": "python",
+  "area": "syntax",
+  "capability": "data-descriptor-set-name-per-instance-storage",
+  "requirement": "Write a Bounded data descriptor that range-checks every assignment inclusively, names its attribute in error messages via __set_name__, stores each value on the owning instance under its own slot, returns itself on class access, and rejects inverted bounds, then use it for a Thermostat.",
+  "skeleton": "Bounded descriptor with __init__ validating bounds, __set_name__ recording the name and a private slot, overloaded __get__ returning self for class access or the instance's slot value, and __set__ checking the range before setattr; Thermostat with two Bounded class attributes assigned in __init__.",
+  "caption": "A range-checked attribute written as a Python data descriptor. Bounded(low, high) raises ValueError saying low must not exceed high for inverted bounds. __set_name__ receives the owner class and the attribute name when the class body is created, remembering the name for messages and a private slot _name for storage, so two descriptors on one class never share storage. __get__ is declared with typing.overload: accessed on the class, where instance is None, it returns the descriptor itself typed as typing.Self; accessed on an instance it returns getattr of the slot on that instance. __set__ raises ValueError saying the name must be between low and high unless low <= value <= high, then stores the value with setattr on the instance, never on the descriptor, which is shared by every instance. Thermostat declares target = Bounded(5, 30) and humidity = Bounded(0, 100) and assigns both in __init__, so construction is validated too. The fixture asserts that two thermostats keep independent values, that assigning 31 raises ValueError naming target and leaves 25 in place, that 5 and 100 are accepted while 100.5 raises ValueError naming humidity, that Thermostat.target is the Bounded with its limits, and that Bounded(10, 1) raises ValueError.",
+  "plan": {
+    "intent": "Validate numeric settings on every assignment",
+    "target": "range-checked attribute",
+    "constraints": [
+      "Each instance keeps its own values",
+      "Each attribute has its own storage",
+      "Limits are inclusive and violations raise ValueError naming the attribute",
+      "Accessing the attribute on the class returns the descriptor",
+      "Inverted bounds raise ValueError"
+    ]
+  },
+  "rationale": {
+    "teaches": "A data descriptor using __set_name__ for naming and per-instance storage, with __get__ returning self when instance is None.",
+    "why": "Storing on the descriptor or in a fixed slot works with a single instance and a single attribute, so the bug only shows when a second instance or second descriptor exists."
+  },
+  "oracle": "fixtures/test_154_syntax_descriptor_set_name_validation.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Bounded",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "__set_name__",
+          "__get__",
+          "__get__",
+          "__get__",
+          "__set__"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "Thermostat",
+        "bases": [],
+        "methods": [
+          "__init__"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Bounded",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Thermostat",
+              "kind": "class",
+              "depends_on": [
+                "Bounded"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Range-checked attributes through a descriptor that learns its own name."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Self, overload",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Bounded",
+        "source": "class Bounded:\n    \"\"\"A numeric attribute that must stay within low and high, inclusive.\"\"\"\n\n    def __init__(self, low: float, high: float) -> None:\n        if low > high:\n            raise ValueError(\"low must not exceed high\")\n        self.low = low\n        self.high = high\n        self.name = \"\"\n        self.slot = \"\"\n\n    def __set_name__(self, owner: type, name: str) -> None:\n        self.name = name\n        self.slot = f\"_{name}\"\n\n    @overload\n    def __get__(self, instance: None, owner: type) -> Self: ...\n\n    @overload\n    def __get__(self, instance: object, owner: type) -> float: ...\n\n    def __get__(self, instance: object | None, owner: type) -> Self | float:\n        if instance is None:\n            return self\n        value: float = getattr(instance, self.slot)\n        return value\n\n    def __set__(self, instance: object, value: float) -> None:\n        if not self.low <= value <= self.high:\n            raise ValueError(f\"{self.name} must be between {self.low} and {self.high}\")\n        setattr(instance, self.slot, value)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Thermostat",
+        "source": "class Thermostat:\n    \"\"\"A thermostat whose settings are range-checked on every assignment.\"\"\"\n\n    target = Bounded(5, 30)\n    humidity = Bounded(0, 100)\n\n    def __init__(self, target: float, humidity: float = 40) -> None:\n        self.target = target\n        self.humidity = humidity",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Values are stored on the shared descriptor, so every instance sees the last value assigned anywhere.",
+      "caught_by": [
+        "test_each_instance_keeps_its_own_values"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Every descriptor uses the same storage slot, so setting humidity overwrites target.",
+      "caught_by": [
+        "test_bounds_are_inclusive",
+        "test_each_instance_keeps_its_own_values"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Strict comparisons reject the documented inclusive limits such as 5 and 100.",
+      "caught_by": [
+        "test_bounds_are_inclusive"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Class-level access reads the slot from None and raises AttributeError instead of returning the descriptor.",
+      "caught_by": [
+        "test_class_access_returns_the_descriptor"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Inverted bounds are accepted and create an attribute that can never be assigned.",
+      "caught_by": [
+        "test_inverted_bounds_are_rejected"
+      ]
+    }
+  ]
+}

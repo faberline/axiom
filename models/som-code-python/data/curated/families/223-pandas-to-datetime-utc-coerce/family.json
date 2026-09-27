@@ -1,0 +1,150 @@
+{
+  "family_id": "223-pandas-to-datetime-utc-coerce",
+  "domain": "python",
+  "area": "pandas",
+  "capability": "pandas-to-datetime-utc-coerce",
+  "requirement": "Parse event timestamps arriving with mixed UTC offsets into one UTC timeline, setting aside rows whose timestamp cannot be parsed instead of failing the whole batch.",
+  "skeleton": "normalize_events converting ts with to_datetime utc True and errors coerce, splitting NaT rows into a reindexed quarantine frame, and returning parsed rows sorted by instant.",
+  "caption": "Cleaning event timestamps with pandas when sources mix UTC offsets and send garbage. normalize_events(events) parses the ts column with pd.to_datetime using utc True, errors coerce and format ISO8601, so every offset becomes one UTC timezone-aware instant and unparseable, empty or missing values become NaT. Rows with NaT form the quarantine frame, returned with their original string values and a fresh zero-based index. The remaining rows get the parsed ts assigned, are sorted by ts with a stable sort, and have their index renumbered. It returns the clean and bad frames as a tuple and never modifies the input. The fixture asserts that the clean timestamps are in UTC at 08:00, 09:30 and 12:00, that clean ids are 1, 2, 3 with index 0 to 2, that ids 90, 91 and 92 are quarantined with index 0 to 2 keeping the raw not a date text, and that the input frame is unchanged.",
+  "plan": {
+    "intent": "Ingest events from several producers",
+    "target": "timestamp normalization step",
+    "constraints": [
+      "Mixed offsets are converted to one UTC timezone",
+      "Unparseable values become NaT instead of raising",
+      "NaT rows are returned separately with raw text and a fresh index",
+      "Clean rows are sorted by instant with a fresh index",
+      "The input frame is not modified"
+    ]
+  },
+  "rationale": {
+    "teaches": "Combine utc True with errors coerce so mixed offsets parse into comparable instants and bad values are quarantined rather than crashing ingestion.",
+    "why": "Without utc mixed offsets cannot share one dtype, errors raise kills the batch on one bad row, and sorting raw strings orders by local wall time."
+  },
+  "oracle": "fixtures/test_223_pandas_to_datetime_utc_coerce.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "function",
+        "name": "normalize_events",
+        "params": [
+          "events"
+        ]
+      }
+    ],
+    "imports": [
+      "pandas"
+    ],
+    "raises": [],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "normalize_events",
+              "kind": "function",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Normalize event timestamps to UTC and quarantine unparseable ones."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import pandas as pd",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "normalize_events",
+        "source": "def normalize_events(events: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:\n    \"\"\"Return (events sorted by UTC timestamp, rows whose timestamp is invalid).\"\"\"\n    ts = pd.to_datetime(events[\"ts\"], utc=True, errors=\"coerce\", format=\"ISO8601\")\n    bad = ts.isna()\n    clean = events.loc[~bad].assign(ts=ts[~bad])\n    clean = clean.sort_values(\"ts\", kind=\"stable\", ignore_index=True)\n    return clean, events.loc[bad].reset_index(drop=True)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Mixed UTC offsets fail to parse into a single timezone-aware column.",
+      "caught_by": [
+        "test_clean_rows_are_sorted_by_instant",
+        "test_input_is_not_modified",
+        "test_mixed_offsets_are_converted_to_utc",
+        "test_unparseable_rows_are_quarantined"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "One unparseable timestamp aborts the whole batch with an exception.",
+      "caught_by": [
+        "test_clean_rows_are_sorted_by_instant",
+        "test_input_is_not_modified",
+        "test_mixed_offsets_are_converted_to_utc",
+        "test_unparseable_rows_are_quarantined"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Clean events stay in arrival order instead of chronological order.",
+      "caught_by": [
+        "test_clean_rows_are_sorted_by_instant",
+        "test_mixed_offsets_are_converted_to_utc"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "Quarantined rows keep their original index labels instead of zero-based ones.",
+      "caught_by": [
+        "test_unparseable_rows_are_quarantined"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Clean rows keep raw strings, so sorting follows local wall-clock text.",
+      "caught_by": [
+        "test_clean_rows_are_sorted_by_instant",
+        "test_mixed_offsets_are_converted_to_utc"
+      ]
+    }
+  ]
+}

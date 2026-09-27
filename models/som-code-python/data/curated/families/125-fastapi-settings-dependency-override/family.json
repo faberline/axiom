@@ -1,0 +1,311 @@
+{
+  "family_id": "125-fastapi-settings-dependency-override",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "cached-settings-dependency-override",
+  "requirement": "Load validated settings from environment strings, expose them to handlers through a cached get_settings dependency that tests can replace via dependency_overrides, and enable listed beta features everywhere except production.",
+  "skeleton": "Frozen Settings dataclass, load_settings validating APP_ENV, MAX_UPLOAD_MB and BETA_FEATURES, lru_cache get_settings reading os.environ, an Annotated SettingsDep alias, and /config and /features/{name} handlers using it.",
+  "caption": "Configuration as an overridable dependency in FastAPI. Settings is a frozen, slotted dataclass with environment, max_upload_mb and a frozenset of beta_features. load_settings(env) reads APP_ENV defaulting to development and raises ValueError naming an unknown APP_ENV outside development, staging and production; it parses MAX_UPLOAD_MB defaulting to 10, raising ValueError saying it must be an integer when int fails, chained from the original error, and ValueError saying it must be at least 1 below one; it splits BETA_FEATURES on commas, strips names and drops empty ones. get_settings is wrapped in functools.lru_cache with maxsize 1 and loads from os.environ, so the environment is read once per process. SettingsDep is Annotated Settings with Depends(get_settings), used by both handlers so app.dependency_overrides can swap it. GET /config returns environment and max_upload_mb. GET /features/{name} returns the name and whether it is enabled, which requires the name to be listed and the environment not to be production. The fixture asserts that overridden staging settings report the default 10 megabytes and enable search but not chat, that production disables a listed feature, the defaults and the three ValueError cases, and that get_settings returns the same cached object after the environment changes.",
+  "plan": {
+    "intent": "Configure the service from the environment while keeping it testable",
+    "target": "settings dependency",
+    "constraints": [
+      "APP_ENV must be development, staging or production, else ValueError",
+      "MAX_UPLOAD_MB defaults to 10 and must be an integer of at least 1, else ValueError",
+      "Settings are read from the environment once and cached",
+      "Handlers receive settings only through the get_settings dependency",
+      "Beta features are never enabled in production"
+    ]
+  },
+  "rationale": {
+    "teaches": "An lru_cache settings factory injected with Depends through an Annotated alias, so dependency_overrides can replace configuration in tests.",
+    "why": "Reading configuration inside handlers or bypassing the dependency makes overrides silently ineffective, and uncached factories reread the environment on every request, which only shows when tests swap or mutate settings."
+  },
+  "oracle": "fixtures/test_125_fastapi_settings_dependency_override.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "ENVIRONMENTS"
+      },
+      {
+        "kind": "class",
+        "name": "Settings",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "load_settings",
+        "params": [
+          "env"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "get_settings",
+        "params": []
+      },
+      {
+        "kind": "assign",
+        "name": "SettingsDep"
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "read_config",
+        "params": [
+          "settings"
+        ],
+        "route": "GET /config"
+      },
+      {
+        "kind": "function",
+        "name": "read_feature",
+        "params": [
+          "name",
+          "settings"
+        ],
+        "route": "GET /features/{name}"
+      }
+    ],
+    "imports": [
+      "fastapi"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "ENVIRONMENTS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "Settings",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "load_settings",
+              "kind": "function",
+              "depends_on": [
+                "Settings",
+                "ENVIRONMENTS"
+              ]
+            },
+            {
+              "name": "get_settings",
+              "kind": "function",
+              "depends_on": [
+                "Settings",
+                "load_settings"
+              ]
+            },
+            {
+              "name": "SettingsDep",
+              "kind": "constant",
+              "depends_on": [
+                "Settings",
+                "get_settings"
+              ]
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "read_config",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "SettingsDep"
+              ]
+            },
+            {
+              "name": "read_feature",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "SettingsDep"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Feature-flag API whose configuration comes from an overridable dependency."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import os",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Mapping",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from dataclasses import dataclass",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from functools import lru_cache",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Annotated",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import Depends, FastAPI",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ENVIRONMENTS",
+        "source": "ENVIRONMENTS = frozenset({\"development\", \"staging\", \"production\"})",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Settings",
+        "source": "@dataclass(frozen=True, slots=True)\nclass Settings:\n    \"\"\"Validated runtime configuration.\"\"\"\n\n    environment: str\n    max_upload_mb: int\n    beta_features: frozenset[str]",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "load_settings",
+        "source": "def load_settings(env: Mapping[str, str]) -> Settings:\n    \"\"\"Build settings from environment-style strings, rejecting bad values.\"\"\"\n    environment = env.get(\"APP_ENV\", \"development\")\n    if environment not in ENVIRONMENTS:\n        raise ValueError(f\"unknown APP_ENV: {environment}\")\n    try:\n        max_upload_mb = int(env.get(\"MAX_UPLOAD_MB\", \"10\"))\n    except ValueError as exc:\n        raise ValueError(\"MAX_UPLOAD_MB must be an integer\") from exc\n    if max_upload_mb < 1:\n        raise ValueError(\"MAX_UPLOAD_MB must be at least 1\")\n    names = (name.strip() for name in env.get(\"BETA_FEATURES\", \"\").split(\",\"))\n    return Settings(environment, max_upload_mb, frozenset(filter(None, names)))",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_settings",
+        "source": "@lru_cache(maxsize=1)\ndef get_settings() -> Settings:\n    \"\"\"Read the process environment once and reuse the result.\"\"\"\n    return load_settings(os.environ)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SettingsDep",
+        "source": "SettingsDep = Annotated[Settings, Depends(get_settings)]",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "app",
+        "id": "fastapi_app_titled",
+        "params": {
+          "title": "Feature flags"
+        },
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "read_config",
+        "source": "@app.get(\"/config\")\ndef read_config(settings: SettingsDep) -> dict[str, str | int]:\n    \"\"\"Expose the non-secret configuration.\"\"\"\n    return {\n        \"environment\": settings.environment,\n        \"max_upload_mb\": settings.max_upload_mb,\n    }",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "read_feature",
+        "source": "@app.get(\"/features/{name}\")\ndef read_feature(name: str, settings: SettingsDep) -> dict[str, str | bool]:\n    \"\"\"Report whether a beta feature is on; production never enables them.\"\"\"\n    enabled = settings.environment != \"production\" and name in settings.beta_features\n    return {\"name\": name, \"enabled\": enabled}",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 1,
+      "literal_blocks": 7
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Without lru_cache the environment is reread on every call, so settings change mid-process.",
+      "caught_by": [
+        "test_real_settings_are_read_once"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The dependency calls load_settings directly, so overriding get_settings has no effect.",
+      "caught_by": [
+        "test_overridden_settings_drive_the_endpoints"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Listed beta features are enabled even in production.",
+      "caught_by": [
+        "test_production_disables_beta_features"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The upload limit defaults to 100 megabytes instead of 10.",
+      "caught_by": [
+        "test_defaults_and_invalid_values",
+        "test_overridden_settings_drive_the_endpoints"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A limit of zero megabytes is accepted.",
+      "caught_by": [
+        "test_defaults_and_invalid_values"
+      ]
+    }
+  ]
+}

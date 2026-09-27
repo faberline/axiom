@@ -1,0 +1,278 @@
+{
+  "family_id": "293-click-group-context-obj",
+  "domain": "python",
+  "area": "click",
+  "capability": "click-group-context-obj",
+  "requirement": "Build a click command group whose subcommands share one inventory object through the context, saving it when the command finishes.",
+  "skeleton": "An Inventory class and a click group with add, remove and list subcommands using ctx.obj, make_pass_decorator and call_on_close.",
+  "caption": "An inventory command-line tool built with click, json and pathlib. The cli group takes a required --store path that can also come from INV_STORE and a --verbose flag, puts an Inventory object on ctx.obj and registers its save with ctx.call_on_close. Subcommands receive it through click.make_pass_decorator: add takes a quantity typed click.IntRange(min=1) and accumulates, remove raises click.ClickException for an unknown item, and list prints sorted tab-separated lines; verbose notes go to stderr. The fixture asserts accumulation and persistence, the quantity usage error, the environment variable, the ClickException and stderr output.",
+  "plan": {
+    "intent": "Track stock from the terminal",
+    "target": "shared click context object",
+    "constraints": [
+      "The store path is required and can be read from INV_STORE",
+      "Quantities below 1 are a usage error",
+      "Removing an unknown item raises ClickException with exit code 1",
+      "Changes are saved when the context closes",
+      "Verbose output goes to stderr"
+    ]
+  },
+  "rationale": {
+    "teaches": "Create the shared object in the group callback, expose it with make_pass_decorator and persist it with ctx.call_on_close.",
+    "why": "Subcommands that each build their own state or never flush it lose writes and make click groups hard to test."
+  },
+  "oracle": "fixtures/test_293_click_group_context_obj.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Inventory",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "add",
+          "remove",
+          "save"
+        ]
+      },
+      {
+        "kind": "assign",
+        "name": "pass_inventory"
+      },
+      {
+        "kind": "function",
+        "name": "cli",
+        "params": [
+          "ctx",
+          "store",
+          "verbose"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "add",
+        "params": [
+          "inventory",
+          "name",
+          "qty"
+        ],
+        "route": "command"
+      },
+      {
+        "kind": "function",
+        "name": "remove",
+        "params": [
+          "inventory",
+          "name"
+        ],
+        "route": "command"
+      },
+      {
+        "kind": "function",
+        "name": "list_items",
+        "params": [
+          "inventory"
+        ],
+        "route": "command"
+      }
+    ],
+    "imports": [
+      "click"
+    ],
+    "raises": [
+      "ClickException"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Inventory",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "pass_inventory",
+              "kind": "constant",
+              "depends_on": [
+                "Inventory"
+              ]
+            },
+            {
+              "name": "cli",
+              "kind": "function",
+              "depends_on": [
+                "Inventory"
+              ]
+            },
+            {
+              "name": "add",
+              "kind": "command",
+              "depends_on": [
+                "cli",
+                "pass_inventory",
+                "Inventory"
+              ]
+            },
+            {
+              "name": "remove",
+              "kind": "command",
+              "depends_on": [
+                "cli",
+                "pass_inventory",
+                "Inventory"
+              ]
+            },
+            {
+              "name": "list_items",
+              "kind": "command",
+              "depends_on": [
+                "cli",
+                "pass_inventory",
+                "Inventory"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "An inventory CLI whose click group shares one store object via ctx.obj."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import json",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pathlib import Path",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import click",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Inventory",
+        "source": "class Inventory:\n    \"\"\"Item quantities persisted to a JSON file.\"\"\"\n\n    def __init__(self, path: Path, verbose: bool) -> None:\n        self.path = path\n        self.verbose = verbose\n        self.items: dict[str, int] = {}\n        if path.exists():\n            self.items = json.loads(path.read_text(encoding=\"utf-8\"))\n\n    def add(self, name: str, qty: int) -> None:\n        \"\"\"Increase the quantity of name.\"\"\"\n        self.items[name] = self.items.get(name, 0) + qty\n\n    def remove(self, name: str) -> None:\n        \"\"\"Delete name or raise ClickException if it is unknown.\"\"\"\n        if name not in self.items:\n            raise click.ClickException(f\"no such item: {name}\")\n        del self.items[name]\n\n    def save(self) -> None:\n        \"\"\"Write the items back to the JSON file.\"\"\"\n        self.path.write_text(json.dumps(self.items, sort_keys=True), encoding=\"utf-8\")",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "pass_inventory",
+        "source": "pass_inventory = click.make_pass_decorator(Inventory)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "cli",
+        "source": "@click.group()\n@click.option(\n    \"--store\",\n    type=click.Path(dir_okay=False, path_type=Path),\n    envvar=\"INV_STORE\",\n    required=True,\n)\n@click.option(\"-v\", \"--verbose\", is_flag=True)\n@click.pass_context\ndef cli(ctx: click.Context, store: Path, verbose: bool) -> None:\n    \"\"\"Manage an inventory file.\"\"\"\n    inventory = Inventory(store, verbose)\n    ctx.obj = inventory\n    ctx.call_on_close(inventory.save)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "add",
+        "source": "@cli.command()\n@click.argument(\"name\")\n@click.argument(\"qty\", type=click.IntRange(min=1))\n@pass_inventory\ndef add(inventory: Inventory, name: str, qty: int) -> None:\n    \"\"\"Add QTY of NAME.\"\"\"\n    inventory.add(name, qty)\n    if inventory.verbose:\n        click.echo(f\"added {qty} {name}\", err=True)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "remove",
+        "source": "@cli.command()\n@click.argument(\"name\")\n@pass_inventory\ndef remove(inventory: Inventory, name: str) -> None:\n    \"\"\"Remove NAME entirely.\"\"\"\n    inventory.remove(name)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "list_items",
+        "source": "@cli.command(\"list\")\n@pass_inventory\ndef list_items(inventory: Inventory) -> None:\n    \"\"\"Print each item and quantity, sorted by name.\"\"\"\n    for name, qty in sorted(inventory.items.items()):\n        click.echo(f\"{name}\\t{qty}\")",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 6
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The inventory is never saved, so every change is lost when the command exits.",
+      "caught_by": [
+        "test_add_accumulates_and_persists",
+        "test_removing_unknown_item_is_a_clean_error",
+        "test_store_can_come_from_the_environment"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A zero quantity is accepted instead of failing as a usage error.",
+      "caught_by": [
+        "test_quantity_must_be_positive"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The store path can no longer be supplied through INV_STORE.",
+      "caught_by": [
+        "test_store_can_come_from_the_environment"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Removing an unknown item crashes with KeyError instead of a clean ClickException.",
+      "caught_by": [
+        "test_removing_unknown_item_is_a_clean_error"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Verbose messages are written to stdout and pollute machine-readable output.",
+      "caught_by": [
+        "test_verbose_messages_go_to_stderr"
+      ]
+    }
+  ]
+}

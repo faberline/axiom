@@ -1,0 +1,376 @@
+{
+  "family_id": "121-fastapi-response-model-hides-secret",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "response-model-filters-stored-secret",
+  "requirement": "Register users with a normalized email and a salted scrypt password hash, reject duplicates with 409 and short passwords with 422, and return only id and email from both signup and lookup by declaring a public response_model.",
+  "skeleton": "UserIn, UserRecord and UserOut pydantic models, an in-memory USERS dict with reset_db, hash_password using hashlib.scrypt with a random salt, and POST /users and GET /users/{user_id} returning records filtered through response_model=UserOut.",
+  "caption": "Hiding stored secrets with FastAPI response models. UserIn requires an email of 3 to 254 characters and a password of at least 8 characters via pydantic Field, so shorter passwords get a 422. UserRecord adds an integer id and a password_hash; UserOut exposes only id and email. hash_password(password, salt) runs hashlib.scrypt with n=2**14, r=8 and p=1 and returns the salt, a dollar sign and the hex digest. POST /users is declared with response_model=UserOut and status 201: it strips and lower-cases the email, raises HTTPException 409 with detail email already registered when that address exists, and stores a UserRecord whose salt comes from secrets.token_hex so identical passwords hash differently. GET /users/{user_id} returns the stored UserRecord or raises 404; both handlers return the full record and rely on response_model to drop password_hash from the JSON. The fixture asserts that signing up with spaces and capitals returns 201 and exactly the id and lower-cased email, that the lookup body has no hash and an unknown id is 404, that stored hashes contain a dollar sign, never the password, and differ between users, that a case-variant duplicate gets 409, and that a seven-character password gets 422.",
+  "plan": {
+    "intent": "Let people sign up without ever leaking their password hash",
+    "target": "account signup API",
+    "constraints": [
+      "Responses contain only id and email",
+      "Emails are trimmed and lower-cased before storage and duplicate checks",
+      "A duplicate email raises HTTPException with 409",
+      "Passwords shorter than 8 characters are rejected with 422",
+      "Each password is hashed with scrypt and its own random salt",
+      "Signup answers 201"
+    ]
+  },
+  "rationale": {
+    "teaches": "Returning an internal model while response_model declares the public schema, plus normalized uniqueness checks and per-user salts.",
+    "why": "Handlers that reuse the storage model as the response model leak secrets silently, and case-sensitive duplicate checks or fixed salts pass casual tests, so the fixture compares exact bodies and hashes across users."
+  },
+  "oracle": "fixtures/test_121_fastapi_response_model_hides_secret.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "UserIn",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "UserRecord",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "UserOut",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "USERS"
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "hash_password",
+        "params": [
+          "password",
+          "salt"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "create_user",
+        "params": [
+          "body"
+        ],
+        "route": "POST /users"
+      },
+      {
+        "kind": "function",
+        "name": "get_user",
+        "params": [
+          "user_id"
+        ],
+        "route": "GET /users/{user_id}"
+      }
+    ],
+    "imports": [
+      "fastapi",
+      "pydantic"
+    ],
+    "raises": [
+      "HTTPException"
+    ],
+    "status_codes": [
+      201
+    ],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "UserIn",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "UserRecord",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "UserOut",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "USERS",
+              "kind": "constant",
+              "depends_on": [
+                "UserRecord"
+              ]
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "reset_db",
+              "kind": "function",
+              "depends_on": [
+                "USERS"
+              ]
+            },
+            {
+              "name": "hash_password",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "create_user",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "UserOut",
+                "UserIn",
+                "UserRecord",
+                "USERS",
+                "hash_password"
+              ]
+            },
+            {
+              "name": "get_user",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "UserOut",
+                "UserRecord",
+                "USERS"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "User signup API whose responses never expose the stored password hash."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import hashlib",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import secrets",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import FastAPI, HTTPException, status",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel, Field",
+        "group": 1
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "UserIn",
+        "id": "pydantic_model",
+        "params": {
+          "name": "UserIn",
+          "doc": "Signup payload.",
+          "fields": [
+            {
+              "field": "email",
+              "declaration": "str = Field(min_length=3, max_length=254)"
+            },
+            {
+              "field": "password",
+              "declaration": "str = Field(min_length=8)"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "UserRecord",
+        "id": "pydantic_model",
+        "params": {
+          "name": "UserRecord",
+          "doc": "Stored user, including the salted password hash.",
+          "fields": [
+            {
+              "field": "id",
+              "declaration": "int"
+            },
+            {
+              "field": "email",
+              "declaration": "str"
+            },
+            {
+              "field": "password_hash",
+              "declaration": "str"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "UserOut",
+        "id": "pydantic_model",
+        "params": {
+          "name": "UserOut",
+          "doc": "Public user representation.",
+          "fields": [
+            {
+              "field": "id",
+              "declaration": "int"
+            },
+            {
+              "field": "email",
+              "declaration": "str"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "USERS",
+        "source": "USERS: dict[int, UserRecord] = {}",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "app",
+        "id": "fastapi_app_titled",
+        "params": {
+          "title": "Accounts"
+        },
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db",
+        "source": "def reset_db() -> None:\n    \"\"\"Forget every stored user.\"\"\"\n    USERS.clear()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "hash_password",
+        "source": "def hash_password(password: str, salt: str) -> str:\n    \"\"\"Return salt and scrypt digest joined by a dollar sign.\"\"\"\n    digest = hashlib.scrypt(password.encode(), salt=salt.encode(), n=2**14, r=8, p=1)\n    return f\"{salt}${digest.hex()}\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "create_user",
+        "source": "@app.post(\"/users\", response_model=UserOut, status_code=status.HTTP_201_CREATED)\ndef create_user(body: UserIn) -> UserRecord:\n    \"\"\"Register a user under a normalized email address.\"\"\"\n    email = body.email.strip().lower()\n    if any(user.email == email for user in USERS.values()):\n        raise HTTPException(status.HTTP_409_CONFLICT, \"email already registered\")\n    record = UserRecord(\n        id=len(USERS) + 1,\n        email=email,\n        password_hash=hash_password(body.password, secrets.token_hex(8)),\n    )\n    USERS[record.id] = record\n    return record",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_user",
+        "source": "@app.get(\"/users/{user_id}\", response_model=UserOut)\ndef get_user(user_id: int) -> UserRecord:\n    \"\"\"Return one user's public fields.\"\"\"\n    record = USERS.get(user_id)\n    if record is None:\n        raise HTTPException(status.HTTP_404_NOT_FOUND, \"user not found\")\n    return record",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 4,
+      "literal_blocks": 5
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The lookup declares UserRecord as its response model, so password_hash is returned to clients.",
+      "caught_by": [
+        "test_lookup_never_exposes_the_hash"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Emails are stored as typed, so capitals survive and case-variant duplicates are accepted.",
+      "caught_by": [
+        "test_duplicate_email_and_short_password_are_rejected",
+        "test_signup_returns_201_with_public_fields_only"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Every user shares one fixed salt, so identical passwords produce identical hashes.",
+      "caught_by": [
+        "test_hashes_are_salted_and_never_the_password"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Signup keeps the default 200 status instead of 201 Created.",
+      "caught_by": [
+        "test_signup_returns_201_with_public_fields_only"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The minimum length is 6, so a seven-character password is accepted.",
+      "caught_by": [
+        "test_duplicate_email_and_short_password_are_rejected"
+      ]
+    }
+  ]
+}

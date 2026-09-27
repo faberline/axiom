@@ -1,0 +1,198 @@
+{
+  "family_id": "88-mock-spec-autospec-signature-safety",
+  "domain": "python",
+  "area": "unittest.mock",
+  "capability": "mock-autospec-signature-enforcement",
+  "requirement": "Implement a service test mock builder create_repository_mock that enforces strict signature validation against the target interface UserRepository. Mocks must reject non-existent methods and invalid call signatures (missing required args, unknown kwargs) with TypeError or AttributeError using autospec=True / create_autospec.",
+  "skeleton": "Interface class UserRepository and factory build_user_repo_mock().",
+  "caption": "A standard-library repository mock factory built on unittest.mock.create_autospec that keeps the mock faithful to the real interface's method names and signatures, with no third-party imports. UserRepository defines find_by_id(user_id, include_deleted defaulting to False), returning a user dictionary, and update_status(user_id, new_status), returning True. build_user_repo_mock creates an autospec of UserRepository with instance set to True, so the result behaves like an instance rather than a callable class, then sets the return value of the autospecced find_by_id to a Mock User dictionary with id 1 and of update_status to True, keeping both methods under signature enforcement instead of replacing them with plain mocks. Accessing a method the interface does not define raises AttributeError, and calling a method with a missing required argument or an unknown keyword raises TypeError. safe_invoke_repo(repo, method_name, args, kwargs) raises TypeError when handed a callable class instead of an instance, looks the method up with getattr, and calls it, letting any AttributeError or TypeError propagate instead of returning None. The fixture asserts that find_by_id(1) returns the Mock User dictionary and update_status returns True, that a non-existent method raises AttributeError, that calling find_by_id without its argument raises TypeError, that the mock is not callable and update_status through the invoker returns True, that an unknown keyword on find_by_id raises TypeError, and that invoking a missing method through the helper raises AttributeError.",
+  "plan": {
+    "intent": "Build a repository mock that enforces the real interface",
+    "target": "build_user_repo_mock",
+    "constraints": [
+      "The mock is an instance autospec of the repository class",
+      "Return values are set on the autospecced methods so signatures stay enforced",
+      "An undefined method raises AttributeError",
+      "A missing argument or an unknown keyword raises TypeError",
+      "Invoking through the helper with a callable class raises TypeError and propagates errors"
+    ]
+  },
+  "rationale": {
+    "teaches": "A repository mock built with create_autospec instance=True, so unknown methods raise AttributeError and wrong signatures raise TypeError, with return values set on the autospecced method and errors propagated.",
+    "why": "A plain Mock accepts any method and any arguments, so a test against it passes even after the interface changes. The fixture calls a non-existent method and a wrong signature and expects errors."
+  },
+  "oracle": "fixtures/test_88_mock_spec_autospec_signature_safety.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "UserRepository",
+        "bases": [],
+        "methods": [
+          "find_by_id",
+          "update_status"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "build_user_repo_mock",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "safe_invoke_repo",
+        "params": [
+          "repo",
+          "method_name",
+          "*args",
+          "**kwargs"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "TypeError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "UserRepository",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "build_user_repo_mock",
+              "kind": "function",
+              "depends_on": [
+                "UserRepository"
+              ]
+            },
+            {
+              "name": "safe_invoke_repo",
+              "kind": "function",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Build signature-checked repository mocks and refuse to call the class itself."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from unittest.mock import Mock, create_autospec",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "UserRepository",
+        "source": "class UserRepository:\n    \"\"\"Repository whose method signatures the mock must enforce.\"\"\"\n\n    def find_by_id(\n        self, user_id: int, include_deleted: bool = False\n    ) -> dict[str, Any] | None:\n        \"\"\"Return the user record for user_id.\"\"\"\n        del include_deleted  # Unused: the stub has no soft-deleted rows.\n        return {\"id\": user_id, \"name\": \"Real User\"}\n\n    def update_status(self, user_id: int, new_status: str) -> bool:\n        \"\"\"Set the status of user_id and report success.\"\"\"\n        del user_id, new_status  # Unused: the stub stores nothing.\n        return True",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "build_user_repo_mock",
+        "source": "def build_user_repo_mock() -> Mock:\n    \"\"\"Return an instance autospec of UserRepository with canned results.\"\"\"\n    mock_repo: Mock = create_autospec(UserRepository, instance=True)\n    mock_repo.find_by_id.return_value = {\"id\": 1, \"name\": \"Mock User\"}\n    mock_repo.update_status.return_value = True\n    return mock_repo",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "safe_invoke_repo",
+        "source": "def safe_invoke_repo(repo: Any, method_name: str, *args: Any, **kwargs: Any) -> Any:\n    \"\"\"Call method_name on repo, refusing a callable such as the class itself.\"\"\"\n    if callable(repo):\n        raise TypeError(\"Repository must be an instance, not a callable class\")\n    method = getattr(repo, method_name)\n    return method(*args, **kwargs)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "A bare Mock is returned, so any method name and any arguments are accepted.",
+      "caught_by": [
+        "test_catches_bare_mock_wrong_default",
+        "test_catches_class_autospec_boundary",
+        "test_catches_wrong_branch_suppressed_errors",
+        "test_gold_valid_calls_succeed"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "spec without autospec checks attribute names but not signatures, so a call with a missing argument passes.",
+      "caught_by": [
+        "test_catches_bare_mock_wrong_default",
+        "test_catches_class_autospec_boundary",
+        "test_catches_wrong_branch_suppressed_errors",
+        "test_gold_valid_calls_succeed"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "instance=False autospecs the class, so calling the mock returns an instance mock and method calls need self.",
+      "caught_by": [
+        "test_catches_bare_mock_wrong_default",
+        "test_catches_class_autospec_boundary",
+        "test_catches_wrong_branch_suppressed_errors",
+        "test_gold_valid_calls_succeed"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "find_by_id is replaced with a plain Mock, so its signature is no longer enforced.",
+      "caught_by": [
+        "test_catches_missing_validation_unbound_method",
+        "test_catches_shallow_spec_wrong_api_call"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "TypeError and AttributeError are swallowed and None is returned, so a signature mismatch looks like a successful call.",
+      "caught_by": [
+        "test_catches_bare_mock_wrong_default",
+        "test_catches_missing_validation_unbound_method",
+        "test_catches_shallow_spec_wrong_api_call",
+        "test_catches_wrong_branch_suppressed_errors"
+      ]
+    }
+  ]
+}

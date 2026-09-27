@@ -1,0 +1,181 @@
+{
+  "family_id": "72-crypto-pbkdf2-iteration-count",
+  "domain": "python",
+  "area": "security",
+  "capability": "pbkdf2-work-factor-tuning",
+  "requirement": "Key derivation service enforcing minimum PBKDF2 iteration thresholds (>= 600,000 for SHA-256), cryptographic salt validation (>= 16 bytes), customizable derived key length (>= 16 bytes), and non-empty passphrase validation.",
+  "skeleton": "PBKDF2KeyDeriver class with derive_key and generate_salt methods.",
+  "caption": "A standard-library key derivation service built on hashlib and secrets that refuses weak PBKDF2 parameters, with no third-party imports. MIN_RECOMMENDED_ITERATIONS is 600,000 and MIN_SALT_LENGTH is 16. PBKDF2KeyDeriver takes min_iterations defaulting to the recommended value and raises ValueError when a lower floor is requested, so the policy can only be tightened. derive_key(passphrase, salt, iterations, dklen) raises ValueError for an empty passphrase and for a salt shorter than 16 bytes, uses the configured minimum when no iteration count is given, raises ValueError reporting the count below the required value when an explicit count is lower than the instance's own minimum, and raises ValueError when the requested key length is under 16 bytes. It then returns hashlib.pbkdf2_hmac over SHA-256 with the UTF-8 passphrase, the salt, the effective iteration count, and dklen, defaulting to 32 bytes, so the caller receives exactly the key length it asked for rather than a truncated or padded one. generate_salt(nbytes) raises ValueError when fewer than 16 bytes are requested and otherwise returns that many bytes from secrets.token_bytes. The fixture asserts that the recommended constant is at least 600,000 and the default key is 32 bytes, that an iteration count below the floor is rejected as below required, that a short salt is rejected, that 16-byte and 64-byte keys have exactly those lengths, that an empty passphrase is rejected, and that generate_salt refuses a short length while returning 24 bytes when 24 are requested.",
+  "plan": {
+    "intent": "Derive keys with PBKDF2 while refusing weak parameters",
+    "target": "PBKDF2KeyDeriver",
+    "constraints": [
+      "A floor below 600000 iterations raises ValueError, so policy can only tighten",
+      "An empty passphrase, a short salt, too few iterations, or a key under 16 bytes raises ValueError",
+      "The key has exactly the requested length, 32 bytes by default",
+      "Salts come from secrets and must be at least 16 bytes"
+    ]
+  },
+  "rationale": {
+    "teaches": "PBKDF2 key derivation that refuses fewer than 600,000 iterations, salts under 16 bytes, key lengths under 16 bytes, and empty passphrases, and honors the requested key length.",
+    "why": "A low iteration count derives a key that is bit-for-bit the same shape as a strong one. The fixture derives with the boundary values and checks lengths and the raised errors."
+  },
+  "oracle": "fixtures/test_72_crypto_pbkdf2_iteration_count.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "MIN_RECOMMENDED_ITERATIONS"
+      },
+      {
+        "kind": "assign",
+        "name": "MIN_SALT_LENGTH"
+      },
+      {
+        "kind": "class",
+        "name": "PBKDF2KeyDeriver",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "derive_key",
+          "generate_salt"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "MIN_RECOMMENDED_ITERATIONS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "MIN_SALT_LENGTH",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "PBKDF2KeyDeriver",
+              "kind": "class",
+              "depends_on": [
+                "MIN_RECOMMENDED_ITERATIONS",
+                "MIN_SALT_LENGTH"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Derive keys with PBKDF2 under an enforced iteration and salt floor."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import hashlib",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import secrets",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MIN_RECOMMENDED_ITERATIONS",
+        "source": "MIN_RECOMMENDED_ITERATIONS = 600_000",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MIN_SALT_LENGTH",
+        "source": "MIN_SALT_LENGTH = 16",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "PBKDF2KeyDeriver",
+        "source": "class PBKDF2KeyDeriver:\n    \"\"\"Key derivation service enforcing robust PBKDF2 iteration thresholds.\"\"\"\n\n    def __init__(self, min_iterations: int = MIN_RECOMMENDED_ITERATIONS) -> None:\n        if min_iterations < MIN_RECOMMENDED_ITERATIONS:\n            raise ValueError(\n                f\"min_iterations cannot be below {MIN_RECOMMENDED_ITERATIONS}\"\n            )\n        self.min_iterations = min_iterations\n\n    def derive_key(\n        self,\n        passphrase: str,\n        salt: bytes,\n        iterations: int | None = None,\n        dklen: int = 32,\n    ) -> bytes:\n        \"\"\"Derive a dklen-byte key, refusing weak salts, iterations, and lengths.\"\"\"\n        if not passphrase:\n            raise ValueError(\"Passphrase cannot be empty\")\n        if len(salt) < MIN_SALT_LENGTH:\n            raise ValueError(f\"Salt must be at least {MIN_SALT_LENGTH} bytes\")\n\n        target_iterations = self.min_iterations if iterations is None else iterations\n        if target_iterations < self.min_iterations:\n            raise ValueError(\n                f\"Iterations {target_iterations} below required {self.min_iterations}\"\n            )\n        if dklen < 16:\n            raise ValueError(\"Derived key length must be at least 16 bytes\")\n\n        return hashlib.pbkdf2_hmac(\n            \"sha256\",\n            passphrase.encode(\"utf-8\"),\n            salt,\n            target_iterations,\n            dklen=dklen,\n        )\n\n    def generate_salt(self, nbytes: int = MIN_SALT_LENGTH) -> bytes:\n        \"\"\"Return nbytes of cryptographically secure random salt.\"\"\"\n        if nbytes < MIN_SALT_LENGTH:\n            raise ValueError(f\"Salt length must be at least {MIN_SALT_LENGTH} bytes\")\n        return secrets.token_bytes(nbytes)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The default minimum is 1,000 iterations, so a caller who trusts the default gets a key that is cheap to brute-force.",
+      "caught_by": [
+        "test_default_min_iterations_standard",
+        "test_iterations_below_threshold_rejected"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The boundary check compares against 10,000 instead of the configured minimum, so 10,000 iterations pass a 600,000 minimum.",
+      "caught_by": [
+        "test_iterations_below_threshold_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Salt length is not checked, so a 4-byte salt is accepted.",
+      "caught_by": [
+        "test_short_salt_rejected"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The derived key is truncated to 8 bytes regardless of dklen, so a 32-byte AES key is silently 8 bytes.",
+      "caught_by": [
+        "test_custom_dklen_respected",
+        "test_default_min_iterations_standard"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "An empty passphrase is accepted, so a key is derived from nothing.",
+      "caught_by": [
+        "test_empty_passphrase_rejected"
+      ]
+    }
+  ]
+}

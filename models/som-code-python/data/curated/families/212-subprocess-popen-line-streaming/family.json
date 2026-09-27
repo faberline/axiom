@@ -1,0 +1,200 @@
+{
+  "family_id": "212-subprocess-popen-line-streaming",
+  "domain": "python",
+  "area": "subprocess",
+  "capability": "subprocess-popen-line-streaming",
+  "requirement": "Run a long command and hand each line of its combined stdout and stderr to a callback as it is produced, returning the exit status and a bounded tail of recent lines, and killing the process if the callback fails.",
+  "skeleton": "A frozen StreamResult dataclass, a tail length default, and stream_command validating the tail size, reading Popen stdout with stderr merged, trimming newlines into a bounded deque, killing on callback errors, and waiting.",
+  "caption": "Streaming a command's output line by line with subprocess.Popen. StreamResult is a frozen dataclass of returncode and tail. stream_command(argv, on_line, *, tail_lines=TAIL_LINES, 20) raises ValueError saying tail_lines must be at least 1, then opens Popen with stdout=PIPE and stderr=STDOUT so both streams interleave in order, utf-8 with errors replace, and line buffering. Each line has only its trailing newline removed, keeping leading spaces, is appended to a deque(maxlen=tail_lines) and passed to on_line as it arrives. If the callback raises, the process is killed and the exception re-raised. After the loop proc.wait supplies the returncode. The fixture asserts, with sys.executable -c scripts, that an indented stdout line, a stderr line and a final line reach the callback in order with exit 3, that tail_lines 5 over 30 lines keeps 25 to 29, that the default keeps the last 20, that tail_lines 0 raises ValueError, and that a callback raising KeyboardInterrupt on an endless printer returns within seconds.",
+  "plan": {
+    "intent": "Show live build output and keep the end for error reports",
+    "target": "streaming command runner",
+    "constraints": [
+      "stderr is merged into stdout in order",
+      "Only the trailing newline is removed from each line",
+      "The tail keeps exactly tail_lines lines, default 20",
+      "tail_lines below 1 raises ValueError",
+      "A failing callback kills the child before re-raising"
+    ]
+  },
+  "rationale": {
+    "teaches": "Merge stderr with stderr=STDOUT, iterate Popen output lazily, bound memory with deque(maxlen), and kill the child when the consumer fails.",
+    "why": "Separate unread pipes lose ordering or deadlock, strip() corrupts indentation, and an unbounded log list grows forever on chatty commands."
+  },
+  "oracle": "fixtures/test_212_subprocess_popen_line_streaming.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "TAIL_LINES"
+      },
+      {
+        "kind": "class",
+        "name": "StreamResult",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "stream_command",
+        "params": [
+          "argv",
+          "on_line",
+          "tail_lines"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "TAIL_LINES",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "StreamResult",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "stream_command",
+              "kind": "function",
+              "depends_on": [
+                "TAIL_LINES",
+                "StreamResult"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Stream a command's merged output line by line."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import subprocess",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections import deque",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable, Sequence",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from dataclasses import dataclass",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "TAIL_LINES",
+        "source": "TAIL_LINES = 20",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "StreamResult",
+        "source": "@dataclass(frozen=True)\nclass StreamResult:\n    \"\"\"Exit status plus the last lines the command printed.\"\"\"\n\n    returncode: int\n    tail: list[str]",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "stream_command",
+        "source": "def stream_command(\n    argv: Sequence[str],\n    on_line: Callable[[str], None],\n    *,\n    tail_lines: int = TAIL_LINES,\n) -> StreamResult:\n    \"\"\"Run ``argv``, pass each stdout or stderr line to ``on_line`` as it arrives.\"\"\"\n    if tail_lines < 1:\n        raise ValueError(\"tail_lines must be at least 1\")\n    tail: deque[str] = deque(maxlen=tail_lines)\n    with subprocess.Popen(\n        list(argv),\n        stdout=subprocess.PIPE,\n        stderr=subprocess.STDOUT,\n        encoding=\"utf-8\",\n        errors=\"replace\",\n        bufsize=1,\n    ) as proc:\n        try:\n            for raw in proc.stdout or ():\n                line = raw.rstrip(\"\\n\")\n                tail.append(line)\n                on_line(line)\n        except BaseException:\n            proc.kill()\n            raise\n        returncode = proc.wait()\n    return StreamResult(returncode, list(tail))",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "stderr is not merged, so error lines never reach the callback or tail.",
+      "caught_by": [
+        "test_stdout_and_stderr_arrive_in_order"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "strip() also removes leading indentation from each line.",
+      "caught_by": [
+        "test_stdout_and_stderr_arrive_in_order"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The tail keeps one line fewer than requested.",
+      "caught_by": [
+        "test_default_tail_is_twenty_lines",
+        "test_tail_keeps_exactly_the_last_lines"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "tail_lines 0 is accepted and silently keeps no lines.",
+      "caught_by": [
+        "test_invalid_tail_raises"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The default tail keeps 10 lines instead of 20.",
+      "caught_by": [
+        "test_default_tail_is_twenty_lines"
+      ]
+    }
+  ]
+}

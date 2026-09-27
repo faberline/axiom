@@ -1,0 +1,161 @@
+{
+  "family_id": "157-syntax-positional-keyword-only-params",
+  "domain": "python",
+  "area": "syntax",
+  "capability": "positional-only-keyword-only-signatures",
+  "requirement": "Compute capped exponential retry delays whose attempt count is positional-only and whose tuning knobs are keyword-only, and merge option overrides into defaults where the defaults mapping is positional-only so an override may be named defaults, rejecting unknown options.",
+  "skeleton": "retry_delays with a slash and bare star separating attempts from base, factor and cap plus range validation, and merge_options with a positional-only mapping and **overrides checked against known keys before copying.",
+  "caption": "Fixing how functions may be called with positional-only and keyword-only parameters, using only the standard library and collections.abc Mapping. retry_delays(attempts, /, *, base=0.5, factor=2.0, cap=30.0) takes attempts strictly by position, because the slash ends the positional-only section, and base, factor and cap strictly by keyword, because the bare star starts the keyword-only section, so a call like retry_delays(3, 1.0) raises TypeError instead of silently treating 1.0 as the base. It raises ValueError saying attempts must be at least 1, base must be positive, or factor must be at least 1, and otherwise returns base times factor to the power i for i from 0 up to attempts minus one, each value clipped to at most cap with min. merge_options(defaults, /, **overrides) takes the defaults mapping positionally only, which frees the name defaults for use as an override key. It raises ValueError listing the sorted unknown option names after the prefix unknown option when an override is not in defaults, and otherwise returns a new dict copied from defaults and updated with the overrides, leaving the original untouched. The fixture asserts that four default delays are 0.5, 1.0, 2.0 and 4.0, that capped delays are 10, 30, 40 and 40, that a positional base and a keyword attempts both raise TypeError, that each invalid argument raises its ValueError message, that an override named defaults works without mutating the input, and that size and color raise ValueError naming color, size.",
+  "plan": {
+    "intent": "Make call shapes unambiguous",
+    "target": "retry and option helpers",
+    "constraints": [
+      "attempts is positional-only and base, factor and cap are keyword-only, so misuse raises TypeError",
+      "Invalid attempts, base or factor raise ValueError",
+      "Delays grow from base by factor starting at exponent 0 and never exceed cap",
+      "An override may be named defaults",
+      "Unknown overrides raise ValueError and the defaults mapping is never mutated"
+    ]
+  },
+  "rationale": {
+    "teaches": "The slash and bare star in a signature, and why positional-only parameters let **kwargs accept any key.",
+    "why": "Without the markers a stray positional value lands in the wrong knob and an override named like the parameter collides with it, both silently or with confusing errors."
+  },
+  "oracle": "fixtures/test_157_syntax_positional_keyword_only_params.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "function",
+        "name": "retry_delays",
+        "params": [
+          "attempts",
+          "base",
+          "factor",
+          "cap"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "merge_options",
+        "params": [
+          "defaults",
+          "**overrides"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "retry_delays",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "merge_options",
+              "kind": "function",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Pin call shapes with positional-only and keyword-only parameters."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Mapping",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "retry_delays",
+        "source": "def retry_delays(\n    attempts: int, /, *, base: float = 0.5, factor: float = 2.0, cap: float = 30.0\n) -> list[float]:\n    \"\"\"Exponential backoff delays; tuning knobs can only be passed by keyword.\"\"\"\n    if attempts < 1:\n        raise ValueError(\"attempts must be at least 1\")\n    if base <= 0:\n        raise ValueError(\"base must be positive\")\n    if factor < 1:\n        raise ValueError(\"factor must be at least 1\")\n    return [min(cap, base * factor**i) for i in range(attempts)]",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "merge_options",
+        "source": "def merge_options(\n    defaults: Mapping[str, object], /, **overrides: object\n) -> dict[str, object]:\n    \"\"\"Return defaults updated by overrides, even an override named defaults.\"\"\"\n    unknown = sorted(set(overrides) - set(defaults))\n    if unknown:\n        raise ValueError(f\"unknown option: {', '.join(unknown)}\")\n    merged = dict(defaults)\n    merged.update(overrides)\n    return merged",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Without the slash an override named defaults collides with the parameter and raises TypeError.",
+      "caught_by": [
+        "test_override_named_defaults_is_allowed"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Without the bare star a second positional value is silently taken as base.",
+      "caught_by": [
+        "test_tuning_knobs_are_keyword_only"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Starting the exponent at one doubles every delay, so the first retry waits base times factor.",
+      "caught_by": [
+        "test_default_backoff",
+        "test_delays_are_capped"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "max makes cap a floor, so every delay is at least cap instead of at most.",
+      "caught_by": [
+        "test_default_backoff",
+        "test_delays_are_capped"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Unknown overrides are merged in silently, so misspelled options go unnoticed.",
+      "caught_by": [
+        "test_unknown_options_are_rejected"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,222 @@
+{
+  "family_id": "207-aiohttp-websocket-broadcast-room",
+  "domain": "python",
+  "area": "aiohttp",
+  "capability": "aiohttp-websocket-broadcast-room",
+  "requirement": "Run a WebSocket chat room with aiohttp.web that relays text messages to every other client, rejects oversized and binary messages, forgets disconnected clients and closes everyone cleanly on shutdown.",
+  "skeleton": "A typed AppKey for the client set, a chat handler registering the socket, filtering frame types and sizes and broadcasting to peers inside try/finally, a shutdown hook, and make_app.",
+  "caption": "A broadcast chat room over aiohttp.web WebSockets. CLIENTS_KEY is a typed web.AppKey holding a set of WebSocketResponse objects. chat(request) prepares a WebSocketResponse with a 30 second heartbeat, adds it to the set, and iterates its messages. A frame that is not TEXT closes the socket with WSCloseCode.UNSUPPORTED_DATA, 1003. Text longer than MAX_MESSAGE_CHARS, 500, gets a JSON error saying message too long back to the sender only; other text is sent as JSON with a message key to every open peer except the sender. A finally block discards the socket so disconnected clients are forgotten. make_app registers /ws and an on_shutdown hook closing every client with WSCloseCode.GOING_AWAY. The fixture asserts, over an aiohttp TestServer with two clients, that hi reaches the peer but not the sender, that 500 characters are relayed and 501 bounce as an error the peer never sees, that a binary frame closes with 1003, that a closed client leaves the set, and that shutting the server down closes a client with 1001.",
+  "plan": {
+    "intent": "Let browser clients talk to each other in real time",
+    "target": "WebSocket endpoint",
+    "constraints": [
+      "Text is relayed as JSON to every open peer except the sender",
+      "Messages over 500 characters return an error to the sender only",
+      "Non-text frames close with UNSUPPORTED_DATA",
+      "Sockets leave the client set when they disconnect",
+      "Shutdown closes clients with GOING_AWAY"
+    ]
+  },
+  "rationale": {
+    "teaches": "Track WebSocketResponse objects in an app-level registry, clean them up in finally, validate frame type and size, and close peers on on_shutdown.",
+    "why": "Echoing to the sender duplicates messages, a leaked registry keeps writing to dead sockets, and skipping shutdown leaves clients with abnormal 1006 closes."
+  },
+  "oracle": "fixtures/test_207_aiohttp_websocket_broadcast_room.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "MAX_MESSAGE_CHARS"
+      },
+      {
+        "kind": "assign",
+        "name": "CLIENTS_KEY"
+      },
+      {
+        "kind": "async_function",
+        "name": "chat",
+        "params": [
+          "request"
+        ]
+      },
+      {
+        "kind": "async_function",
+        "name": "_close_clients",
+        "params": [
+          "app"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "make_app",
+        "params": []
+      }
+    ],
+    "imports": [
+      "aiohttp"
+    ],
+    "raises": [],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "MAX_MESSAGE_CHARS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "CLIENTS_KEY",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "chat",
+              "kind": "function",
+              "depends_on": [
+                "CLIENTS_KEY",
+                "MAX_MESSAGE_CHARS"
+              ]
+            },
+            {
+              "name": "_close_clients",
+              "kind": "function",
+              "depends_on": [
+                "CLIENTS_KEY"
+              ]
+            },
+            {
+              "name": "make_app",
+              "kind": "function",
+              "depends_on": [
+                "CLIENTS_KEY",
+                "chat",
+                "_close_clients"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "A broadcast chat room over aiohttp.web WebSockets."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from aiohttp import WSCloseCode, WSMsgType, web",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MAX_MESSAGE_CHARS",
+        "source": "MAX_MESSAGE_CHARS = 500",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "CLIENTS_KEY",
+        "source": "CLIENTS_KEY = web.AppKey(\"clients\", set[web.WebSocketResponse])",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "chat",
+        "source": "async def chat(request: web.Request) -> web.WebSocketResponse:\n    \"\"\"Relay each text message to every other connected client.\"\"\"\n    ws = web.WebSocketResponse(heartbeat=30.0)\n    await ws.prepare(request)\n    clients = request.app[CLIENTS_KEY]\n    clients.add(ws)\n    try:\n        async for msg in ws:\n            if msg.type != WSMsgType.TEXT:\n                await ws.close(code=WSCloseCode.UNSUPPORTED_DATA, message=b\"text only\")\n                break\n            if len(msg.data) > MAX_MESSAGE_CHARS:\n                await ws.send_json({\"error\": \"message too long\"})\n                continue\n            for peer in list(clients):\n                if peer is not ws and not peer.closed:\n                    await peer.send_json({\"message\": msg.data})\n    finally:\n        clients.discard(ws)\n    return ws",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_close_clients",
+        "source": "async def _close_clients(app: web.Application) -> None:\n    for ws in app[CLIENTS_KEY].copy():\n        await ws.close(code=WSCloseCode.GOING_AWAY, message=b\"server shutdown\")",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "make_app",
+        "source": "def make_app() -> web.Application:\n    \"\"\"Build the chat application with an empty client registry.\"\"\"\n    app = web.Application()\n    app[CLIENTS_KEY] = set()\n    app.router.add_get(\"/ws\", chat)\n    app.on_shutdown.append(_close_clients)\n    return app",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 5
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The sender receives its own messages back as broadcasts.",
+      "caught_by": [
+        "test_disconnected_clients_are_forgotten",
+        "test_length_limit_boundary",
+        "test_messages_reach_peers_but_not_the_sender"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A message of exactly 500 characters is rejected as too long.",
+      "caught_by": [
+        "test_length_limit_boundary"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "Disconnected sockets are never removed from the client set.",
+      "caught_by": [
+        "test_binary_frames_close_the_socket",
+        "test_disconnected_clients_are_forgotten"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Binary frames are accepted instead of closing the socket with 1003.",
+      "caught_by": [
+        "test_binary_frames_close_the_socket"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Shutdown closes clients with the default normal code instead of GOING_AWAY.",
+      "caught_by": [
+        "test_shutdown_closes_clients_with_going_away"
+      ]
+    }
+  ]
+}

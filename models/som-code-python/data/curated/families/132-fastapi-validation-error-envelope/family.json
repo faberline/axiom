@@ -1,0 +1,289 @@
+{
+  "family_id": "132-fastapi-validation-error-envelope",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "custom-validation-error-envelope",
+  "requirement": "Replace FastAPI's default 422 validation response with a 400 envelope carrying a stable code and a list of field names and messages, dropping the body prefix from field paths but keeping query prefixes, and never echoing submitted values.",
+  "skeleton": "Signup pydantic model with an email pattern and an age range, field_name joining an error location without the body prefix, a RequestValidationError exception handler building the envelope, a POST /signup handler and a GET /users handler with a bounded limit query.",
+  "caption": "Shaping request validation errors in FastAPI. Signup is a pydantic BaseModel whose email must match a simple address pattern and whose age must be between 13 and 130 through Field constraints. field_name(loc) turns an error location tuple into a dotted string, dropping a leading body element but keeping others, so a body field reads email while a query parameter reads query.limit. validation_envelope is registered with app.exception_handler for RequestValidationError from fastapi.exceptions; it builds one entry per exc.errors() item holding only the field name and the msg text, never the submitted input, and returns a fastapi.responses.JSONResponse with status 400 and content code validation_failed plus the errors list. POST /signup answers 201 with the accepted payload, and GET /users takes a limit query constrained to 1 through 100. The fixture asserts that a valid signup returns 201, that a bad email and an age of 5 produce a 400 envelope listing email then age with non-empty messages, that a missing age is reported as field age with message Field required, that a non-numeric limit is reported as query.limit, and that a submitted value never appears in the response text.",
+  "plan": {
+    "intent": "Give clients one predictable error format for bad input",
+    "target": "validation error handler",
+    "constraints": [
+      "RequestValidationError answers 400 with code validation_failed",
+      "Body field paths drop the body prefix; query paths keep theirs",
+      "Entries carry only field and message, never the submitted value",
+      "Successful signups answer 201",
+      "Ages below 13 fail validation"
+    ]
+  },
+  "rationale": {
+    "teaches": "An exception_handler for RequestValidationError that maps exc.errors() locations and messages into a custom JSONResponse.",
+    "why": "Default responses leak submitted values and differ in shape from other errors, and naive location handling either loses the query prefix or keeps the body one, so the fixture checks field names in both places and scans for the input."
+  },
+  "oracle": "fixtures/test_132_fastapi_validation_error_envelope.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Signup",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "field_name",
+        "params": [
+          "loc"
+        ]
+      },
+      {
+        "kind": "async_function",
+        "name": "validation_envelope",
+        "params": [
+          "request",
+          "exc"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "signup",
+        "params": [
+          "payload"
+        ],
+        "route": "POST /signup"
+      },
+      {
+        "kind": "function",
+        "name": "list_users",
+        "params": [
+          "limit"
+        ],
+        "route": "GET /users"
+      }
+    ],
+    "imports": [
+      "fastapi",
+      "pydantic"
+    ],
+    "raises": [],
+    "status_codes": [
+      201,
+      400
+    ],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Signup",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "field_name",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "validation_envelope",
+              "kind": "function",
+              "depends_on": [
+                "app",
+                "field_name"
+              ]
+            },
+            {
+              "name": "signup",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "Signup"
+              ]
+            },
+            {
+              "name": "list_users",
+              "kind": "route",
+              "depends_on": [
+                "app"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Return validation failures in one stable envelope without echoing input."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Annotated",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import FastAPI, Query, Request, status",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi.exceptions import RequestValidationError",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi.responses import JSONResponse",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel, Field",
+        "group": 1
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "Signup",
+        "id": "pydantic_model",
+        "params": {
+          "name": "Signup",
+          "doc": "A new account request.",
+          "fields": [
+            {
+              "field": "email",
+              "declaration": "str = Field(pattern=r\"^[^@\\s]+@[^@\\s]+\\.[a-z]{2,}$\")"
+            },
+            {
+              "field": "age",
+              "declaration": "int = Field(ge=13, le=130)"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "app",
+        "id": "fastapi_app_titled",
+        "params": {
+          "title": "Signup"
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "field_name",
+        "source": "def field_name(loc: tuple[int | str, ...]) -> str:\n    \"\"\"Drop the body prefix; keep query, path and header prefixes.\"\"\"\n    parts = [str(part) for part in loc]\n    if parts and parts[0] == \"body\":\n        parts = parts[1:]\n    return \".\".join(parts)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "validation_envelope",
+        "source": "@app.exception_handler(RequestValidationError)\nasync def validation_envelope(\n    request: Request, exc: RequestValidationError\n) -> JSONResponse:\n    \"\"\"Answer 400 with field names and messages only.\"\"\"\n    del request\n    errors = [\n        {\"field\": field_name(tuple(err[\"loc\"])), \"message\": str(err[\"msg\"])}\n        for err in exc.errors()\n    ]\n    return JSONResponse(\n        status_code=status.HTTP_400_BAD_REQUEST,\n        content={\"code\": \"validation_failed\", \"errors\": errors},\n    )",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "signup",
+        "source": "@app.post(\"/signup\", status_code=status.HTTP_201_CREATED)\ndef signup(payload: Signup) -> Signup:\n    \"\"\"Accept a valid signup.\"\"\"\n    return payload",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "list_users",
+        "source": "@app.get(\"/users\")\ndef list_users(limit: Annotated[int, Query(ge=1, le=100)] = 10) -> dict[str, int]:\n    \"\"\"Echo the accepted limit.\"\"\"\n    return {\"limit\": limit}",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 2,
+      "literal_blocks": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The envelope keeps status 422, so clients expecting 400 misread every validation error.",
+      "caught_by": [
+        "test_body_errors_use_the_envelope",
+        "test_missing_field_is_reported_by_name",
+        "test_query_errors_keep_their_location"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The first location element is always dropped, so query.limit is reported as limit.",
+      "caught_by": [
+        "test_query_errors_keep_their_location"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The body prefix is kept, so fields are reported as body.email and body.age.",
+      "caught_by": [
+        "test_body_errors_use_the_envelope",
+        "test_missing_field_is_reported_by_name"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The whole error dict is stringified, leaking the submitted input into the message.",
+      "caught_by": [
+        "test_input_values_are_never_echoed",
+        "test_missing_field_is_reported_by_name"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Ages from zero are accepted, so a five-year-old passes validation.",
+      "caught_by": [
+        "test_body_errors_use_the_envelope"
+      ]
+    }
+  ]
+}

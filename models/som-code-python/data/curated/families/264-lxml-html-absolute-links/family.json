@@ -1,0 +1,193 @@
+{
+  "family_id": "264-lxml-html-absolute-links",
+  "domain": "python",
+  "area": "lxml",
+  "capability": "lxml-html-absolute-links",
+  "requirement": "Extract the outbound links of a scraped HTML page with lxml, resolved to absolute URLs, without fragments, duplicates, non-web schemes or nofollow links.",
+  "skeleton": "An allowed scheme set, a PageError, and extract_links parsing with document_fromstring, resolving links against base href, filtering by rel and scheme, stripping fragments and deduplicating in order.",
+  "caption": "Collecting outbound links from an HTML page with lxml.html and urllib.parse. PageError is a plain Exception. extract_links(document, base_url) raises PageError for a blank document or when document_fromstring does not return an HtmlElement, then calls make_links_absolute with resolve_base_href=True so a base element wins over the page URL. It walks every a element, skips a missing href and any link whose rel tokens include nofollow compared case-insensitively, strips the fragment with urldefrag, keeps only http and https schemes checked with urlsplit, and returns each URL once in first-seen order. The fixture asserts relative links resolve, base href overrides the page URL, fragments and duplicates collapse, mailto, javascript, ftp and tel links are skipped, nofollow and href-less anchors are dropped, and a blank page raises PageError.",
+  "plan": {
+    "intent": "Build the frontier for a polite web crawler",
+    "target": "link extractor",
+    "constraints": [
+      "A blank document raises PageError",
+      "Links resolve against a base element when present",
+      "Fragments are stripped and each URL appears once",
+      "Only http and https links are returned",
+      "Links with a nofollow rel token, in any case, are skipped"
+    ]
+  },
+  "rationale": {
+    "teaches": "Let lxml resolve links with make_links_absolute(resolve_base_href=True), then normalise with urldefrag and filter schemes with urlsplit.",
+    "why": "Ignoring base href crawls the wrong host, keeping fragments or duplicates multiplies work, and mailto or javascript URLs break the fetcher."
+  },
+  "oracle": "fixtures/test_264_lxml_html_absolute_links.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "ALLOWED_SCHEMES"
+      },
+      {
+        "kind": "class",
+        "name": "PageError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "extract_links",
+        "params": [
+          "document",
+          "base_url"
+        ]
+      }
+    ],
+    "imports": [
+      "lxml"
+    ],
+    "raises": [
+      "PageError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "ALLOWED_SCHEMES",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "PageError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "extract_links",
+              "kind": "function",
+              "depends_on": [
+                "PageError",
+                "ALLOWED_SCHEMES"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Collect absolute, deduplicated outbound links from an HTML page with lxml."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from urllib.parse import urldefrag, urlsplit",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from lxml import html",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ALLOWED_SCHEMES",
+        "source": "ALLOWED_SCHEMES = frozenset({\"http\", \"https\"})",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "PageError",
+        "source": "class PageError(Exception):\n    \"\"\"Raised when the page cannot be parsed.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "extract_links",
+        "source": "def extract_links(document: str, base_url: str) -> list[str]:\n    \"\"\"Return absolute http(s) links in first-seen order without fragments.\"\"\"\n    if not document.strip():\n        raise PageError(\"empty document\")\n    tree = html.document_fromstring(document)\n    if not isinstance(tree, html.HtmlElement):\n        raise PageError(\"not an HTML document\")\n    tree.make_links_absolute(base_url, resolve_base_href=True)\n    seen: set[str] = set()\n    links: list[str] = []\n    for element in tree.iter(\"a\"):\n        href = element.get(\"href\")\n        rel = (element.get(\"rel\") or \"\").lower().split()\n        if not href or \"nofollow\" in rel:\n            continue\n        url, _ = urldefrag(href)\n        if urlsplit(url).scheme not in ALLOWED_SCHEMES or url in seen:\n            continue\n        seen.add(url)\n        links.append(url)\n    return links",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Links are never made absolute, so every relative link is dropped by the scheme filter.",
+      "caught_by": [
+        "test_base_href_overrides_the_page_url",
+        "test_fragments_are_dropped_and_duplicates_removed",
+        "test_nofollow_and_missing_href_are_skipped",
+        "test_relative_links_are_made_absolute"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Fragment-only differences produce duplicate URLs for the same page.",
+      "caught_by": [
+        "test_fragments_are_dropped_and_duplicates_removed"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Repeated links are returned many times and the crawler refetches them.",
+      "caught_by": [
+        "test_fragments_are_dropped_and_duplicates_removed"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Mailto, javascript and ftp URLs are returned as crawlable links.",
+      "caught_by": [
+        "test_non_http_schemes_are_skipped"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A NoFollow rel written in mixed case is not recognised and the link is kept.",
+      "caught_by": [
+        "test_nofollow_and_missing_href_are_skipped"
+      ]
+    }
+  ]
+}

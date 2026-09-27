@@ -1,0 +1,179 @@
+{
+  "family_id": "257-pytorch-clip-grad-norm",
+  "domain": "python",
+  "area": "pytorch",
+  "capability": "pytorch-clip-grad-norm",
+  "requirement": "Clip gradients before an optimizer step so their combined L2 norm never exceeds a limit, skipping parameters without gradients and refusing to continue on inf or NaN.",
+  "skeleton": "An EPS constant and clip_grad_norm validating max_norm, gathering non-None gradients, computing the global L2 norm, handling non-finite norms, and scaling in place only when above the limit.",
+  "caption": "Global gradient clipping in the style of torch.nn.utils.clip_grad_norm_, written with the standard library math module against duck-typed parameters whose grad is a list of floats or None, with no third-party imports. clip_grad_norm(params, max_norm, *, error_if_nonfinite=True) raises ValueError unless max_norm is positive and collects the gradients of parameters whose grad is not None. It computes the joint L2 norm over every element; a non-finite norm raises RuntimeError when error_if_nonfinite is set and is otherwise returned untouched. The coefficient is max_norm over the norm plus EPS, and only when it is below one every gradient list is scaled in place with slice assignment. It returns the norm before clipping. The fixture asserts joint scaling, untouched small gradients, in-place modification, skipped None gradients, raising and reporting non-finite norms, and max_norm validation.",
+  "plan": {
+    "intent": "Stabilise training against exploding gradients",
+    "target": "gradient clipping",
+    "constraints": [
+      "max_norm must be positive, else ValueError",
+      "Parameters whose grad is None are skipped",
+      "The norm is the L2 norm over all gradients together",
+      "A non-finite norm raises RuntimeError unless error_if_nonfinite is False",
+      "Gradients are only scaled down, in place"
+    ]
+  },
+  "rationale": {
+    "teaches": "Compute one global L2 norm, scale by max_norm over norm plus eps only when that is below one, mutate the gradient buffers in place, and fail loudly on non-finite norms.",
+    "why": "Rebinding instead of mutating leaves the real gradients unclipped, always scaling inflates small gradients, and ignoring inf silently poisons every weight on the next step."
+  },
+  "oracle": "fixtures/test_257_pytorch_clip_grad_norm.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "EPS"
+      },
+      {
+        "kind": "function",
+        "name": "clip_grad_norm",
+        "params": [
+          "params",
+          "max_norm",
+          "error_if_nonfinite"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "RuntimeError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "EPS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "clip_grad_norm",
+              "kind": "function",
+              "depends_on": [
+                "EPS"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Global gradient norm clipping in the style of torch's clip_grad_norm_."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import math",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Iterable",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "EPS",
+        "source": "EPS = 1e-6",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "clip_grad_norm",
+        "source": "def clip_grad_norm(\n    params: Iterable[Any], max_norm: float, *, error_if_nonfinite: bool = True\n) -> float:\n    \"\"\"Scale every gradient in place so their joint L2 norm is at most max_norm.\"\"\"\n    if max_norm <= 0:\n        raise ValueError(\"max_norm must be positive\")\n    grads: list[list[float]] = [p.grad for p in params if p.grad is not None]\n    total = math.sqrt(sum(g * g for grad in grads for g in grad))\n    if not math.isfinite(total):\n        if error_if_nonfinite:\n            raise RuntimeError(\"total gradient norm is non-finite\")\n        return total\n    coef = max_norm / (total + EPS)\n    if coef < 1.0:\n        for grad in grads:\n            grad[:] = [g * coef for g in grad]\n    return total",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Frozen parameters with a None grad crash the clipping with TypeError.",
+      "caught_by": [
+        "test_params_without_gradients_are_skipped"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Small gradients are scaled up to max_norm instead of left alone.",
+      "caught_by": [
+        "test_small_gradients_are_left_alone"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The scaled list is rebound locally, so the real gradients never change.",
+      "caught_by": [
+        "test_gradients_are_modified_in_place",
+        "test_large_gradients_are_scaled_jointly"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The L1 sum is used instead of the L2 norm, clipping far too hard.",
+      "caught_by": [
+        "test_gradients_are_modified_in_place",
+        "test_large_gradients_are_scaled_jointly",
+        "test_params_without_gradients_are_skipped",
+        "test_small_gradients_are_left_alone"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Infinite gradients are returned silently instead of raising RuntimeError.",
+      "caught_by": [
+        "test_non_finite_norm_raises_by_default"
+      ]
+    }
+  ]
+}

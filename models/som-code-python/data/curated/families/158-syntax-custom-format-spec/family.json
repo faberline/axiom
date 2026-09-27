@@ -1,0 +1,140 @@
+{
+  "family_id": "158-syntax-custom-format-spec",
+  "domain": "python",
+  "area": "syntax",
+  "capability": "custom-dunder-format-spec",
+  "requirement": "Render a non-negative duration in f-strings through __format__ with a compact default form, a zero-padded clock form and a total-seconds form, rejecting unknown specs and negative durations, and make str match the default form.",
+  "skeleton": "Frozen Duration dataclass with __post_init__ validation, __format__ branching on the spec after divmod into hours, minutes and seconds, and __str__ delegating to format.",
+  "caption": "A value type that controls its own rendering in f-strings by implementing __format__, built on the standard-library dataclasses module. Duration is a frozen dataclass holding a whole number of seconds; __post_init__ raises ValueError saying the duration must not be negative, while zero is allowed. __format__(spec) splits the seconds with divmod into hours, the remaining seconds, then minutes and seconds from that remainder. An empty spec renders a compact form: the hours part like 1h only when hours is non-zero, the minutes part whenever hours or minutes is non-zero so 3600 seconds reads 1h 0m 0s, and the seconds part always, joined by spaces. The clock spec renders zero-padded hours, minutes and seconds separated by colons without wrapping hours at 24. The s spec renders the total seconds. Any other spec raises ValueError naming the repr of the unknown format spec. __str__ delegates to format with an empty spec so str and f-strings agree. The fixture asserts the default rendering of 3723, 59, 0, 120, 3600 and 3605 seconds, that str of 61 seconds is 1m 1s, that clock renders 01:02:03, 25:01:01 and 00:00:05, that the s spec renders 3723, that the spec x raises ValueError, and that a negative duration raises ValueError.",
+  "plan": {
+    "intent": "Print durations readably in several styles",
+    "target": "duration value type",
+    "constraints": [
+      "Negative durations raise ValueError and zero renders as 0s",
+      "The default form shows minutes whenever hours are shown",
+      "The clock form does not wrap hours at 24",
+      "Unknown format specs raise ValueError",
+      "str matches the default f-string rendering"
+    ]
+  },
+  "rationale": {
+    "teaches": "Implementing __format__ to interpret format specs, with divmod decomposition and a strict fallback for unknown specs.",
+    "why": "Hand-built duration strings drop zero components or reuse the total in divmod, and a permissive fallback hides typos in format specs until someone reads the output."
+  },
+  "oracle": "fixtures/test_158_syntax_custom_format_spec.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Duration",
+        "bases": [],
+        "methods": [
+          "__post_init__",
+          "__format__",
+          "__str__"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Duration",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "A duration type that understands its own format specs in f-strings."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from dataclasses import dataclass",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Duration",
+        "source": "@dataclass(frozen=True)\nclass Duration:\n    \"\"\"A non-negative whole number of seconds.\"\"\"\n\n    seconds: int\n\n    def __post_init__(self) -> None:\n        if self.seconds < 0:\n            raise ValueError(\"duration must not be negative\")\n\n    def __format__(self, spec: str) -> str:\n        hours, rest = divmod(self.seconds, 3600)\n        minutes, secs = divmod(rest, 60)\n        if not spec:\n            parts = [f\"{hours}h\"] if hours else []\n            if hours or minutes:\n                parts.append(f\"{minutes}m\")\n            parts.append(f\"{secs}s\")\n            return \" \".join(parts)\n        if spec == \"clock\":\n            return f\"{hours:02d}:{minutes:02d}:{secs:02d}\"\n        if spec == \"s\":\n            return str(self.seconds)\n        raise ValueError(f\"unknown format spec: {spec!r}\")\n\n    def __str__(self) -> str:\n        return format(self, \"\")",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Minutes come from the total seconds, so 3723 seconds shows 62 minutes after the hour.",
+      "caught_by": [
+        "test_clock_spec",
+        "test_default_spec"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "A zero minute count after a non-zero hour is dropped, so 3600 renders as 1h 0s.",
+      "caught_by": [
+        "test_default_spec"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Hours wrap at 24 in the clock form, so a 25 hour duration reads 01.",
+      "caught_by": [
+        "test_clock_spec"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Unknown specs fall back to total seconds instead of raising, hiding format typos.",
+      "caught_by": [
+        "test_unknown_spec_is_rejected"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A zero duration is rejected even though only negative durations are invalid.",
+      "caught_by": [
+        "test_default_spec"
+      ]
+    }
+  ]
+}

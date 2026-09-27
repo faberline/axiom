@@ -1,0 +1,381 @@
+{
+  "family_id": "127-fastapi-router-level-dependency",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "router-level-auth-dependency",
+  "requirement": "Guard every route of an admin router with one API key dependency declared on the router, answering 401 for missing or unknown keys and 403 for non-admin roles, auditing successful admin calls, while a public router stays open.",
+  "skeleton": "KEYS role table, USERS and AUDIT state with reset_db, require_admin dependency reading the X-Api-Key header, an admin APIRouter with dependencies, a public APIRouter, list and delete handlers, and include_router on the app.",
+  "caption": "Router-wide authorization in FastAPI. KEYS maps API keys to roles, USERS holds seeded names and AUDIT collects log lines, and reset_db restores both. require_admin(request, x_api_key) reads the X-Api-Key header through Annotated Header; a missing or unknown key raises HTTPException 401 saying invalid api key, and a known key whose role is not admin raises HTTPException 403 saying admin role required. Only after both checks pass does it append role, method and path to AUDIT. The admin APIRouter is created with prefix /admin and dependencies holding Depends(require_admin), so no handler repeats the guard, while the public router under /public has none. GET /admin/users returns names sorted alphabetically; DELETE /admin/users/{user_id} answers 204 or raises HTTPException 404 saying the user was not found. Both routers are mounted with include_router. The fixture asserts that /public/ping answers without a key, that admin list and delete answer 401 without or with a wrong key, that a viewer key gets 403, that an admin lists ada and bob, deletes one with 204 and gets 404 for an unknown id, and that the audit log holds exactly the one admin call.",
+  "plan": {
+    "intent": "Protect the whole admin surface with one declaration",
+    "target": "router-level dependency",
+    "constraints": [
+      "Every admin route requires the dependency; public routes do not",
+      "Missing or unknown keys raise HTTPException 401",
+      "Non-admin roles raise HTTPException 403",
+      "Only calls that pass both checks are audited",
+      "Deleting a user answers 204; an unknown user raises HTTPException 404"
+    ]
+  },
+  "rationale": {
+    "teaches": "APIRouter(dependencies=[Depends(...)]) to apply a guard to every route of a router, with distinct 401 and 403 branches.",
+    "why": "Per-handler guards get forgotten on new routes and audit lines written before the role check log rejected callers, so the fixture probes every admin verb and inspects the audit list."
+  },
+  "oracle": "fixtures/test_127_fastapi_router_level_dependency.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "KEYS"
+      },
+      {
+        "kind": "assign",
+        "name": "USERS"
+      },
+      {
+        "kind": "assign",
+        "name": "AUDIT"
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "require_admin",
+        "params": [
+          "request",
+          "x_api_key"
+        ]
+      },
+      {
+        "kind": "assign",
+        "name": "admin"
+      },
+      {
+        "kind": "assign",
+        "name": "public"
+      },
+      {
+        "kind": "function",
+        "name": "list_users",
+        "params": [],
+        "route": "GET /users"
+      },
+      {
+        "kind": "function",
+        "name": "delete_user",
+        "params": [
+          "user_id"
+        ],
+        "route": "DELETE /users/{user_id}"
+      },
+      {
+        "kind": "function",
+        "name": "ping",
+        "params": [],
+        "route": "GET /ping"
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      }
+    ],
+    "imports": [
+      "fastapi"
+    ],
+    "raises": [
+      "HTTPException"
+    ],
+    "status_codes": [
+      204
+    ],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "KEYS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "USERS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "AUDIT",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "reset_db",
+              "kind": "function",
+              "depends_on": [
+                "USERS",
+                "AUDIT"
+              ]
+            },
+            {
+              "name": "require_admin",
+              "kind": "function",
+              "depends_on": [
+                "KEYS",
+                "AUDIT"
+              ]
+            },
+            {
+              "name": "admin",
+              "kind": "constant",
+              "depends_on": [
+                "require_admin"
+              ]
+            },
+            {
+              "name": "public",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "list_users",
+              "kind": "route",
+              "depends_on": [
+                "admin",
+                "USERS"
+              ]
+            },
+            {
+              "name": "delete_user",
+              "kind": "route",
+              "depends_on": [
+                "admin",
+                "USERS"
+              ]
+            },
+            {
+              "name": "ping",
+              "kind": "route",
+              "depends_on": [
+                "public"
+              ]
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "app.include_router",
+              "kind": "statement",
+              "depends_on": [
+                "app",
+                "admin"
+              ]
+            },
+            {
+              "name": "app.include_router#2",
+              "kind": "statement",
+              "depends_on": [
+                "app",
+                "public"
+              ]
+            },
+            {
+              "name": "reset_db#2",
+              "kind": "statement",
+              "depends_on": [
+                "reset_db"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Admin routes guarded once at the router instead of on every handler."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Annotated",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request, status",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "KEYS",
+        "source": "KEYS = {\"admin-key-127\": \"admin\", \"viewer-key-127\": \"viewer\"}",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "USERS",
+        "source": "USERS: dict[int, str] = {}",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "AUDIT",
+        "source": "AUDIT: list[str] = []",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db",
+        "source": "def reset_db() -> None:\n    \"\"\"Restore the seed users and clear the audit log.\"\"\"\n    USERS.clear()\n    USERS.update({1: \"bob\", 2: \"ada\"})\n    AUDIT.clear()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "require_admin",
+        "source": "def require_admin(\n    request: Request, x_api_key: Annotated[str | None, Header()] = None\n) -> str:\n    \"\"\"Reject missing or unknown keys with 401 and non-admin roles with 403.\"\"\"\n    role = KEYS.get(x_api_key or \"\")\n    if role is None:\n        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail=\"invalid api key\")\n    if role != \"admin\":\n        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=\"admin role required\")\n    AUDIT.append(f\"{role}:{request.method} {request.url.path}\")\n    return role",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "admin",
+        "source": "admin = APIRouter(prefix=\"/admin\", dependencies=[Depends(require_admin)])",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "public",
+        "source": "public = APIRouter(prefix=\"/public\")",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "list_users",
+        "source": "@admin.get(\"/users\")\ndef list_users() -> list[str]:\n    \"\"\"Return every user name in alphabetical order.\"\"\"\n    return sorted(USERS.values())",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "delete_user",
+        "source": "@admin.delete(\"/users/{user_id}\", status_code=status.HTTP_204_NO_CONTENT)\ndef delete_user(user_id: int) -> None:\n    \"\"\"Delete one user or answer 404.\"\"\"\n    if USERS.pop(user_id, None) is None:\n        raise HTTPException(\n            status.HTTP_404_NOT_FOUND, detail=f\"user {user_id} not found\"\n        )",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ping",
+        "source": "@public.get(\"/ping\")\ndef ping() -> dict[str, bool]:\n    \"\"\"Answer without authentication.\"\"\"\n    return {\"pong\": True}",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "app",
+        "id": "fastapi_app_titled",
+        "params": {
+          "title": "Admin console"
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "app.include_router",
+        "source": "app.include_router(admin)",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "app.include_router#2",
+        "source": "app.include_router(public)",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db#2",
+        "source": "reset_db()",
+        "blank_before": 0
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 1,
+      "literal_blocks": 13
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The admin router declares no dependency, so every admin route is open to anyone.",
+      "caught_by": [
+        "test_audit_log_records_admin_calls_only",
+        "test_every_admin_route_requires_a_key",
+        "test_non_admin_role_is_forbidden"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "A known key without the admin role gets 401 instead of 403.",
+      "caught_by": [
+        "test_non_admin_role_is_forbidden"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The audit line is written before the role check, so rejected viewers are logged too.",
+      "caught_by": [
+        "test_audit_log_records_admin_calls_only"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Deleting an unknown user silently answers 204 instead of 404.",
+      "caught_by": [
+        "test_admin_can_list_and_delete"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Names come back in insertion order rather than sorted alphabetically.",
+      "caught_by": [
+        "test_admin_can_list_and_delete"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,295 @@
+{
+  "family_id": "136-fastapi-request-id-middleware",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "request-id-correlation-middleware",
+  "requirement": "Give every request a correlation id, reusing a well-formed incoming X-Request-Id and otherwise minting a fresh hex id, expose it to handlers through request state and to clients as a response header, and log id, method, path and status even when the handler raises.",
+  "skeleton": "SAFE_ID pattern and LOG list with reset_db, request_id_for choosing between the incoming id and uuid4 hex, an http middleware storing the id on request.state, logging in finally and setting the header, and whoami and boom routes.",
+  "caption": "Correlation ids with an HTTP middleware in FastAPI. SAFE_ID is a compiled pattern allowing 1 to 64 letters, digits, dots, underscores and dashes, and LOG collects tuples of id, method, path and status. request_id_for(incoming) returns the incoming value only when the whole string matches SAFE_ID through fullmatch, otherwise uuid.uuid4().hex, so spaces, markup and overlong values never reach logs or headers. The request_id function registered with app.middleware http stores the id on request.state, defaults the status to 500, awaits call_next inside try, records the real status code on success, and appends the log tuple in finally so failures are logged too; it then sets the X-Request-Id response header. GET /whoami returns the id from request.state and GET /boom raises RuntimeError. The fixture asserts that a generated id is 32 lowercase hex characters and matches the body, that a safe incoming id is echoed, that ids with a space, 65 characters or angle brackets are replaced by a fresh hex id, that two requests get different ids, that the log records the id, GET, path and 200, and that the failing route is logged with status 500 under its id.",
+  "plan": {
+    "intent": "Trace each request across logs and responses",
+    "target": "request id middleware",
+    "constraints": [
+      "Incoming ids are reused only when they fully match the safe pattern of at most 64 characters",
+      "Otherwise a fresh uuid4 hex id is minted",
+      "Handlers read the id from request.state and clients from X-Request-Id",
+      "Every request is logged with id, method, path and status",
+      "A handler raising RuntimeError is still logged, with status 500"
+    ]
+  },
+  "rationale": {
+    "teaches": "An app.middleware http function that validates an inbound header, uses request.state, and logs in a finally block around call_next.",
+    "why": "Trusting the client header, partial regex matches, and logging only after a successful call_next all work for normal traffic, so the fixture sends hostile ids and a failing route."
+  },
+  "oracle": "fixtures/test_136_fastapi_request_id_middleware.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "SAFE_ID"
+      },
+      {
+        "kind": "assign",
+        "name": "LOG"
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "request_id_for",
+        "params": [
+          "incoming"
+        ]
+      },
+      {
+        "kind": "async_function",
+        "name": "request_id",
+        "params": [
+          "request",
+          "call_next"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "whoami",
+        "params": [
+          "request"
+        ],
+        "route": "GET /whoami"
+      },
+      {
+        "kind": "function",
+        "name": "boom",
+        "params": [],
+        "route": "GET /boom"
+      }
+    ],
+    "imports": [
+      "fastapi"
+    ],
+    "raises": [
+      "RuntimeError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "SAFE_ID",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "LOG",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "reset_db",
+              "kind": "function",
+              "depends_on": [
+                "LOG"
+              ]
+            },
+            {
+              "name": "request_id_for",
+              "kind": "function",
+              "depends_on": [
+                "SAFE_ID"
+              ]
+            },
+            {
+              "name": "request_id",
+              "kind": "function",
+              "depends_on": [
+                "app",
+                "request_id_for",
+                "LOG"
+              ]
+            },
+            {
+              "name": "whoami",
+              "kind": "route",
+              "depends_on": [
+                "app"
+              ]
+            },
+            {
+              "name": "boom",
+              "kind": "route",
+              "depends_on": [
+                "app"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Tag every request with a safe correlation id and log how it finished."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import re",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import uuid",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Awaitable, Callable",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import FastAPI, Request, Response",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SAFE_ID",
+        "source": "SAFE_ID = re.compile(r\"[A-Za-z0-9._-]{1,64}\")",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "LOG",
+        "source": "LOG: list[tuple[str, str, str, int]] = []",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "app",
+        "id": "fastapi_app_titled",
+        "params": {
+          "title": "Traced"
+        },
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db",
+        "source": "def reset_db() -> None:\n    \"\"\"Clear the access log.\"\"\"\n    LOG.clear()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "request_id_for",
+        "source": "def request_id_for(incoming: str | None) -> str:\n    \"\"\"Keep a well-formed incoming id, otherwise mint a fresh one.\"\"\"\n    if incoming and SAFE_ID.fullmatch(incoming):\n        return incoming\n    return uuid.uuid4().hex",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "request_id",
+        "source": "@app.middleware(\"http\")\nasync def request_id(\n    request: Request, call_next: Callable[[Request], Awaitable[Response]]\n) -> Response:\n    \"\"\"Attach the id to request state, the response header and the log.\"\"\"\n    rid = request_id_for(request.headers.get(\"x-request-id\"))\n    request.state.request_id = rid\n    status_code = 500\n    try:\n        response = await call_next(request)\n        status_code = response.status_code\n    finally:\n        LOG.append((rid, request.method, request.url.path, status_code))\n    response.headers[\"X-Request-Id\"] = rid\n    return response",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "whoami",
+        "source": "@app.get(\"/whoami\")\ndef whoami(request: Request) -> dict[str, str]:\n    \"\"\"Report the id the middleware assigned.\"\"\"\n    rid: str = request.state.request_id\n    return {\"request_id\": rid}",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "boom",
+        "source": "@app.get(\"/boom\")\ndef boom() -> None:\n    \"\"\"Fail on purpose.\"\"\"\n    raise RuntimeError(\"boom\")",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 1,
+      "literal_blocks": 7
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Any incoming id is trusted, so spaces and markup flow into headers and logs.",
+      "caught_by": [
+        "test_unsafe_incoming_id_is_replaced"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "match only anchors the start, so an id with a safe prefix and unsafe tail is accepted.",
+      "caught_by": [
+        "test_unsafe_incoming_id_is_replaced"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Minted ids use the dashed uuid form instead of 32 hex characters.",
+      "caught_by": [
+        "test_generated_id_is_returned_and_visible_to_handler",
+        "test_unsafe_incoming_id_is_replaced"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "Logging happens only after call_next returns, so failing requests are never logged.",
+      "caught_by": [
+        "test_errors_are_logged_as_500_with_the_id"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The pattern admits 65 characters, one more than the documented limit.",
+      "caught_by": [
+        "test_unsafe_incoming_id_is_replaced"
+      ]
+    }
+  ]
+}

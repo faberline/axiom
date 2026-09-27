@@ -1,0 +1,157 @@
+{
+  "family_id": "69-playwright-context-lifecycle",
+  "domain": "python",
+  "area": "playwright",
+  "capability": "browser-context-lifecycle",
+  "requirement": "Implement ManagedBrowserSession that guarantees Playwright browser and context process cleanup via context managers and try...finally blocks, ensuring browser.close() and context.close() are always executed even if user actions raise exceptions, preventing zombie browser processes.",
+  "skeleton": "class ManagedBrowserSession:\n    def __init__(self, launcher = None, auto_context: bool = True) -> None:\n        ...\n    def open(self):\n        ...\n    def close(self) -> None:\n        ...\n    def __enter__(self):\n        ...\n    def __exit__(self, exc_type, exc_val, exc_tb) -> None:\n        ...\n    def run_scoped(self, action):\n        ...\n",
+  "caption": "A Playwright-style browser session manager, written in the standard library against a duck-typed launcher with no third-party imports, that always closes both the browsing context and the browser process. ManagedBrowserSession takes an optional launcher and auto_context defaulting to True and starts with no browser, no context, and an open flag. open returns the existing context or browser when a session is already running, raises ValueError when no launcher was provided, and otherwise launches a browser and, in auto-context mode, creates a new context and returns it, returning the browser itself otherwise. close does nothing when already closed; otherwise it closes the context inside a try block and, in the finally clause, clears the context and closes the browser inside a nested try whose own finally clears the browser and marks the session closed, so the browser process is terminated even when closing the context raises, and calling close twice or before open is harmless. __enter__ returns the result of open and __exit__ calls close and returns None, so exceptions raised inside the with block still propagate. run_scoped(action) opens the session, returns the action's result, and closes in a finally clause on both success and failure. The fixture uses a fake launcher and asserts that a successful action returns success_result with the single browser and its context closed, that a RuntimeError reporting Fatal action failure still leaves both closed, that the browser itself is closed and not merely the context, that a ValueError raised inside the with block propagates while the browser is closed, and that repeated and premature close calls leave the session marked closed without error.",
+  "plan": {
+    "intent": "Always close both the browser context and the browser process",
+    "target": "ManagedBrowserSession",
+    "constraints": [
+      "Opening without a launcher raises ValueError",
+      "Opening twice returns the existing session",
+      "Closing the context runs in try with the browser closed in finally, even when the context close fails",
+      "Closing twice or before opening is harmless",
+      "Exceptions inside the with block still propagate after cleanup"
+    ]
+  },
+  "rationale": {
+    "teaches": "A browser session whose close runs in nested try/finally so the browser closes even when the context close raises, run_scoped closes on exception, and close is idempotent.",
+    "why": "A browser left open after an exception is a zombie process that outlives the test. The fixture raises inside the scoped action and checks both close calls happened."
+  },
+  "oracle": "fixtures/test_69_playwright_context_lifecycle.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "ManagedBrowserSession",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "open",
+          "close",
+          "__enter__",
+          "__exit__",
+          "run_scoped"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "ManagedBrowserSession",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Playwright browser and context lifecycle manager preventing zombie processes."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from types import TracebackType",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ManagedBrowserSession",
+        "source": "class ManagedBrowserSession:\n    \"\"\"Manages browser and context lifecycle with guaranteed cleanup in try/finally.\"\"\"\n\n    def __init__(\n        self,\n        launcher: Any | None = None,\n        auto_context: bool = True,\n    ) -> None:\n        self.launcher = launcher\n        self.auto_context = auto_context\n        self.browser: Any | None = None\n        self.context: Any | None = None\n        self._is_closed: bool = False\n\n    def open(self) -> Any:\n        \"\"\"Launch browser and initialize context.\"\"\"\n        if self.browser is not None and not self._is_closed:\n            return self.context if self.auto_context else self.browser\n\n        if self.launcher is None:\n            raise ValueError(\"Browser launcher must be provided\")\n\n        self.browser = self.launcher.launch()\n        self._is_closed = False\n        if self.auto_context:\n            self.context = self.browser.new_context()\n            return self.context\n        return self.browser\n\n    def close(self) -> None:\n        \"\"\"Clean up context and browser process to prevent zombie processes.\"\"\"\n        if self._is_closed:\n            return\n\n        try:\n            if self.context is not None:\n                self.context.close()\n        finally:\n            self.context = None\n            try:\n                if self.browser is not None:\n                    self.browser.close()\n            finally:\n                self.browser = None\n                self._is_closed = True\n\n    def __enter__(self) -> Any:\n        \"\"\"Open the session and return the context, or the browser without one.\"\"\"\n        return self.open()\n\n    def __exit__(\n        self,\n        exc_type: type[BaseException] | None,\n        exc_val: BaseException | None,\n        exc_tb: TracebackType | None,\n    ) -> None:\n        \"\"\"Close the context and browser whether or not the block raised.\"\"\"\n        self.close()\n\n    def run_scoped(self, action: Callable[[Any], Any]) -> Any:\n        \"\"\"Execute action within managed session, guaranteeing cleanup on any error.\"\"\"\n        session = self.open()\n        try:\n            return action(session)\n        finally:\n            self.close()",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "run_scoped closes only after a successful action, so an action that raises leaves the browser running.",
+      "caught_by": [
+        "test_scoped_session_guarantees_cleanup_on_action_exception"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "close closes the context but never the browser, so the browser process leaks.",
+      "caught_by": [
+        "test_context_manager_does_not_suppress_exceptions",
+        "test_full_browser_process_is_closed_not_just_context",
+        "test_scoped_session_cleans_up_on_success",
+        "test_scoped_session_guarantees_cleanup_on_action_exception"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "__exit__ returns True, so every exception raised inside the with block is swallowed.",
+      "caught_by": [
+        "test_context_manager_does_not_suppress_exceptions"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "close is not idempotent and dereferences None on the second call, so closing twice raises.",
+      "caught_by": [
+        "test_idempotent_close_no_error_on_repeat_or_uninitialized"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The finally is replaced with an except that re-raises, so close is skipped on the success path.",
+      "caught_by": [
+        "test_scoped_session_cleans_up_on_success"
+      ]
+    }
+  ]
+}

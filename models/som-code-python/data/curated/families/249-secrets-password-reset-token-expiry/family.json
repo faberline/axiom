@@ -1,0 +1,238 @@
+{
+  "family_id": "249-secrets-password-reset-token-expiry",
+  "domain": "python",
+  "area": "secrets",
+  "capability": "secrets-password-reset-token-expiry",
+  "requirement": "Issue password reset tokens that can be redeemed once within fifteen minutes, storing only a hash of each token and comparing in constant time.",
+  "skeleton": "A TTL constant, a ResetTokenError, a frozen pending entry dataclass, and a ResetTokens store with an injectable clock, a hash helper, issue, and redeem that validates, consumes, then checks expiry.",
+  "caption": "Single-use password reset tokens generated with secrets that expire after TTL_SECONDS of 900 and are kept only as hashlib.sha256 digests. ResetTokenError is a plain Exception. ResetTokens takes an injectable clock defaulting to time.monotonic and keeps one frozen dataclass entry of digest and expiry per user. issue makes a token with secrets.token_urlsafe(32), stores its digest with the clock plus the TTL, replacing any earlier token for that user, and returns it. redeem raises ResetTokenError saying invalid token when the user has no entry or hmac.compare_digest of the digests fails; otherwise it deletes the entry and raises ResetTokenError saying token expired when the clock has reached the expiry. The fixture asserts, with a fake clock, single use, that the raw token is never stored, wrong tokens and users, that reissue invalidates the old token, expiry exactly at the TTL, validity one second before, and a single compare_digest call.",
+  "plan": {
+    "intent": "Let users reset forgotten passwords safely",
+    "target": "reset token store",
+    "constraints": [
+      "Tokens come from secrets.token_urlsafe(32)",
+      "Only SHA-256 digests are stored",
+      "Issuing again replaces the earlier token",
+      "Unknown users and wrong tokens raise ResetTokenError",
+      "Digests are compared with hmac.compare_digest",
+      "A matching token is consumed and raises ResetTokenError once the clock reaches the expiry"
+    ]
+  },
+  "rationale": {
+    "teaches": "Store a hash with an expiry per user, compare with compare_digest, consume on first match, and treat the expiry instant as expired using an injected clock.",
+    "why": "Reusable or long-lived reset tokens let anyone who sees an old email take over the account, and a store of raw tokens leaks every pending reset."
+  },
+  "oracle": "fixtures/test_249_secrets_password_reset_token_expiry.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "TTL_SECONDS"
+      },
+      {
+        "kind": "class",
+        "name": "ResetTokenError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "_Pending",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ResetTokens",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "_hash",
+          "issue",
+          "redeem"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ResetTokenError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "TTL_SECONDS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "ResetTokenError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "_Pending",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "ResetTokens",
+              "kind": "class",
+              "depends_on": [
+                "_Pending",
+                "TTL_SECONDS",
+                "ResetTokenError"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Issue single-use password reset tokens that expire and are stored hashed."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import hashlib",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import hmac",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import secrets",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import time",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from dataclasses import dataclass",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "TTL_SECONDS",
+        "source": "TTL_SECONDS = 900",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ResetTokenError",
+        "source": "class ResetTokenError(Exception):\n    \"\"\"Raised when a reset token is unknown, already used or expired.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_Pending",
+        "source": "@dataclass(frozen=True)\nclass _Pending:\n    digest: bytes\n    expires_at: float",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ResetTokens",
+        "source": "class ResetTokens:\n    \"\"\"Track one outstanding reset token per user by its SHA-256 digest.\"\"\"\n\n    def __init__(self, clock: Callable[[], float] = time.monotonic) -> None:\n        self._clock = clock\n        self._pending: dict[str, _Pending] = {}\n\n    @staticmethod\n    def _hash(token: str) -> bytes:\n        return hashlib.sha256(token.encode()).digest()\n\n    def issue(self, user: str) -> str:\n        \"\"\"Return a fresh token for user, replacing any earlier one.\"\"\"\n        token = secrets.token_urlsafe(32)\n        expires_at = self._clock() + TTL_SECONDS\n        self._pending[user] = _Pending(self._hash(token), expires_at)\n        return token\n\n    def redeem(self, user: str, token: str) -> None:\n        \"\"\"Consume the token or raise ResetTokenError.\"\"\"\n        entry = self._pending.get(user)\n        if entry is None or not hmac.compare_digest(entry.digest, self._hash(token)):\n            raise ResetTokenError(\"invalid token\")\n        del self._pending[user]\n        if self._clock() >= entry.expires_at:\n            raise ResetTokenError(\"token expired\")",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A token redeemed exactly at its expiry instant is still accepted.",
+      "caught_by": [
+        "test_token_expires_at_the_ttl_boundary"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "A redeemed token stays stored and can reset the password again.",
+      "caught_by": [
+        "test_token_expires_at_the_ttl_boundary",
+        "test_token_redeems_once"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Digests are compared with != which short-circuits and leaks timing.",
+      "caught_by": [
+        "test_comparison_is_constant_time"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "An unknown user crashes with AttributeError instead of ResetTokenError.",
+      "caught_by": [
+        "test_token_expires_at_the_ttl_boundary",
+        "test_token_redeems_once",
+        "test_wrong_token_and_unknown_user_are_invalid"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Tokens stay valid for an hour instead of the fifteen minute window.",
+      "caught_by": [
+        "test_token_expires_at_the_ttl_boundary"
+      ]
+    }
+  ]
+}

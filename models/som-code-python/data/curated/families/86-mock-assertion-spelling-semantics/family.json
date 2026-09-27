@@ -1,0 +1,176 @@
+{
+  "family_id": "86-mock-assertion-spelling-semantics",
+  "domain": "python",
+  "area": "unittest.mock",
+  "capability": "mock-assertion-call-verification",
+  "requirement": "Implement an audit dispatch verifier AuditDispatchVerifier that tests an event notifier. Must use exact, valid Mock assertion methods (assert_called_once_with, call_count == 1). Must never use non-existent methods (like assert_not_called_with) or uninvoked attribute accesses (mock.assert_called_once without parentheses).",
+  "skeleton": "An event dispatcher EventDispatcher and verifier function verify_single_dispatch(sink, expected_event, expected_payload).",
+  "caption": "A standard-library event dispatcher and verifier built on unittest.mock that uses real Mock assertion methods, called with parentheses, to prove exactly one dispatch with the expected arguments, with no third-party imports. EventDispatcher stores a sink and its dispatch(event_name, payload) calls the sink with the event name and payload. verify_single_dispatch(sink, expected_event, expected_payload) calls sink.assert_called_once_with with the expected event and payload, which fails on zero calls, on more than one call, and on mismatched arguments; it then separately checks that call_count is exactly one and raises AssertionError reporting the actual count otherwise, and returns True. It avoids misspelled assertion names that do not exist on Mock, which merely return a child mock and assert nothing, avoids referencing an assertion method without calling it, and avoids assert_called_with, which inspects only the most recent call. The fixture asserts that one dispatch of order_placed with order_id 42 and amount 99.5 verifies as True, that a mismatched payload raises AssertionError, that dispatching the same event twice raises AssertionError, that a sink that was never called raises AssertionError, that a single valid call still returns True, and that a triple dispatch raises AssertionError.",
+  "plan": {
+    "intent": "Prove an event was dispatched exactly once with the expected arguments",
+    "target": "verify_single_dispatch",
+    "constraints": [
+      "Verification calls assert_called_once_with with parentheses",
+      "The call count must be exactly one, otherwise AssertionError reports the count",
+      "Misspelled or uncalled assertion methods are never used",
+      "assert_called_with, which checks only the last call, is not used",
+      "A matching single dispatch returns True"
+    ]
+  },
+  "rationale": {
+    "teaches": "A verifier that calls assert_called_once_with with parentheses and the expected arguments, and checks call_count equals exactly one.",
+    "why": "A misspelled Mock assertion returns a new child mock instead of asserting, and an un-called method reference does nothing, so a broken verifier passes every test. The fixture dispatches twice and zero times and expects the verifier to fail."
+  },
+  "oracle": "fixtures/test_86_mock_assertion_spelling_semantics.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "EventDispatcher",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "dispatch"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "verify_single_dispatch",
+        "params": [
+          "sink",
+          "expected_event",
+          "expected_payload"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "AssertionError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "EventDispatcher",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "verify_single_dispatch",
+              "kind": "function",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Dispatch events to a mock sink and assert exactly one matching call."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from unittest.mock import Mock",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "EventDispatcher",
+        "source": "class EventDispatcher:\n    \"\"\"Forward each event to a single sink callable.\"\"\"\n\n    def __init__(self, sink: Mock) -> None:\n        self.sink = sink\n\n    def dispatch(self, event_name: str, payload: dict[str, Any]) -> None:\n        \"\"\"Send event_name and payload to the sink.\"\"\"\n        self.sink(event_name, payload)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "verify_single_dispatch",
+        "source": "def verify_single_dispatch(\n    sink: Mock, expected_event: str, expected_payload: dict[str, Any]\n) -> bool:\n    \"\"\"Return True when the sink was called exactly once with the expected args.\"\"\"\n    sink.assert_called_once_with(expected_event, expected_payload)\n    if sink.call_count != 1:\n        raise AssertionError(f\"Expected exactly 1 call, got {sink.call_count}\")\n    return True",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "assert_not_called_with does not exist on Mock, so the call returns a child mock and asserts nothing.",
+      "caught_by": [
+        "test_catches_duplicate_dispatch_wrong_default",
+        "test_catches_excessive_calls_boundary",
+        "test_catches_inverted_call_count_branch",
+        "test_catches_wrong_api_call_or_mismatched_payload",
+        "test_catches_zero_calls_missing_validation",
+        "test_gold_single_dispatch_success"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "assert_called_with checks only the last call and the count check allows more than one, so a double dispatch passes.",
+      "caught_by": [
+        "test_catches_duplicate_dispatch_wrong_default",
+        "test_catches_excessive_calls_boundary"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "assert_called_once is referenced without parentheses and the count check is never false, so nothing is verified.",
+      "caught_by": [
+        "test_catches_duplicate_dispatch_wrong_default",
+        "test_catches_excessive_calls_boundary",
+        "test_catches_wrong_api_call_or_mismatched_payload",
+        "test_catches_zero_calls_missing_validation"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The count check is inverted, so exactly one call fails and any other count passes.",
+      "caught_by": [
+        "test_catches_inverted_call_count_branch",
+        "test_gold_single_dispatch_success"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The count check only fails above two, so zero or two dispatches pass.",
+      "caught_by": [
+        "test_catches_duplicate_dispatch_wrong_default",
+        "test_catches_excessive_calls_boundary"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,251 @@
+{
+  "family_id": "114-stdlib-re-named-groups-access-log",
+  "domain": "python",
+  "area": "stdlib",
+  "capability": "named-group-regex-log-parsing",
+  "requirement": "Parse access-log lines into typed records with a compiled named-group pattern that must match the whole line, treat a dash size as zero, count malformed lines while skipping blank ones, and list paths of 5xx responses.",
+  "skeleton": "Compiled LINE pattern and TIMESTAMP format, frozen Request dataclass, parse_line using fullmatch, scan collecting requests and a malformed count, and server_errors filtering on status.",
+  "caption": "Log parsing with the standard-library re module and named groups. A module-level compiled LINE pattern captures ip as four dotted groups of up to three digits, ts inside square brackets, a quoted method limited to GET, HEAD, POST, PUT and PATCH followed by a path, a three-digit status and a size that is digits or a dash. parse_line(line) strips the line and uses fullmatch, so trailing text or an unknown method makes it raise ValueError naming the malformed log line. It reads the groups by name, turns a dash size into 0, parses the timestamp with datetime.strptime and the TIMESTAMP format including the UTC offset, and returns a frozen, slotted Request dataclass with integer status and size. scan(lines) skips blank lines entirely, appends each parsed request and counts lines that raise ValueError, returning the list and the count. server_errors(requests) returns the paths whose status is 500 or higher. The fixture asserts the fields and the timezone-aware timestamp of a GET line, that a HEAD line with a dash size has size 0, that trailing text and a BREW method raise ValueError, that scanning a blank line, a good line, garbage and spaces yields one request and one malformed line, and that statuses 499, 500 and 503 give two server errors.",
+  "plan": {
+    "intent": "Turn access-log lines into typed records",
+    "target": "access-log parser",
+    "constraints": [
+      "The pattern must match the entire line or ValueError is raised",
+      "Only GET, HEAD, POST, PUT and PATCH methods are accepted",
+      "A dash size means zero bytes",
+      "Blank lines are skipped and malformed lines are counted",
+      "Server errors are statuses of 500 and above"
+    ]
+  },
+  "rationale": {
+    "teaches": "A compiled pattern with named groups read by name, fullmatch for whole-line validation, and typed conversion of captured text.",
+    "why": "Regex parsers that use match instead of fullmatch or loose alternations accept junk, and special tokens like a dash size break integer conversion, so each edge needs its own crafted line."
+  },
+  "oracle": "fixtures/test_114_stdlib_re_named_groups_access_log.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "LINE"
+      },
+      {
+        "kind": "assign",
+        "name": "TIMESTAMP"
+      },
+      {
+        "kind": "class",
+        "name": "Request",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "parse_line",
+        "params": [
+          "line"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "scan",
+        "params": [
+          "lines"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "server_errors",
+        "params": [
+          "requests"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "LINE",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "TIMESTAMP",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "Request",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "parse_line",
+              "kind": "function",
+              "depends_on": [
+                "Request",
+                "LINE",
+                "TIMESTAMP"
+              ]
+            },
+            {
+              "name": "scan",
+              "kind": "function",
+              "depends_on": [
+                "Request",
+                "parse_line"
+              ]
+            },
+            {
+              "name": "server_errors",
+              "kind": "function",
+              "depends_on": [
+                "Request"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Parse access-log lines with a compiled regular expression and named groups."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import re",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Iterable",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from dataclasses import dataclass",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from datetime import datetime",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "LINE",
+        "source": "LINE = re.compile(\n    r\"(?P<ip>\\d{1,3}(?:\\.\\d{1,3}){3}) \"\n    r\"\\[(?P<ts>[^\\]]+)\\] \"\n    r'\"(?P<method>GET|HEAD|POST|PUT|PATCH) (?P<path>\\S+)\" '\n    r\"(?P<status>\\d{3}) (?P<size>\\d+|-)\"\n)",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "TIMESTAMP",
+        "source": "TIMESTAMP = \"%d/%b/%Y:%H:%M:%S %z\"",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Request",
+        "source": "@dataclass(frozen=True, slots=True)\nclass Request:\n    \"\"\"One parsed access-log entry.\"\"\"\n\n    ip: str\n    ts: datetime\n    method: str\n    path: str\n    status: int\n    size: int",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "parse_line",
+        "source": "def parse_line(line: str) -> Request:\n    \"\"\"Parse one whole line, rejecting anything the pattern does not fully match.\"\"\"\n    match = LINE.fullmatch(line.strip())\n    if match is None:\n        raise ValueError(f\"malformed log line: {line!r}\")\n    size = 0 if match[\"size\"] == \"-\" else int(match[\"size\"])\n    return Request(\n        ip=match[\"ip\"],\n        ts=datetime.strptime(match[\"ts\"], TIMESTAMP),\n        method=match[\"method\"],\n        path=match[\"path\"],\n        status=int(match[\"status\"]),\n        size=size,\n    )",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "scan",
+        "source": "def scan(lines: Iterable[str]) -> tuple[list[Request], int]:\n    \"\"\"Parse every non-blank line, returning the requests and the malformed count.\"\"\"\n    requests: list[Request] = []\n    malformed = 0\n    for line in lines:\n        if not line.strip():\n            continue\n        try:\n            requests.append(parse_line(line))\n        except ValueError:\n            malformed += 1\n    return requests, malformed",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "server_errors",
+        "source": "def server_errors(requests: Iterable[Request]) -> list[str]:\n    \"\"\"Return the paths of requests that ended in a 5xx status.\"\"\"\n    return [request.path for request in requests if request.status >= 500]",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 6
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "match anchors only at the start, so lines with trailing text are accepted.",
+      "caught_by": [
+        "test_trailing_garbage_and_unknown_methods_are_malformed"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "A dash size becomes -1 instead of 0.",
+      "caught_by": [
+        "test_dash_size_means_zero_bytes"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Status 500 itself is not counted as a server error.",
+      "caught_by": [
+        "test_server_errors_include_500"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Any word is accepted as a method, so BREW lines parse.",
+      "caught_by": [
+        "test_trailing_garbage_and_unknown_methods_are_malformed"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Blank lines are parsed and counted as malformed.",
+      "caught_by": [
+        "test_scan_skips_blank_lines_and_counts_malformed_ones"
+      ]
+    }
+  ]
+}

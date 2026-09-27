@@ -1,0 +1,280 @@
+{
+  "family_id": "128-fastapi-upload-size-type-limits",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "streamed-upload-size-and-type-limits",
+  "requirement": "Accept an image body only when its media type is on an allowlist, stream it while counting bytes and stop with 413 as soon as it passes the limit, reject empty bodies with 422, and report the stored size and SHA-256 digest.",
+  "skeleton": "MAX_BYTES and ALLOWED constants with STORED state and reset_db, media_type stripping header parameters, read_limited streaming request chunks against a limit, and a PUT /avatars/{name} handler.",
+  "caption": "Guarding raw uploads in FastAPI. MAX_BYTES is 64 KiB and ALLOWED lists image/png, image/jpeg and image/webp; STORED keeps accepted bodies and reset_db clears it. media_type(header) keeps only the part of a Content-Type header before any semicolon, stripped and lower-cased, so parameters such as charset are ignored. read_limited(request, limit) iterates request.stream(), adds each chunk to a running total and raises HTTPException 413 saying the body exceeds the limit the moment the total passes it, without buffering the rest; a body of exactly the limit is fine. PUT /avatars/{name} answers 201: it first raises HTTPException 415 naming the unsupported type when the media type is not allowed, including a missing header, then reads the body, raises HTTPException 422 saying the body is empty for zero bytes, stores the bytes under the name and returns name, size and the hashlib SHA-256 hex digest. The fixture asserts the stored bytes and digest for a PNG, that a webp type with a parameter is accepted, that exactly MAX_BYTES passes and one more byte gets 413 with nothing stored, that text/plain and an empty type get 415, and that an empty body gets 422.",
+  "plan": {
+    "intent": "Accept avatar images without trusting the client's size or type",
+    "target": "limited streaming upload",
+    "constraints": [
+      "Successful uploads answer 201 with size and SHA-256 digest",
+      "Media types outside the allowlist raise HTTPException 415",
+      "Content-Type parameters are ignored when matching",
+      "Bodies over MAX_BYTES raise HTTPException 413 and store nothing; exactly MAX_BYTES is allowed",
+      "Empty bodies raise HTTPException 422"
+    ]
+  },
+  "rationale": {
+    "teaches": "Streaming request.stream() with a running byte count, and normalizing the Content-Type header before an allowlist check.",
+    "why": "Reading the whole body before checking, comparing with >= at the limit, or matching the raw header with its parameters all pass a happy-path test, so the fixture probes the exact boundary and a parameterized type."
+  },
+  "oracle": "fixtures/test_128_fastapi_upload_size_type_limits.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "MAX_BYTES"
+      },
+      {
+        "kind": "assign",
+        "name": "ALLOWED"
+      },
+      {
+        "kind": "assign",
+        "name": "STORED"
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "media_type",
+        "params": [
+          "header"
+        ]
+      },
+      {
+        "kind": "async_function",
+        "name": "read_limited",
+        "params": [
+          "request",
+          "limit"
+        ]
+      },
+      {
+        "kind": "async_function",
+        "name": "upload_avatar",
+        "params": [
+          "name",
+          "request"
+        ],
+        "route": "PUT /avatars/{name}"
+      }
+    ],
+    "imports": [
+      "fastapi"
+    ],
+    "raises": [
+      "HTTPException"
+    ],
+    "status_codes": [
+      201
+    ],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "MAX_BYTES",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "ALLOWED",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "STORED",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "reset_db",
+              "kind": "function",
+              "depends_on": [
+                "STORED"
+              ]
+            },
+            {
+              "name": "media_type",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "read_limited",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "upload_avatar",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "media_type",
+                "ALLOWED",
+                "read_limited",
+                "MAX_BYTES",
+                "STORED"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Avatar upload that enforces a content-type allowlist and a byte limit."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import hashlib",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import FastAPI, HTTPException, Request, status",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MAX_BYTES",
+        "source": "MAX_BYTES = 64 * 1024",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ALLOWED",
+        "source": "ALLOWED = frozenset({\"image/png\", \"image/jpeg\", \"image/webp\"})",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "STORED",
+        "source": "STORED: dict[str, bytes] = {}",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "app",
+        "id": "fastapi_app_titled",
+        "params": {
+          "title": "Avatars"
+        },
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db",
+        "source": "def reset_db() -> None:\n    \"\"\"Forget every stored upload.\"\"\"\n    STORED.clear()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "media_type",
+        "source": "def media_type(header: str) -> str:\n    \"\"\"Return the bare media type of a Content-Type header, lower-cased.\"\"\"\n    return header.split(\";\", 1)[0].strip().lower()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "read_limited",
+        "source": "async def read_limited(request: Request, limit: int) -> bytes:\n    \"\"\"Stream the body and stop as soon as it passes the limit.\"\"\"\n    parts: list[bytes] = []\n    total = 0\n    async for chunk in request.stream():\n        total += len(chunk)\n        if total > limit:\n            raise HTTPException(\n                status.HTTP_413_CONTENT_TOO_LARGE,\n                detail=f\"body exceeds {limit} bytes\",\n            )\n        parts.append(chunk)\n    return b\"\".join(parts)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "upload_avatar",
+        "source": "@app.put(\"/avatars/{name}\", status_code=status.HTTP_201_CREATED)\nasync def upload_avatar(name: str, request: Request) -> dict[str, str | int]:\n    \"\"\"Store an image body and report its size and digest.\"\"\"\n    kind = media_type(request.headers.get(\"content-type\", \"\"))\n    if kind not in ALLOWED:\n        raise HTTPException(\n            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=f\"unsupported type {kind}\"\n        )\n    data = await read_limited(request, MAX_BYTES)\n    if not data:\n        raise HTTPException(\n            status.HTTP_422_UNPROCESSABLE_CONTENT, detail=\"body is empty\"\n        )\n    STORED[name] = data\n    digest = hashlib.sha256(data).hexdigest()\n    return {\"name\": name, \"size\": len(data), \"sha256\": digest}",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 1,
+      "literal_blocks": 7
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The limit check uses >=, so a body of exactly MAX_BYTES is rejected with 413.",
+      "caught_by": [
+        "test_exactly_the_limit_is_accepted"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Without the allowlist check any media type, including text/plain, is stored.",
+      "caught_by": [
+        "test_other_types_are_415"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The raw header is compared, so a type carrying a charset parameter is refused with 415.",
+      "caught_by": [
+        "test_content_type_parameters_are_ignored"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Empty bodies are stored and answered with 201 instead of 422.",
+      "caught_by": [
+        "test_empty_body_is_422"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The digest is MD5 rather than SHA-256, so clients cannot verify the stored bytes.",
+      "caught_by": [
+        "test_png_is_stored_with_digest"
+      ]
+    }
+  ]
+}

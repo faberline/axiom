@@ -1,0 +1,150 @@
+{
+  "family_id": "50-pytorch-optimizer-zero-grad-accumulation",
+  "domain": "python",
+  "area": "pytorch",
+  "capability": "optimizer-zero-grad-accumulation",
+  "requirement": "Implement GradientAccumulationManager class for multi-step gradient accumulation, scaling batch loss by 1.0/accumulation_steps, executing backward propagation, triggering optimizer step and mandatory zero_grad at boundary intervals, and flushing pending gradients.",
+  "skeleton": "GradientAccumulationManager class with backward_and_step, flush, and reset methods.",
+  "caption": "A standard-library coordinator for gradient accumulation that works with any optimizer and loss objects exposing the usual methods, with no third-party imports. GradientAccumulationManager takes an optimizer, accumulation_steps defaulting to 4, and an optional max_grad_norm; it raises ValueError unless accumulation_steps is an integer of at least 1 and when max_grad_norm is given but not positive. backward_and_step(loss, step_idx) raises ValueError for a negative index, divides the loss by accumulation_steps, calls backward on the scaled loss, and increments a pending counter. It steps only when step_idx plus one is a multiple of accumulation_steps, so the first batch never triggers a premature step; at that boundary it clips gradients through the optimizer when a max norm is set and the optimizer supports it, calls step, then calls zero_grad, resets the pending counter, and returns True, otherwise it returns False. flush performs the same clip, step, and zero_grad sequence when batches are still pending and returns True, or returns False when nothing is pending. reset clears the pending counter. The fixture uses a mock optimizer and loss to assert exactly one step and one zero_grad at the fourth batch and none before, the default of four, the validation of zero and non-integer step counts, that a loss of 8.0 reaches backward as 2.0, and that flush steps leftover batches once and then reports nothing pending.",
+  "plan": {
+    "intent": "Accumulate gradients over several batches before each optimizer step",
+    "target": "GradientAccumulationManager",
+    "constraints": [
+      "A step count below 1 or non-integer, a non-positive max norm, or a negative index raises ValueError",
+      "Each loss is divided by the step count before backward",
+      "The optimizer steps and zeroes gradients only when the step index plus one is a multiple of the step count",
+      "Gradients are clipped before the step when a max norm is set",
+      "Flush steps once for pending batches and reports whether it did"
+    ]
+  },
+  "rationale": {
+    "teaches": "Gradient accumulation: scale each loss by 1/steps, call backward every batch, step and zero_grad only at the boundary, and flush leftovers at the end.",
+    "why": "Forgetting zero_grad or stepping one batch early still trains, just with the wrong effective batch size and inflated gradients. The fixture counts step and zero_grad calls per batch index with a mock optimizer."
+  },
+  "oracle": "fixtures/test_50_pytorch_optimizer_zero_grad_accumulation.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "GradientAccumulationManager",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "backward_and_step",
+          "flush",
+          "reset"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "GradientAccumulationManager",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Accumulate scaled gradients and step the optimizer on a fixed cadence."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "GradientAccumulationManager",
+        "source": "class GradientAccumulationManager:\n    \"\"\"Scale each loss, step and zero the optimizer every accumulation_steps batches.\"\"\"\n\n    def __init__(\n        self,\n        optimizer: Any,\n        accumulation_steps: int = 4,\n        max_grad_norm: float | None = None,\n    ) -> None:\n        if not isinstance(accumulation_steps, int) or accumulation_steps < 1:\n            raise ValueError(\n                f\"accumulation_steps must be an integer >= 1, got {accumulation_steps}\"\n            )\n        if max_grad_norm is not None and max_grad_norm <= 0.0:\n            raise ValueError(f\"max_grad_norm must be positive, got {max_grad_norm}\")\n\n        self.optimizer = optimizer\n        self.accumulation_steps = accumulation_steps\n        self.max_grad_norm = max_grad_norm\n        self.pending_steps: int = 0\n\n    def backward_and_step(self, loss: Any, step_idx: int) -> bool:\n        \"\"\"Backpropagate the scaled loss and return whether the optimizer stepped.\"\"\"\n        if step_idx < 0:\n            raise ValueError(f\"step_idx must be non-negative, got {step_idx}\")\n\n        scaled_loss = loss / self.accumulation_steps\n        scaled_loss.backward()\n        self.pending_steps += 1\n\n        is_step = (step_idx + 1) % self.accumulation_steps == 0\n        if is_step:\n            if self.max_grad_norm is not None and hasattr(\n                self.optimizer, \"clip_grad_norm_\"\n            ):\n                self.optimizer.clip_grad_norm_(self.max_grad_norm)\n            self.optimizer.step()\n            self.optimizer.zero_grad()\n            self.pending_steps = 0\n            return True\n\n        return False\n\n    def flush(self) -> bool:\n        \"\"\"Step optimizer and zero gradients for any remaining accumulated batches.\"\"\"\n        if self.pending_steps > 0:\n            if self.max_grad_norm is not None and hasattr(\n                self.optimizer, \"clip_grad_norm_\"\n            ):\n                self.optimizer.clip_grad_norm_(self.max_grad_norm)\n            self.optimizer.step()\n            self.optimizer.zero_grad()\n            self.pending_steps = 0\n            return True\n        return False\n\n    def reset(self) -> None:\n        \"\"\"Reset pending accumulation step counter.\"\"\"\n        self.pending_steps = 0",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "accumulation_steps defaults to 1, so no accumulation happens and every batch triggers a step.",
+      "caught_by": [
+        "test_default_accumulation_steps_is_valid_positive"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "accumulation_steps of 0 or a non-integer is accepted, so the modulo raises ZeroDivisionError on the first batch.",
+      "caught_by": [
+        "test_invalid_accumulation_steps_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The step fires on step_idx modulo steps, so the optimizer steps on the very first batch and then every boundary is one batch early.",
+      "caught_by": [
+        "test_boundary_first_step_does_not_trigger_premature_step",
+        "test_flush_triggers_pending_step_and_zero_grad",
+        "test_gold_accumulation_cadence_and_zero_grad"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The loss is multiplied by accumulation_steps instead of divided, so the effective gradient is steps squared too large.",
+      "caught_by": [
+        "test_loss_scaled_by_accumulation_factor"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "zero_grad is never called, so gradients accumulate across every boundary and grow without bound.",
+      "caught_by": [
+        "test_flush_triggers_pending_step_and_zero_grad",
+        "test_gold_accumulation_cadence_and_zero_grad",
+        "test_zero_grad_called_after_optimizer_step"
+      ]
+    }
+  ]
+}

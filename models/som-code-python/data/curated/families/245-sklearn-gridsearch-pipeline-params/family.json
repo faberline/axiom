@@ -1,0 +1,214 @@
+{
+  "family_id": "245-sklearn-gridsearch-pipeline-params",
+  "domain": "python",
+  "area": "scikit-learn",
+  "capability": "sklearn-gridsearch-pipeline-params",
+  "requirement": "Tune the regularization of a scaled logistic regression on imbalanced data with a grid search that is stratified, reproducible from a seed, scored by macro F1, and refitted on all data.",
+  "skeleton": "A fold count and parameter grid, and a tune function validating class counts, building a scaler plus classifier Pipeline, a seeded shuffled StratifiedKFold, and a refitting GridSearchCV.",
+  "caption": "Tuning a scikit-learn pipeline on imbalanced labels with a reproducible grid search. N_SPLITS is 5 and PARAM_GRID searches clf__C over 0.01, 0.1, 1.0 and 10.0. tune(x, y, *, seed=0) counts the classes with numpy and raises ValueError saying it needs two or more classes with N_SPLITS or more samples each when there is one class or any class is rarer than the fold count. It builds a Pipeline of StandardScaler as scale and LogisticRegression with max_iter 1000 as clf, a StratifiedKFold with N_SPLITS, shuffle on and random_state seed, and a GridSearchCV over the pipeline and grid with scoring f1_macro, that cv and refit on, then returns the fitted search. The fixture asserts that the best pipeline is refitted with its scale and clf steps and the chosen C from the grid, that the mean test score equals macro F1 recomputed over the folds, that the folds equal a shuffled StratifiedKFold with the given seed, and that one class or a rare class raises ValueError.",
+  "plan": {
+    "intent": "Pick model hyperparameters reproducibly",
+    "target": "hyperparameter search",
+    "constraints": [
+      "One class or a class rarer than the fold count raises ValueError",
+      "The search scores candidates with macro F1",
+      "Folds are stratified, shuffled and seeded by the seed argument",
+      "Grid keys address the classifier step as clf__C",
+      "The best pipeline is refitted on all data"
+    ]
+  },
+  "rationale": {
+    "teaches": "Search pipeline hyperparameters with step-prefixed grid keys, an explicit seeded StratifiedKFold, an imbalance-aware scorer, and refit enabled.",
+    "why": "Accuracy rewards predicting the majority class, unseeded or unshuffled folds make results irreproducible, and without refit there is no best estimator to deploy."
+  },
+  "oracle": "fixtures/test_245_sklearn_gridsearch_pipeline_params.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "N_SPLITS"
+      },
+      {
+        "kind": "assign",
+        "name": "PARAM_GRID"
+      },
+      {
+        "kind": "function",
+        "name": "tune",
+        "params": [
+          "x",
+          "y",
+          "seed"
+        ]
+      }
+    ],
+    "imports": [
+      "numpy",
+      "sklearn"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "N_SPLITS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "PARAM_GRID",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "tune",
+              "kind": "function",
+              "depends_on": [
+                "N_SPLITS",
+                "PARAM_GRID"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Tune a scaled logistic regression with a seeded, stratified grid search."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import numpy as np",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from numpy.typing import ArrayLike",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sklearn.linear_model import LogisticRegression",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sklearn.model_selection import GridSearchCV, StratifiedKFold",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sklearn.pipeline import Pipeline",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sklearn.preprocessing import StandardScaler",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "N_SPLITS",
+        "source": "N_SPLITS = 5",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "PARAM_GRID",
+        "source": "PARAM_GRID = {\"clf__C\": [0.01, 0.1, 1.0, 10.0]}",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "tune",
+        "source": "def tune(x: ArrayLike, y: ArrayLike, *, seed: int = 0) -> GridSearchCV:\n    \"\"\"Grid-search C by macro F1 and refit the best pipeline on all data.\"\"\"\n    _, counts = np.unique(np.asarray(y), return_counts=True)\n    if counts.size < 2 or counts.min() < N_SPLITS:\n        raise ValueError(f\"need two or more classes with {N_SPLITS}+ samples each\")\n    pipe = Pipeline(\n        [(\"scale\", StandardScaler()), (\"clf\", LogisticRegression(max_iter=1000))]\n    )\n    cv = StratifiedKFold(n_splits=N_SPLITS, shuffle=True, random_state=seed)\n    search = GridSearchCV(pipe, PARAM_GRID, scoring=\"f1_macro\", cv=cv, refit=True)\n    return search.fit(x, y)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Candidates are ranked by accuracy, which favours the majority class.",
+      "caught_by": [
+        "test_scores_by_macro_f1"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "StratifiedKFold without shuffle rejects the random_state and the search never runs.",
+      "caught_by": [
+        "test_folds_are_stratified_shuffled_and_seeded",
+        "test_refits_the_best_pipeline",
+        "test_scores_by_macro_f1"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Without refit the search exposes no best_estimator_ to predict with.",
+      "caught_by": [
+        "test_refits_the_best_pipeline"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Single-class labels pass validation and fail later inside scikit-learn.",
+      "caught_by": [
+        "test_rare_or_single_class_is_rejected"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The seed argument is ignored so every call uses the same folds.",
+      "caught_by": [
+        "test_folds_are_stratified_shuffled_and_seeded"
+      ]
+    }
+  ]
+}

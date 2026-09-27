@@ -1,0 +1,156 @@
+{
+  "family_id": "41-pandas-settingwithcopy-chained",
+  "domain": "python",
+  "area": "pandas",
+  "capability": "settingwithcopy-chained",
+  "requirement": "Implement ConditionalRecordUpdater supporting update_records(df, filter_col, threshold, update_col, new_value, inplace=False) using .loc indexing, validating inputs, preventing unexpected caller DataFrame mutations when inplace=False, and verifying matching rows are updated while non-matching rows remain intact.",
+  "skeleton": "Vectorized conditional DataFrame updates via .loc indexing preventing SettingWithCopyWarning and chained assignment drops.",
+  "caption": "A pandas module that makes a conditional update with one .loc call instead of chained indexing, whose write lands on a temporary copy under copy-on-write. It imports DataFrame from pandas. ConditionalRecordUpdater, with default_col status, provides update_records(df, filter_col, threshold, update_col, new_value, *, inplace=False), the one method that needs more than five arguments and says so with a narrow lint suppression. It raises TypeError when df is not a DataFrame, ValueError when filter_col or update_col is missing from the columns, and ValueError when threshold is negative. It works on df itself when inplace is True and on df.copy() otherwise, builds the mask filter_col greater than or equal to threshold so the boundary row is included, and assigns new_value through a single target.loc[mask, update_col] call before returning the target. The fixture asserts the inclusive threshold, the validation errors, that every matching row is updated, and that the caller's frame is untouched when inplace is False.",
+  "plan": {
+    "intent": "Apply a conditional column update without chained indexing",
+    "target": "ConditionalRecordUpdater",
+    "constraints": [
+      "A non-DataFrame input raises TypeError",
+      "A missing filter or update column, or a negative threshold, raises ValueError",
+      "The mask includes rows exactly at the threshold",
+      "The assignment is one .loc call on the mask and column",
+      "Without inplace the caller's frame is left unchanged"
+    ]
+  },
+  "rationale": {
+    "teaches": "Conditional DataFrame updates through .loc with a boolean mask, a non-negative threshold check, an inclusive comparison, and inplace=False by default so the caller's frame is untouched.",
+    "why": "Chained indexing assignment emits a warning and updates a temporary copy, so the frame looks unchanged and no exception is raised. The fixture checks both the returned frame and the caller's original."
+  },
+  "oracle": "fixtures/test_41_pandas_settingwithcopy_chained.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "ConditionalRecordUpdater",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "update_records"
+        ]
+      }
+    ],
+    "imports": [
+      "pandas"
+    ],
+    "raises": [
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "ConditionalRecordUpdater",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Update DataFrame rows through one .loc call instead of chained indexing."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pandas import DataFrame",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ConditionalRecordUpdater",
+        "source": "class ConditionalRecordUpdater:\n    \"\"\"Set a column on every row whose filter column meets a threshold.\"\"\"\n\n    def __init__(self, default_col: str = \"status\") -> None:\n        self.default_col = default_col\n\n    def update_records(  # noqa: PLR0913  # pylint: disable=too-many-arguments\n        self,\n        df: DataFrame,\n        filter_col: str,\n        threshold: float,\n        update_col: str,\n        new_value: Any,\n        *,\n        inplace: bool = False,\n    ) -> DataFrame:\n        \"\"\"Set update_col to new_value where filter_col is at least threshold.\"\"\"\n        if not isinstance(df, DataFrame):\n            raise TypeError(\"df must be an instance of DataFrame\")\n        if filter_col not in df.columns:\n            raise ValueError(f\"filter_col '{filter_col}' not found in columns\")\n        if update_col not in df.columns:\n            raise ValueError(f\"update_col '{update_col}' not found in columns\")\n        if threshold < 0.0:\n            raise ValueError(\"threshold must be non-negative (>= 0.0)\")\n\n        target_df = df if inplace else df.copy()\n        mask = target_df[filter_col] >= threshold\n        target_df.loc[mask, update_col] = new_value\n        return target_df",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "inplace defaults to True, so a caller who did not ask for mutation finds their DataFrame changed.",
+      "caught_by": [
+        "test_inplace_false_preserves_original"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A negative threshold is accepted instead of raising ValueError.",
+      "caught_by": [
+        "test_negative_threshold_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The mask uses > instead of >=, so rows exactly at the threshold are not updated.",
+      "caught_by": [
+        "test_exact_threshold_boundary_updated",
+        "test_gold_updates_matching_rows"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The mask is inverted to <, so the rows below the threshold are updated and the intended rows are left alone.",
+      "caught_by": [
+        "test_below_threshold_rows_unmodified",
+        "test_chained_indexing_avoided_persistence",
+        "test_exact_threshold_boundary_updated",
+        "test_gold_updates_matching_rows",
+        "test_inplace_false_preserves_original"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Chained indexing assigns into a temporary copy, so no row in the returned frame is updated.",
+      "caught_by": [
+        "test_below_threshold_rows_unmodified",
+        "test_chained_indexing_avoided_persistence",
+        "test_exact_threshold_boundary_updated",
+        "test_gold_updates_matching_rows",
+        "test_inplace_false_preserves_original"
+      ]
+    }
+  ]
+}

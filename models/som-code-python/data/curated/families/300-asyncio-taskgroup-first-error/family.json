@@ -1,0 +1,223 @@
+{
+  "family_id": "300-asyncio-taskgroup-first-error",
+  "domain": "python",
+  "area": "asyncio",
+  "capability": "asyncio-taskgroup-first-error",
+  "requirement": "Run named async health checks concurrently, cancel the rest on the first expected failure, and raise that failure plainly instead of as an ExceptionGroup.",
+  "skeleton": "A CheckFailedError with name and cause, a _guard wrapper, and run_checks using asyncio.timeout around a TaskGroup and unwrapping its ExceptionGroup.",
+  "caption": "A health-check runner using asyncio TaskGroup and asyncio.timeout with collections.abc and typing. Each check is wrapped so an OSError or ValueError becomes CheckFailedError carrying the check name and cause; the TaskGroup cancels the siblings, and run_checks unwraps an ExceptionGroup made only of CheckFailedError into the one with the smallest name, raised from None. Other exceptions keep their ExceptionGroup, the deadline raises TimeoutError, and an empty mapping or non-positive deadline raises ValueError. The fixture asserts ordered results, sibling cancellation, the bare first failure, group preservation, the deadline and the ValueError cases.",
+  "plan": {
+    "intent": "Fail fast across health checks",
+    "target": "TaskGroup first-error unwrapping",
+    "constraints": [
+      "OSError and ValueError become CheckFailedError",
+      "A failure cancels every sibling check",
+      "Only an all-CheckFailedError group is unwrapped",
+      "Simultaneous failures pick the smallest name",
+      "The unwrapped error is raised from None",
+      "The deadline raises TimeoutError",
+      "An empty mapping or non-positive deadline raises ValueError"
+    ]
+  },
+  "rationale": {
+    "teaches": "Let TaskGroup handle cancellation, then use ExceptionGroup.subgroup to unwrap only the expected failure type deterministically.",
+    "why": "Callers that expect one error get an ExceptionGroup, or a nondeterministic error when several checks fail together."
+  },
+  "oracle": "fixtures/test_300_asyncio_taskgroup_first_error.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "Check"
+      },
+      {
+        "kind": "class",
+        "name": "CheckFailedError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": [
+          "__init__"
+        ]
+      },
+      {
+        "kind": "async_function",
+        "name": "_guard",
+        "params": [
+          "name",
+          "check"
+        ]
+      },
+      {
+        "kind": "async_function",
+        "name": "run_checks",
+        "params": [
+          "checks",
+          "deadline"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "CheckFailedError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Check",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "CheckFailedError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "_guard",
+              "kind": "function",
+              "depends_on": [
+                "Check",
+                "CheckFailedError"
+              ]
+            },
+            {
+              "name": "run_checks",
+              "kind": "function",
+              "depends_on": [
+                "Check",
+                "_guard",
+                "CheckFailedError"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Run health checks in a TaskGroup and surface the first failure plainly."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import asyncio",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Awaitable, Callable, Mapping",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Check",
+        "source": "Check = Callable[[], Awaitable[Any]]",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "CheckFailedError",
+        "source": "class CheckFailedError(Exception):\n    \"\"\"One named check failed; the others were cancelled.\"\"\"\n\n    def __init__(self, name: str, cause: BaseException) -> None:\n        super().__init__(f\"check {name!r} failed: {cause}\")\n        self.name = name\n        self.cause = cause",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_guard",
+        "source": "async def _guard(name: str, check: Check) -> Any:\n    try:\n        return await check()\n    except (OSError, ValueError) as exc:\n        raise CheckFailedError(name, exc) from exc",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "run_checks",
+        "source": "async def run_checks(\n    checks: Mapping[str, Check], deadline: float = 2.0\n) -> dict[str, Any]:\n    \"\"\"Run every check concurrently and return results keyed by name.\n\n    The first expected failure cancels the rest and is raised as a bare\n    CheckFailedError; when several fail together the one with the smallest\n    name wins. Unexpected exceptions keep their ExceptionGroup.\n    \"\"\"\n    if not checks:\n        raise ValueError(\"at least one check is required\")\n    if deadline <= 0:\n        raise ValueError(\"deadline must be positive\")\n    try:\n        async with asyncio.timeout(deadline):\n            async with asyncio.TaskGroup() as group:\n                tasks = {\n                    name: group.create_task(_guard(name, check))\n                    for name, check in checks.items()\n                }\n    except ExceptionGroup as errors:\n        failed = errors.subgroup(CheckFailedError)\n        if failed is None or failed.exceptions != errors.exceptions:\n            raise\n        first = min(failed.exceptions, key=lambda exc: getattr(exc, \"name\", \"\"))\n        raise first from None\n    return {name: task.result() for name, task in tasks.items()}",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The raised error keeps its original cause chain instead of from None.",
+      "caught_by": [
+        "test_first_failure_is_raised_bare_and_siblings_cancelled"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The largest name is chosen when several checks fail together.",
+      "caught_by": [
+        "test_simultaneous_failures_pick_smallest_name"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "ValueError from a check is not wrapped as CheckFailedError.",
+      "caught_by": [
+        "test_simultaneous_failures_pick_smallest_name"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A deadline of zero is accepted instead of raising ValueError.",
+      "caught_by": [
+        "test_deadline_and_arguments"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The deadline is validated but never enforced on the checks.",
+      "caught_by": [
+        "test_deadline_and_arguments"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,176 @@
+{
+  "family_id": "246-sklearn-custom-quantile-transformer",
+  "domain": "python",
+  "area": "scikit-learn",
+  "capability": "sklearn-custom-quantile-transformer",
+  "requirement": "Write a scikit-learn compatible transformer that clips outliers in each feature to quantiles learned on training data, usable with clone, fit_transform and Pipeline.",
+  "skeleton": "A QuantileClipper class deriving TransformerMixin and BaseEstimator with a params-only __init__, fit validating params and learning per-column quantiles, and a validated transform returning a clipped copy.",
+  "caption": "A custom scikit-learn transformer that clips each feature to quantiles learned during fit, following the estimator contract so it clones and composes in pipelines. QuantileClipper subclasses TransformerMixin and BaseEstimator, and __init__ only stores lower, default 0.01, and upper, default 0.99. fit raises ValueError saying it requires 0 <= lower < upper <= 1 when the hyperparameters are invalid, converts x with check_array to float64, and stores per-column np.quantile bounds with axis 0 as lower_ and upper_ plus n_features_in_. transform calls check_is_fitted, so an unfitted call raises NotFittedError, raises ValueError with the expected and actual feature counts on a width mismatch, and returns a clipped copy from numpy. The fixture asserts default and cloned params, per-column bounds and clipping, that the input is not modified, that invalid quantiles fail at fit and not at init, NotFittedError and width errors, and use inside a pipeline.",
+  "plan": {
+    "intent": "Add robust outlier clipping to a model pipeline",
+    "target": "outlier transformer",
+    "constraints": [
+      "__init__ only stores lower and upper so get_params and clone work",
+      "Invalid quantiles raise ValueError at fit time",
+      "Bounds are learned per column",
+      "Transform before fit raises NotFittedError",
+      "A feature count mismatch raises ValueError",
+      "Transform never modifies its input"
+    ]
+  },
+  "rationale": {
+    "teaches": "Follow the scikit-learn estimator contract: params-only __init__, validation and learned trailing-underscore attributes in fit, check_is_fitted and width checks in transform.",
+    "why": "Validating in __init__ breaks clone and set_params, global bounds flatten differently scaled columns, and clipping in place corrupts the caller's training matrix."
+  },
+  "oracle": "fixtures/test_246_sklearn_custom_quantile_transformer.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "QuantileClipper",
+        "bases": [
+          "TransformerMixin",
+          "BaseEstimator"
+        ],
+        "methods": [
+          "__init__",
+          "fit",
+          "transform"
+        ]
+      }
+    ],
+    "imports": [
+      "numpy",
+      "sklearn"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "QuantileClipper",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "A scikit-learn compatible transformer clipping columns to fitted quantiles."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Self",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import numpy as np",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from numpy.typing import ArrayLike, NDArray",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sklearn.base import BaseEstimator, TransformerMixin",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sklearn.utils.validation import check_array, check_is_fitted",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "QuantileClipper",
+        "source": "class QuantileClipper(TransformerMixin, BaseEstimator):  # type: ignore[misc]\n    \"\"\"Clip each feature to quantiles learned on the training data.\"\"\"\n\n    lower_: NDArray[np.float64]\n    upper_: NDArray[np.float64]\n    n_features_in_: int\n\n    def __init__(self, lower: float = 0.01, upper: float = 0.99) -> None:\n        self.lower = lower\n        self.upper = upper\n\n    def fit(self, x: ArrayLike, y: object = None) -> Self:\n        \"\"\"Learn per-column bounds; hyperparameters are validated here.\"\"\"\n        del y\n        if not 0 <= self.lower < self.upper <= 1:\n            raise ValueError(\"require 0 <= lower < upper <= 1\")\n        arr = check_array(x, dtype=np.float64)\n        self.lower_ = np.quantile(arr, self.lower, axis=0)\n        self.upper_ = np.quantile(arr, self.upper, axis=0)\n        self.n_features_in_ = arr.shape[1]\n        return self\n\n    def transform(self, x: ArrayLike) -> NDArray[np.float64]:\n        \"\"\"Return a clipped copy of ``x``.\"\"\"\n        check_is_fitted(self)\n        arr = check_array(x, dtype=np.float64)\n        if arr.shape[1] != self.n_features_in_:\n            raise ValueError(\n                f\"expected {self.n_features_in_} features, got {arr.shape[1]}\"\n            )\n        clipped: NDArray[np.float64] = np.clip(arr, self.lower_, self.upper_)\n        return clipped",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Quantiles are computed over the whole matrix instead of per column.",
+      "caught_by": [
+        "test_bounds_are_learned_per_column"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Reversed quantiles are accepted and silently produce inverted bounds.",
+      "caught_by": [
+        "test_invalid_quantiles_fail_at_fit_not_init"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A width mismatch surfaces as an opaque numpy broadcasting error.",
+      "caught_by": [
+        "test_transform_requires_fit_and_matching_width"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Clipping in place with out= rewrites the caller's float array.",
+      "caught_by": [
+        "test_transform_returns_a_copy"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The default upper quantile is 0.95 instead of 0.99.",
+      "caught_by": [
+        "test_defaults_and_clone"
+      ]
+    }
+  ]
+}

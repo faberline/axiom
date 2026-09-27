@@ -1,0 +1,158 @@
+{
+  "family_id": "57-os-atomic-dir-exchange",
+  "domain": "python",
+  "area": "os",
+  "capability": "atomic-directory-exchange",
+  "requirement": "Safely manage directory provisioning, atomic swaps, and directory-based mutex locking without TOCTOU race conditions or windows of absence.",
+  "skeleton": "AtomicDirectoryDeployer class with ensure_directory, safe_remove_directory, acquire_lock, release_lock, and deploy_atomic methods.",
+  "caption": "A standard-library directory manager built on os, shutil, tempfile, and pathlib that performs each filesystem operation as a single atomic attempt instead of checking first and acting afterwards, with no third-party imports. AtomicDirectoryDeployer resolves base_dir and creates it with parents and exist_ok. ensure_directory creates the named directory with parents and exist_ok, so a concurrent creator never causes a failure. safe_remove_directory calls shutil.rmtree directly and returns True, catching FileNotFoundError to return False when another actor removed the directory first. acquire_lock uses os.mkdir on a name.lock directory as a mutex, returning True when the call creates it and False on FileExistsError, because mkdir is atomic and only one caller can win. release_lock calls os.rmdir and returns False when the lock directory is already gone. deploy_atomic(target_name, build_files) creates a temporary directory with tempfile.mkdtemp inside base_dir itself so it shares the target's filesystem, writes every file into it, creates a temporary symbolic link to it, and swaps that link over the target with os.replace, so the target path always exists and is never deleted before the new version appears; on any failure it removes the temporary directory and re-raises. The fixture injects races and asserts that directory creation survives a concurrent creator, that removal returns False after a concurrent delete, that only one of two lock acquirers wins, that redeploying from v1 to v2 never unlinks the target, and that the temporary directory is created under base_dir.",
+  "plan": {
+    "intent": "Perform directory operations as single atomic attempts instead of check-then-act",
+    "target": "AtomicDirectoryDeployer",
+    "constraints": [
+      "Creation uses exist_ok so a concurrent creator never fails it",
+      "Removal catches FileNotFoundError and returns False",
+      "A lock is an atomic mkdir, and only one acquirer wins",
+      "Deployment builds in a temporary directory under the base and swaps a symlink over the target with os.replace",
+      "The target path exists at every moment and a failed deployment cleans up its temporary directory"
+    ]
+  },
+  "rationale": {
+    "teaches": "Race-free directory operations: mkdir with exist_ok, catch FileNotFoundError instead of pre-checking, atomic mkdir as a mutex, os.replace with no delete window, and temp dirs on the same filesystem.",
+    "why": "Check-then-act code passes every single-threaded test and fails only when another process acts between the check and the act. The fixture injects that interleaving."
+  },
+  "oracle": "fixtures/test_57_os_atomic_dir_exchange.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "AtomicDirectoryDeployer",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "ensure_directory",
+          "safe_remove_directory",
+          "acquire_lock",
+          "release_lock",
+          "deploy_atomic"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "AtomicDirectoryDeployer",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Deploy build directories atomically with a same-filesystem temp dir swap."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import os",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import shutil",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import tempfile",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pathlib import Path",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "AtomicDirectoryDeployer",
+        "source": "class AtomicDirectoryDeployer:\n    \"\"\"Provisions directories, swaps them atomically, and manages locks.\"\"\"\n\n    def __init__(self, base_dir: str | Path) -> None:\n        self.base_dir = Path(base_dir).resolve()\n        self.base_dir.mkdir(parents=True, exist_ok=True)\n\n    def ensure_directory(self, dir_name: str) -> Path:\n        \"\"\"Concurrently safe directory creation without TOCTOU race conditions.\"\"\"\n        target = self.base_dir / dir_name\n        target.mkdir(parents=True, exist_ok=True)\n        return target\n\n    def safe_remove_directory(self, dir_name: str) -> bool:\n        \"\"\"Concurrently safe directory removal without crashing if already gone.\"\"\"\n        target = self.base_dir / dir_name\n        try:\n            shutil.rmtree(target)\n            return True\n        except FileNotFoundError:\n            return False\n\n    def acquire_lock(self, lock_name: str) -> bool:\n        \"\"\"Atomic directory-based mutex acquisition without TOCTOU.\"\"\"\n        lock_path = self.base_dir / f\"{lock_name}.lock\"\n        try:\n            os.mkdir(lock_path)\n            return True\n        except FileExistsError:\n            return False\n\n    def release_lock(self, lock_name: str) -> bool:\n        \"\"\"Safely release lock without crashing if already removed.\"\"\"\n        lock_path = self.base_dir / f\"{lock_name}.lock\"\n        try:\n            os.rmdir(lock_path)\n            return True\n        except FileNotFoundError:\n            return False\n\n    def deploy_atomic(self, target_name: str, build_files: dict[str, str]) -> Path:\n        \"\"\"Atomically deploys build files to target_name with zero window of absence.\n\n        A sibling temp dir on the same filesystem keeps os.replace atomic.\n        \"\"\"\n        target = self.base_dir / target_name\n        temp_dir = Path(tempfile.mkdtemp(prefix=\".tmp_deploy_\", dir=self.base_dir))\n        try:\n            for fname, content in build_files.items():\n                fpath = temp_dir / fname\n                fpath.parent.mkdir(parents=True, exist_ok=True)\n                fpath.write_text(content, encoding=\"utf-8\")\n\n            tmp_link = self.base_dir / f\".tmp_link_{temp_dir.name}\"\n            tmp_link.symlink_to(temp_dir, target_is_directory=True)\n            os.replace(tmp_link, target)\n            return target\n        except Exception:\n            if temp_dir.exists():\n                shutil.rmtree(temp_dir, ignore_errors=True)\n            raise",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The directory is checked and then created without exist_ok, so a concurrent creator makes mkdir raise FileExistsError.",
+      "caught_by": [
+        "test_ensure_directory_race_resilient"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Removal checks exists and then removes, so a concurrent removal raises FileNotFoundError instead of returning False.",
+      "caught_by": [
+        "test_safe_remove_directory_race_resilient"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The lock is an exists check followed by mkdir, so two acquirers can both pass the check and both hold the lock.",
+      "caught_by": [
+        "test_acquire_lock_race_resilient"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The old target is deleted before the rename, so there is a window where the deployed directory does not exist.",
+      "caught_by": [
+        "test_deploy_atomic_zero_window_of_absence"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The temp directory is created in the system temp location, so the final rename can cross filesystems and fail.",
+      "caught_by": [
+        "test_deploy_atomic_uses_sibling_directory"
+      ]
+    }
+  ]
+}

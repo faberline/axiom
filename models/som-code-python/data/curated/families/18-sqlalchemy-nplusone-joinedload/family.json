@@ -1,0 +1,557 @@
+{
+  "family_id": "18-sqlalchemy-nplusone-joinedload",
+  "domain": "python",
+  "area": "sqlalchemy",
+  "capability": "nplusone-joinedload",
+  "requirement": "FastAPI GET /articles endpoint returning articles with author info using SQLAlchemy joinedload with LEFT OUTER JOIN to fetch many-to-1 relationship in exactly 1 SQL SELECT statement while preserving articles with null authors.",
+  "skeleton": "FastAPI GET /articles with SQLAlchemy joinedload eager loading.",
+  "caption": "A FastAPI endpoint that loads a many-to-one relationship with one SQL statement and keeps rows whose relationship is empty. The module builds a StaticPool engine over in-memory SQLite, a QueryCounter with class-level count and statements, and a before_cursor_execute listener registered through SQLAlchemy's event API that counts statements beginning with SELECT. Under a DeclarativeBase, Author has id, name, and email; Article has id, title, content, a nullable author_id foreign key to authors, and an author relationship declared lazy select. get_db yields one session per request and closes it in finally. reset_db drops and recreates the schema, inserts two authors, Alice Smith and Bob Jones, and four articles, three attributed to those authors and one, Anonymous Editorial, with author_id None, commits, and resets the counter; it runs once at import. pydantic models AuthorResponse and ArticleResponse read from attributes, and ArticleResponse declares author as an optional AuthorResponse defaulting to None. GET /query-metrics returns the count. GET /articles builds select(Article).options(joinedload(Article.author)), executes it with db.scalars(...).all(), and returns the rows. joinedload emits a LEFT OUTER JOIN by default, so the author columns arrive in the same SELECT as the articles, the request issues exactly one statement, the article without an author is returned with author null rather than dropped, and the loaded author's name and email reach the client unchanged.",
+  "plan": {
+    "intent": "List articles with their authors in a single query",
+    "target": "Article",
+    "constraints": [
+      "Authors are loaded with an outer join in the same SELECT",
+      "The request issues exactly one SELECT statement",
+      "An article without an author is returned with a null author, not dropped",
+      "Author name and email reach the client unchanged"
+    ]
+  },
+  "rationale": {
+    "teaches": "Eager loading a many-to-one relationship with joinedload as a LEFT OUTER JOIN, one SELECT total, and articles with no author preserved.",
+    "why": "Inner versus outer join is a one-keyword difference that silently drops rows. Counting statements and counting rows together separates all five variants."
+  },
+  "oracle": "fixtures/test_18_sqlalchemy_nplusone_joinedload.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "engine"
+      },
+      {
+        "kind": "class",
+        "name": "QueryCounter",
+        "bases": [],
+        "methods": [
+          "reset"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "before_cursor_execute",
+        "params": [
+          "**kw"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "Base",
+        "bases": [
+          "DeclarativeBase"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Author",
+        "bases": [
+          "Base"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Article",
+        "bases": [
+          "Base"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "session_factory"
+      },
+      {
+        "kind": "function",
+        "name": "get_db",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "class",
+        "name": "AuthorResponse",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ArticleResponse",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "get_query_metrics",
+        "params": [],
+        "route": "GET /query-metrics"
+      },
+      {
+        "kind": "function",
+        "name": "get_articles",
+        "params": [
+          "db"
+        ],
+        "route": "GET /articles"
+      }
+    ],
+    "imports": [
+      "fastapi",
+      "pydantic",
+      "sqlalchemy"
+    ],
+    "raises": [],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "engine",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "QueryCounter",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "before_cursor_execute",
+              "kind": "function",
+              "depends_on": [
+                "engine",
+                "QueryCounter"
+              ]
+            },
+            {
+              "name": "Base",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Author",
+              "kind": "class",
+              "depends_on": [
+                "Base"
+              ]
+            },
+            {
+              "name": "Article",
+              "kind": "class",
+              "depends_on": [
+                "Base",
+                "Author"
+              ]
+            },
+            {
+              "name": "Base.metadata.create_all",
+              "kind": "statement",
+              "depends_on": [
+                "Base",
+                "engine"
+              ]
+            },
+            {
+              "name": "session_factory",
+              "kind": "constant",
+              "depends_on": [
+                "engine"
+              ]
+            },
+            {
+              "name": "get_db",
+              "kind": "function",
+              "depends_on": [
+                "session_factory"
+              ]
+            },
+            {
+              "name": "reset_db",
+              "kind": "function",
+              "depends_on": [
+                "Base",
+                "engine",
+                "session_factory",
+                "Author",
+                "Article",
+                "QueryCounter"
+              ]
+            },
+            {
+              "name": "reset_db#2",
+              "kind": "statement",
+              "depends_on": [
+                "reset_db"
+              ]
+            },
+            {
+              "name": "AuthorResponse",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "ArticleResponse",
+              "kind": "class",
+              "depends_on": [
+                "AuthorResponse"
+              ]
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "get_query_metrics",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "QueryCounter"
+              ]
+            },
+            {
+              "name": "get_articles",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "ArticleResponse",
+                "get_db",
+                "Article"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Article listing that loads authors in the same SELECT via joinedload."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Generator, Sequence",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any, ClassVar",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import Depends, FastAPI",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel, ConfigDict",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy import ForeignKey, create_engine, event, select",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.orm import (\n    DeclarativeBase,\n    Mapped,\n    Session,\n    joinedload,\n    mapped_column,\n    relationship,\n    sessionmaker,\n)",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.pool import StaticPool",
+        "group": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "engine",
+        "id": "sqlalchemy_memory_engine",
+        "params": {},
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "QueryCounter",
+        "source": "class QueryCounter:\n    \"\"\"Count the SELECT statements the engine executes.\"\"\"\n\n    count: ClassVar[int] = 0\n    statements: ClassVar[list[str]] = []\n\n    @classmethod\n    def reset(cls) -> None:\n        \"\"\"Start counting from zero.\"\"\"\n        cls.count = 0\n        cls.statements = []",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "before_cursor_execute",
+        "source": "@event.listens_for(engine, \"before_cursor_execute\", named=True)\ndef before_cursor_execute(**kw: Any) -> None:\n    \"\"\"Record every SELECT the engine sends to the database.\"\"\"\n    statement: str = kw[\"statement\"]\n    if statement.strip().upper().startswith(\"SELECT\"):\n        QueryCounter.count += 1\n        QueryCounter.statements.append(statement)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "Base",
+        "id": "sqlalchemy_declarative_base",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "Author",
+        "id": "sqlalchemy_table",
+        "params": {
+          "name": "Author",
+          "doc": "An article author.",
+          "table": "authors",
+          "columns": [
+            {
+              "column": "id",
+              "type": "int",
+              "value": "mapped_column(primary_key=True, index=True)"
+            },
+            {
+              "column": "name",
+              "type": "str",
+              "value": "mapped_column(nullable=False)"
+            },
+            {
+              "column": "email",
+              "type": "str",
+              "value": "mapped_column(nullable=False)"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Article",
+        "source": "class Article(Base):\n    \"\"\"An article with an optional author.\"\"\"\n\n    __tablename__ = \"articles\"\n\n    id: Mapped[int] = mapped_column(primary_key=True, index=True)\n    title: Mapped[str] = mapped_column(nullable=False)\n    content: Mapped[str] = mapped_column(nullable=False)\n    author_id: Mapped[int | None] = mapped_column(\n        ForeignKey(\"authors.id\"), nullable=True\n    )\n\n    author: Mapped[Author | None] = relationship(\"Author\", lazy=\"select\")",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "Base.metadata.create_all",
+        "id": "sqlalchemy_create_all",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "session_factory",
+        "id": "sqlalchemy_session_factory",
+        "params": {
+          "name": "session_factory"
+        },
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "get_db",
+        "id": "sqlalchemy_get_db",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db",
+        "source": "def reset_db() -> None:\n    \"\"\"Recreate the tables and seed two authors and four articles.\"\"\"\n    Base.metadata.drop_all(bind=engine)\n    Base.metadata.create_all(bind=engine)\n    db = session_factory()\n    a1 = Author(name=\"Alice Smith\", email=\"alice@example.com\")\n    a2 = Author(name=\"Bob Jones\", email=\"bob@example.com\")\n    db.add_all([a1, a2])\n    db.flush()\n\n    art1 = Article(\n        title=\"Deep Dive into Async\", content=\"Async content\", author_id=a1.id\n    )\n    art2 = Article(\n        title=\"SQLAlchemy Patterns\", content=\"SQLAlchemy content\", author_id=a1.id\n    )\n    art3 = Article(\n        title=\"Distributed Systems\", content=\"Systems content\", author_id=a2.id\n    )\n    art4 = Article(\n        title=\"Anonymous Editorial\", content=\"Opinion content\", author_id=None\n    )\n    db.add_all([art1, art2, art3, art4])\n    db.commit()\n    db.close()\n    QueryCounter.reset()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db#2",
+        "source": "reset_db()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "AuthorResponse",
+        "id": "pydantic_orm_model",
+        "params": {
+          "name": "AuthorResponse",
+          "doc": "Author representation returned to clients.",
+          "fields": [
+            {
+              "field": "id",
+              "declaration": "int"
+            },
+            {
+              "field": "name",
+              "declaration": "str"
+            },
+            {
+              "field": "email",
+              "declaration": "str"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "ArticleResponse",
+        "id": "pydantic_orm_model",
+        "params": {
+          "name": "ArticleResponse",
+          "doc": "Article representation returned to clients.",
+          "fields": [
+            {
+              "field": "id",
+              "declaration": "int"
+            },
+            {
+              "field": "title",
+              "declaration": "str"
+            },
+            {
+              "field": "content",
+              "declaration": "str"
+            },
+            {
+              "field": "author",
+              "declaration": "AuthorResponse | None = None"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "app",
+        "id": "fastapi_app",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "get_query_metrics",
+        "id": "fastapi_counter_route",
+        "params": {
+          "path": "/query-metrics",
+          "name": "get_query_metrics",
+          "doc": "Return how many SELECT statements have run since the last reset.",
+          "key": "count",
+          "value": "QueryCounter.count"
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_articles",
+        "source": "@app.get(\"/articles\", response_model=list[ArticleResponse])\ndef get_articles(db: Session = Depends(get_db)) -> Sequence[Article]:\n    \"\"\"Return every article with its author loaded by a join.\"\"\"\n    stmt = select(Article).options(joinedload(Article.author))\n    articles = db.scalars(stmt).all()\n    return articles",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 10,
+      "literal_blocks": 6
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "joinedload is dropped, so each article lazy-loads its author and the endpoint issues one query per row.",
+      "caught_by": [
+        "test_articles_query_count_strictly_one"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "innerjoin=True turns the join into an INNER JOIN, so articles without an author disappear from the response.",
+      "caught_by": [
+        "test_articles_boundary_all_returned",
+        "test_articles_preserves_null_author_articles"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The first article is sliced off the result, so the response is one row short.",
+      "caught_by": [
+        "test_articles_boundary_all_returned",
+        "test_articles_preserves_null_author_articles"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Every loaded author is reset to None, so author info never reaches the client.",
+      "caught_by": [
+        "test_articles_author_data_integrity",
+        "test_articles_preserves_null_author_articles"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "Each article's author is refreshed after loading, so the eager join is followed by one extra query per row.",
+      "caught_by": [
+        "test_articles_query_count_strictly_one"
+      ]
+    }
+  ]
+}

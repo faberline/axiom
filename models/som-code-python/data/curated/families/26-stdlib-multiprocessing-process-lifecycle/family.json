@@ -1,0 +1,194 @@
+{
+  "family_id": "26-stdlib-multiprocessing-process-lifecycle",
+  "domain": "python",
+  "area": "stdlib",
+  "capability": "multiprocessing-pool-lifecycle",
+  "requirement": "Implement ResilientWorkerPool with start, submit, collect_results, and graceful shutdown using poison pill sentinels, process reaping on timeout, and clean queue feeder thread management.",
+  "skeleton": "ResilientWorkerPool managing multiprocessing.Process workers and Queues.",
+  "caption": "A multiprocessing worker pool with an explicit lifecycle and no third-party imports. The module-level _worker_entry loop polls its task queue with a 0.1 second timeout, ignoring queue.Empty and TimeoutError so a quiet queue is not an error, exits when it receives the STOP_SENTINEL string, doubles numeric or string items, and puts a success or error dict on the result queue. ResilientWorkerPool stores num_workers, defaulting to 2, an empty worker list, two queues that start as None, and a running flag. start returns immediately when already running, so a second call cannot orphan the first set of workers; otherwise it creates fresh task and result queues, starts num_workers processes on _worker_entry, and sets the flag. submit raises RuntimeError when the pool is not running or has no task queue, and otherwise enqueues the item. collect_results also raises RuntimeError on a stopped pool; it computes one deadline from time.monotonic plus the timeout, defaulting to one second, and for each expected item waits on the result queue for the remaining time with a floor of ten milliseconds, converting queue.Empty or a timeout into a TimeoutError with a message, so a missing result surfaces as an error instead of a hang. shutdown does nothing when not running; otherwise it enqueues one STOP_SENTINEL per worker so in-flight work finishes, joins each worker with a per-worker share of the timeout, terminates and joins again any worker still alive so no zombie remains, closes both queues and joins their feeder threads, and clears the running flag.",
+  "plan": {
+    "intent": "Manage a process pool with explicit start, submit, collect, and shutdown",
+    "target": "ResilientWorkerPool",
+    "constraints": [
+      "Starting an already running pool is a no-op",
+      "Submitting to or collecting from a stopped pool raises RuntimeError",
+      "Collection shares one deadline across all results and raises TimeoutError when a result is missing",
+      "Shutdown sends one stop sentinel per worker, joins them, and terminates any survivor",
+      "Both queues are closed and the running flag cleared after shutdown"
+    ]
+  },
+  "rationale": {
+    "teaches": "A worker pool with explicit lifecycle: submit refuses when not running, collect_results honors a deadline, shutdown sends a sentinel per worker, joins with a timeout, and terminates only the stragglers.",
+    "why": "Pool lifecycle bugs hang or leak processes rather than raising. The fixture times every phase and checks that the worker processes are gone afterward."
+  },
+  "oracle": "fixtures/test_26_stdlib_multiprocessing_process_lifecycle.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "function",
+        "name": "_worker_entry",
+        "params": [
+          "task_queue",
+          "result_queue"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "ResilientWorkerPool",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "start",
+          "submit",
+          "collect_results",
+          "shutdown"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "RuntimeError",
+      "TimeoutError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "_worker_entry",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "ResilientWorkerPool",
+              "kind": "class",
+              "depends_on": [
+                "_worker_entry"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Run a pool of worker processes that survives a slow or stuck shutdown."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import contextlib",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import multiprocessing as mp",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import queue",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import time",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from multiprocessing.queues import Queue",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_worker_entry",
+        "source": "def _worker_entry(task_queue: Queue[Any], result_queue: Queue[dict[str, Any]]) -> None:\n    \"\"\"Double each task until the stop sentinel arrives.\"\"\"\n    while True:\n        try:\n            item = task_queue.get(timeout=0.1)\n        except (queue.Empty, TimeoutError):\n            continue\n        if item == \"STOP_SENTINEL\":\n            break\n        try:\n            res = item * 2 if isinstance(item, (int, float, str)) else item\n            result_queue.put({\"success\": True, \"result\": res})\n        except (TypeError, ValueError) as exc:\n            result_queue.put({\"success\": False, \"error\": str(exc)})",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ResilientWorkerPool",
+        "source": "class ResilientWorkerPool:\n    \"\"\"Start, feed, drain, and stop a fixed set of worker processes.\"\"\"\n\n    def __init__(self, num_workers: int = 2) -> None:\n        self.num_workers = num_workers\n        self.workers: list[mp.Process] = []\n        self.task_queue: Queue[Any] | None = None\n        self.result_queue: Queue[dict[str, Any]] | None = None\n        self._running = False\n\n    def start(self) -> None:\n        \"\"\"Spawn the workers and their queues once.\"\"\"\n        if self._running:\n            return\n        self.task_queue = mp.Queue()\n        self.result_queue = mp.Queue()\n        self.workers = []\n        for _ in range(self.num_workers):\n            p = mp.Process(\n                target=_worker_entry, args=(self.task_queue, self.result_queue)\n            )\n            p.start()\n            self.workers.append(p)\n        self._running = True\n\n    def submit(self, item: Any) -> None:\n        \"\"\"Queue one task, refusing when the pool is not running.\"\"\"\n        if not self._running or self.task_queue is None:\n            raise RuntimeError(\"Pool is not running\")\n        self.task_queue.put(item)\n\n    def collect_results(self, expected_count: int, timeout: float = 1.0) -> list[Any]:\n        \"\"\"Wait for expected_count results within one shared deadline.\"\"\"\n        if not self._running or self.result_queue is None:\n            raise RuntimeError(\"Pool is not running\")\n        results: list[Any] = []\n        deadline = time.monotonic() + timeout\n        for _ in range(expected_count):\n            rem = max(0.01, deadline - time.monotonic())\n            try:\n                res = self.result_queue.get(timeout=rem)\n                results.append(res)\n            except (queue.Empty, TimeoutError) as exc:\n                raise TimeoutError(\"Timeout waiting for worker results\") from exc\n        return results\n\n    def shutdown(self, timeout: float = 1.0) -> None:\n        \"\"\"Stop every worker, terminating any that miss its share of timeout.\"\"\"\n        if not self._running:\n            return\n        if self.task_queue is not None:\n            for _ in self.workers:\n                with contextlib.suppress(ValueError, OSError):\n                    self.task_queue.put(\"STOP_SENTINEL\")\n        per_worker_timeout = max(0.05, timeout / max(1, len(self.workers)))\n        for p in self.workers:\n            p.join(timeout=per_worker_timeout)\n            if p.is_alive():\n                p.terminate()\n                p.join()\n        for q in (self.task_queue, self.result_queue):\n            if q is not None:\n                with contextlib.suppress(ValueError, OSError):\n                    q.close()\n                    q.join_thread()\n        self._running = False",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "Terminated workers are never joined, so zombie processes remain after shutdown.",
+      "caught_by": [
+        "test_zombie_reaping_on_forced_termination"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "collect_results waits with no timeout, so a missing result blocks the caller forever.",
+      "caught_by": [
+        "test_collect_results_times_out_when_no_items"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "submit on a stopped pool silently enqueues instead of raising RuntimeError.",
+      "caught_by": [
+        "test_submit_rejects_when_stopped"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "start on a running pool rebuilds the worker list, so the original workers are orphaned and never shut down.",
+      "caught_by": [
+        "test_double_start_idempotent"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "shutdown terminates every worker immediately without a sentinel, so in-flight tasks are killed instead of finished.",
+      "caught_by": [
+        "test_graceful_shutdown_sentinels"
+      ]
+    }
+  ]
+}

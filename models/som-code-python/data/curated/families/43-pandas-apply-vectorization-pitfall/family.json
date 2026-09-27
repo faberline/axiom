@@ -1,0 +1,154 @@
+{
+  "family_id": "43-pandas-apply-vectorization-pitfall",
+  "domain": "python",
+  "area": "pandas",
+  "capability": "apply-vectorization-pitfall",
+  "requirement": "Implement TransactionVectorizedScorer class for high-throughput financial transaction risk scoring. It must replace unvectorized row-by-row DataFrame.apply(axis=1) with vectorized pandas and numpy operations (np.where, column arithmetic, and clipping), validate non-empty DataFrames, enforce positive transaction weight parameters, clip scores to a configured max_cap, and preserve DataFrame index integrity.",
+  "skeleton": "High-performance vectorized scoring replacing unvectorized .apply(axis=1) and preserving index integrity.",
+  "caption": "A pandas module that scores transactions with whole-column arithmetic instead of a row-by-row loop. It imports numpy plus DataFrame and Series from pandas. TransactionVectorizedScorer takes weight defaulting to 1.5 and max_cap defaulting to 100.0 and raises ValueError when either is zero or negative. score_transactions(df, amount_col='amount', freq_col='frequency') raises ValueError for an empty frame and for either missing column. It builds a mask where the amount is strictly greater than 1000.0, and with a single np.where call chooses amount times 0.05 plus frequency times the weight for those rows and amount times 0.01 plus frequency times 0.5 for the rest, so an amount of exactly 1000 stays in the low tier. The result is wrapped in a Series built on the DataFrame's own index and clipped at max_cap. The fixture asserts scores such as 7.0 and a capped 100.0, that a default cap still allows 75.0, the boundary score of 12.0 at 1000, the branch values 6.0 and 78.0, the weight validation, and that scores keyed by a custom index like tx_alpha and tx_beta line up with their rows.",
+  "plan": {
+    "intent": "Score transactions with vectorized column arithmetic",
+    "target": "TransactionVectorizedScorer",
+    "constraints": [
+      "A non-positive weight or cap, an empty frame, or a missing column raises ValueError",
+      "Amounts strictly above 1000 use the high-tier formula chosen by one np.where",
+      "An amount of exactly 1000 stays in the low tier",
+      "Scores are clipped at the cap",
+      "The result Series keeps the frame's own index"
+    ]
+  },
+  "rationale": {
+    "teaches": "Vectorized scoring with np.where and column arithmetic that keeps the DataFrame index, a positive weight check, a strict high-tier boundary, and a 100.0 cap.",
+    "why": "A row-by-row loop returns the same numbers on a default index and only breaks when the frame has a custom index. The fixture scores a frame indexed by tx_alpha and tx_beta."
+  },
+  "oracle": "fixtures/test_43_pandas_apply_vectorization_pitfall.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "TransactionVectorizedScorer",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "score_transactions"
+        ]
+      }
+    ],
+    "imports": [
+      "numpy",
+      "pandas"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "TransactionVectorizedScorer",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Score transactions with whole-column arithmetic instead of a row apply."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import numpy as np",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pandas import DataFrame, Series",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "TransactionVectorizedScorer",
+        "source": "class TransactionVectorizedScorer:\n    \"\"\"High-throughput transaction risk scorer using vectorized operations.\"\"\"\n\n    def __init__(self, weight: float = 1.5, max_cap: float = 100.0) -> None:\n        if weight <= 0.0:\n            raise ValueError(\"weight must be strictly positive (> 0.0)\")\n        if max_cap <= 0.0:\n            raise ValueError(\"max_cap must be strictly positive (> 0.0)\")\n        self.weight = weight\n        self.max_cap = max_cap\n\n    def score_transactions(\n        self,\n        df: DataFrame,\n        amount_col: str = \"amount\",\n        freq_col: str = \"frequency\",\n    ) -> Series:\n        \"\"\"Return one risk score per row, capped at max_cap, on the frame's index.\"\"\"\n        if df.empty:\n            raise ValueError(\"DataFrame must not be empty\")\n        if amount_col not in df.columns:\n            raise ValueError(f\"Column '{amount_col}' not found\")\n        if freq_col not in df.columns:\n            raise ValueError(f\"Column '{freq_col}' not found\")\n\n        high_mask = df[amount_col] > 1000.0\n        base = np.where(\n            high_mask,\n            df[amount_col] * 0.05 + df[freq_col] * self.weight,\n            df[amount_col] * 0.01 + df[freq_col] * 0.5,\n        )\n        return Series(base, index=df.index).clip(upper=self.max_cap)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "max_cap defaults to 50.0, so scores between 50 and 100 are clipped without the caller asking.",
+      "caught_by": [
+        "test_branch_logic_high_vs_low_amounts",
+        "test_custom_index_preservation_and_vectorized_api",
+        "test_default_max_cap_allows_above_fifty",
+        "test_gold_vectorized_scoring_accuracy"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A non-positive weight is accepted, so a zero weight silently disables the frequency term.",
+      "caught_by": [
+        "test_negative_weight_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "An amount of exactly 1000.0 is scored in the high tier instead of the low tier.",
+      "caught_by": [
+        "test_exact_thousand_boundary_tier"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The high and low formulas are swapped in np.where, so large amounts get the low-tier score.",
+      "caught_by": [
+        "test_branch_logic_high_vs_low_amounts",
+        "test_custom_index_preservation_and_vectorized_api",
+        "test_default_max_cap_allows_above_fifty",
+        "test_exact_thousand_boundary_tier",
+        "test_gold_vectorized_scoring_accuracy"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Scores are built row by row into a Series with a fresh integer index, so they no longer align with the DataFrame's index.",
+      "caught_by": [
+        "test_custom_index_preservation_and_vectorized_api"
+      ]
+    }
+  ]
+}

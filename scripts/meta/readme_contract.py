@@ -31,7 +31,7 @@ REQUIRED_H2 = (
 CAPABILITY_HEADER = ("Capability", "ID", "User promise", "Sources")
 ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SOURCE_RE = re.compile(
-    r"`((?:apps|libs)/[a-z0-9][a-z0-9-]*|external:[a-z0-9][a-z0-9-]*)`"
+    r"`((?:apps|libs|models)/[a-z0-9][a-z0-9-]*|external:[a-z0-9][a-z0-9-]*)`"
 )
 LINK_RE = re.compile(r"\[[^\]]*\]\(\s*([^\s)]+)")
 SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
@@ -628,7 +628,7 @@ def validate_readme(
                                     f"source {source!r} must state its direct contribution",
                                 )
                             )
-                        if source.startswith(("apps/", "libs/")) and not (repo / source).exists():
+                        if source.startswith(("apps/", "libs/", "models/")) and not (repo / source).exists():
                             findings.append(
                                 Finding(
                                     "R7",

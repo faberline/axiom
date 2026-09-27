@@ -1,0 +1,176 @@
+{
+  "family_id": "34-syntax-decorator-wraps",
+  "domain": "python",
+  "area": "syntax",
+  "capability": "decorator-wraps",
+  "requirement": "Implement audit_logged decorator preserving wrapped function metadata via functools.wraps and HandlerRegistry with capacity bounds and stats tracking.",
+  "skeleton": "audit_logged decorator function and HandlerRegistry class with register, execute, get_doc, and clear methods.",
+  "caption": "A standard-library module built around a parameterized decorator factory and a bounded handler registry, with no third-party imports. audit_logged(action_name) first checks that action_name is a non-empty string and raises ValueError otherwise; the decorator it returns raises TypeError when the decorated object is not callable, and wraps the function with functools.wraps so the wrapper passes arguments straight through while keeping the original __name__, __doc__, and a __wrapped__ pointer back to the undecorated function. HandlerRegistry keeps a handlers dictionary keyed by function name and a parallel statistics dictionary of call counts. register raises TypeError for a non-callable handler, raises ValueError once twenty handlers are already stored so the twentieth registration succeeds and the twenty-first is rejected, and raises ValueError for an object without a __name__; a stored handler starts with a call count of zero. execute raises KeyError for an unknown name, otherwise increments that handler's count and returns its result. get_doc raises KeyError for an unknown name and otherwise returns the handler's docstring, which only survives because the decorator copied it. clear empties both dictionaries and total_calls sums every count. The fixture asserts that decorated handlers keep their identity metadata, that the registry cap is exact at twenty, and that call statistics and docstring lookups follow the registered names.",
+  "plan": {
+    "intent": "Decorate handlers without losing their identity and register them in a bounded registry",
+    "target": "HandlerRegistry",
+    "constraints": [
+      "The decorator keeps __name__, __doc__, and __wrapped__ through functools.wraps",
+      "An empty action name raises ValueError and decorating a non-callable raises TypeError",
+      "Registering a non-callable raises TypeError; a twenty-first handler or a nameless object raises ValueError",
+      "Executing or documenting an unknown name raises KeyError",
+      "Call counts are tracked per handler and summed on request"
+    ]
+  },
+  "rationale": {
+    "teaches": "A logging decorator that preserves the wrapped function's name and docstring with functools.wraps, a registry that rejects non-callables, allows exactly 20 handlers, looks up by presence, and clears its stats.",
+    "why": "A decorator without wraps still runs the function; only introspection of __name__ and __doc__ reveals the loss. The fixture reads them, which is what documentation and tooling do."
+  },
+  "oracle": "fixtures/test_34_syntax_decorator_wraps.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "function",
+        "name": "audit_logged",
+        "params": [
+          "action_name"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "HandlerRegistry",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "register",
+          "execute",
+          "get_doc",
+          "clear",
+          "total_calls"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "KeyError",
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "audit_logged",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "HandlerRegistry",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Decorate handlers without losing their names or docstrings."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import functools",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "audit_logged",
+        "source": "def audit_logged[**P, R](\n    action_name: str,\n) -> Callable[[Callable[P, R]], Callable[P, R]]:\n    \"\"\"Return a decorator that keeps the wrapped function's metadata.\"\"\"\n    if not action_name or not isinstance(action_name, str):\n        raise ValueError(\"action_name must be a non-empty string\")\n\n    def decorator(fn: Callable[P, R]) -> Callable[P, R]:\n        if not callable(fn):\n            raise TypeError(\"Target must be callable\")\n\n        @functools.wraps(fn)\n        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:\n            return fn(*args, **kwargs)\n\n        return wrapper\n\n    return decorator",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "HandlerRegistry",
+        "source": "class HandlerRegistry:\n    \"\"\"Named handlers with per-handler call counts.\"\"\"\n\n    def __init__(self) -> None:\n        self.handlers: dict[str, Callable[..., Any]] = {}\n        self._stats: dict[str, int] = {}\n\n    def register(self, fn: Callable[..., Any]) -> None:\n        \"\"\"Register fn under its __name__, up to 20 handlers.\"\"\"\n        if not callable(fn):\n            raise TypeError(\"Handler must be callable\")\n        if len(self.handlers) >= 20:\n            raise ValueError(\"Handler limit of 20 reached\")\n\n        name = getattr(fn, \"__name__\", \"\")\n        if not name:\n            raise ValueError(\"Handler must have a __name__ attribute\")\n        self.handlers[name] = fn\n        self._stats[name] = 0\n\n    def execute(self, name: str, *args: Any, **kwargs: Any) -> Any:\n        \"\"\"Call a registered handler and count the call.\"\"\"\n        if name not in self.handlers:\n            raise KeyError(f\"Handler {name} not registered\")\n        self._stats[name] += 1\n        return self.handlers[name](*args, **kwargs)\n\n    def get_doc(self, name: str) -> str | None:\n        \"\"\"Return a registered handler's docstring.\"\"\"\n        if name not in self.handlers:\n            raise KeyError(f\"Handler {name} not registered\")\n        return self.handlers[name].__doc__\n\n    def clear(self) -> None:\n        \"\"\"Drop every handler and its call count.\"\"\"\n        self.handlers.clear()\n        self._stats.clear()\n\n    def total_calls(self) -> int:\n        \"\"\"Return how many handler calls were made.\"\"\"\n        return sum(self._stats.values())",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "functools.wraps is omitted, so every decorated handler reports the name wrapper and loses its docstring.",
+      "caught_by": [
+        "test_audit_logged_preserves_metadata"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A non-callable is accepted as a handler, so execution fails later with TypeError instead of at registration.",
+      "caught_by": [
+        "test_register_callable_validation"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The capacity check uses >, so a 21st handler is accepted.",
+      "caught_by": [
+        "test_register_boundary_twenty_limit"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The membership checks are inverted, so execute and get_doc raise for registered handlers and proceed for unknown ones.",
+      "caught_by": [
+        "test_clear_resets_stats_and_handlers",
+        "test_execute_registered_handler"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "clear removes handlers but keeps stats, so call counts survive a reset.",
+      "caught_by": [
+        "test_clear_resets_stats_and_handlers"
+      ]
+    }
+  ]
+}

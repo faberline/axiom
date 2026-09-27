@@ -1,0 +1,197 @@
+{
+  "family_id": "183-mock-sentinel-any-passthrough",
+  "domain": "python",
+  "area": "unittest.mock",
+  "capability": "sentinel-identity-any-matcher",
+  "requirement": "Publish each payload unchanged to a broker with a freshly generated message id header, validating the topic first, plus a helper that builds the expected call while ignoring generated headers.",
+  "skeleton": "Broker protocol, fan_out validating the topic and looping payloads with one new_id per publish, and expected_publish returning call.publish with headers=ANY.",
+  "caption": "Pass-through identity and volatile arguments checked with unittest.mock.sentinel and ANY. Broker is a typing.Protocol with publish(topic, payload, *, headers). fan_out(broker, topic, payloads, new_id) raises ValueError saying the topic must be a non-empty name without padding when the topic is empty or has surrounding whitespace, before publishing anything. For each payload it calls new_id for a fresh message id and publishes the payload object itself, never a copy, with headers holding message-id and topic, then returns the ids in order. expected_publish(topic, payload) returns call.publish(topic, payload, headers=ANY), the call object a test compares against mock_calls: the topic and payload must match exactly, which with sentinel objects means the very same object was passed through, while ANY accepts whatever generated headers were sent. The fixture asserts that two sentinel payloads produce ids m1 and m2 and mock_calls equal to two expected_publish calls, that new_id is called once per payload and the second headers are message-id m2 and topic orders, that a list payload arrives as the same object, that the expectation ignores headers but rejects a different payload or topic, and that empty or padded topics raise ValueError with publish never called.",
+  "plan": {
+    "intent": "Test that payloads pass through untouched",
+    "target": "broker fan-out",
+    "constraints": [
+      "Payload objects are published as-is, never copied",
+      "Each payload gets its own new message id",
+      "Headers carry message-id and topic",
+      "Empty or padded topics raise ValueError before publishing",
+      "The expected call matches payload and topic exactly but any headers"
+    ]
+  },
+  "rationale": {
+    "teaches": "sentinel objects prove identity pass-through and ANY masks generated values inside a call comparison.",
+    "why": "Asserting with equal-looking literals cannot tell a copy from the original, and asserting exact generated headers makes tests brittle enough that people stop checking payloads at all."
+  },
+  "oracle": "fixtures/test_183_mock_sentinel_any_passthrough.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Broker",
+        "bases": [
+          "Protocol"
+        ],
+        "methods": [
+          "publish"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "fan_out",
+        "params": [
+          "broker",
+          "topic",
+          "payloads",
+          "new_id"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "expected_publish",
+        "params": [
+          "topic",
+          "payload"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Broker",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "fan_out",
+              "kind": "function",
+              "depends_on": [
+                "Broker"
+              ]
+            },
+            {
+              "name": "expected_publish",
+              "kind": "function",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Check pass-through identity with sentinel and ignore volatile arguments with ANY."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable, Iterable",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Protocol",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from unittest.mock import ANY, call",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Broker",
+        "source": "class Broker(Protocol):\n    \"\"\"A message broker client.\"\"\"\n\n    def publish(self, topic: str, payload: object, *, headers: dict[str, str]) -> None:\n        \"\"\"Send payload to topic with the given headers.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "fan_out",
+        "source": "def fan_out(\n    broker: Broker, topic: str, payloads: Iterable[object], new_id: Callable[[], str]\n) -> list[str]:\n    \"\"\"Publish each payload unchanged under a fresh message id and return the ids.\"\"\"\n    if not topic or topic != topic.strip():\n        raise ValueError(\"topic must be a non-empty name without padding\")\n    ids: list[str] = []\n    for payload in payloads:\n        message_id = new_id()\n        broker.publish(\n            topic, payload, headers={\"message-id\": message_id, \"topic\": topic}\n        )\n        ids.append(message_id)\n    return ids",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "expected_publish",
+        "source": "def expected_publish(topic: str, payload: object) -> object:\n    \"\"\"The call fan_out makes for payload, matching any generated headers.\"\"\"\n    return call.publish(topic, payload, headers=ANY)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The expectation demands empty headers, so it never matches a real publish.",
+      "caught_by": [
+        "test_expected_publish_ignores_headers_but_not_payload",
+        "test_payloads_pass_through_in_order"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Payloads are copied before publishing, so the broker receives a different object.",
+      "caught_by": [
+        "test_payload_object_is_not_copied"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "shared_default_factory",
+      "why_wrong": "One message id is generated up front and shared by every payload.",
+      "caught_by": [
+        "test_headers_carry_a_fresh_id_and_the_topic",
+        "test_payloads_pass_through_in_order"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Topics with leading or trailing spaces are published instead of rejected.",
+      "caught_by": [
+        "test_bad_topics_publish_nothing"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "ANY in the payload slot makes the expectation accept any payload at all.",
+      "caught_by": [
+        "test_expected_publish_ignores_headers_but_not_payload"
+      ]
+    }
+  ]
+}

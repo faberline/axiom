@@ -1,0 +1,270 @@
+{
+  "family_id": "149-sqlalchemy-before-update-revision-stamp",
+  "domain": "python",
+  "area": "sqlalchemy",
+  "capability": "mapper-event-audit-timestamps",
+  "requirement": "Stamp articles with created and updated times on insert, bump the updated time and revision only when an update actually changes a column, and let an edit helper reject blank titles before committing.",
+  "skeleton": "Article declarative model with naive UTC timestamps and a revision counter, a module-level now() clock, before_insert and before_update listeners registered with event.listens_for, and an edit helper that validates and commits.",
+  "caption": "Audit timestamps with SQLAlchemy mapper events. Article has an id, a title of up to 200 characters, a body, non-null created_at and updated_at DateTime columns and a revision defaulting to 1. now() returns the current time from datetime.now with UTC converted to naive UTC, the form SQLite stores, and the listeners look it up at call time so it can be replaced. A before_insert listener registered with event.listens_for sets created_at and updated_at to the same stamp. A before_update listener fetches the owning session with object_session and returns early unless session.is_modified reports a real change, because before_update fires for every dirty object even when the new values equal the old ones; otherwise it sets updated_at to now() and increments revision. edit(session, article, *, title=None, body=None) raises ValueError saying the title must not be blank when a given title is empty after strip, assigns the given fields and commits. The fixture replaces now with a clock yielding three fixed times and asserts that a new article has both stamps at the first time and revision 1, that a title change moves updated_at to the second time and revision to 2 while created_at stays, that re-setting the same title and body changes nothing, that two body edits reach the third time and revision 3, and that a title of spaces raises ValueError and leaves the article unchanged.",
+  "plan": {
+    "intent": "Track when and how often articles change",
+    "target": "article audit fields",
+    "constraints": [
+      "Inserts set created_at and updated_at to the same time and start at revision 1",
+      "A real change sets updated_at and increments revision",
+      "Re-setting identical values is not a revision",
+      "created_at never changes after insert",
+      "A blank title raises ValueError"
+    ]
+  },
+  "rationale": {
+    "teaches": "before_insert and before_update mapper events with session.is_modified to skip flushes that carry no net change.",
+    "why": "before_update runs for every dirty object, so an unconditional hook inflates revisions on no-op saves, and doing the work in after_update loops the flush, neither of which a test sees unless it saves unchanged values."
+  },
+  "oracle": "fixtures/test_149_sqlalchemy_before_update_revision_stamp.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Base",
+        "bases": [
+          "DeclarativeBase"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Article",
+        "bases": [
+          "Base"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "now",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "_stamp_created",
+        "params": [
+          "_mapper",
+          "_connection",
+          "target"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "_stamp_updated",
+        "params": [
+          "_mapper",
+          "_connection",
+          "target"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "edit",
+        "params": [
+          "session",
+          "article",
+          "title",
+          "body"
+        ]
+      }
+    ],
+    "imports": [
+      "sqlalchemy"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Base",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Article",
+              "kind": "class",
+              "depends_on": [
+                "Base"
+              ]
+            },
+            {
+              "name": "now",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "_stamp_created",
+              "kind": "function",
+              "depends_on": [
+                "Article",
+                "now"
+              ]
+            },
+            {
+              "name": "_stamp_updated",
+              "kind": "function",
+              "depends_on": [
+                "Article",
+                "now"
+              ]
+            },
+            {
+              "name": "edit",
+              "kind": "function",
+              "depends_on": [
+                "Article"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Stamp articles on insert and bump their revision only on real changes."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from datetime import UTC, datetime",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy import Connection, DateTime, String, event",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.orm import (\n    DeclarativeBase,\n    Mapped,\n    Mapper,\n    Session,\n    mapped_column,\n    object_session,\n)",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Base",
+        "source": "class Base(DeclarativeBase):\n    \"\"\"Declarative base for the publishing tables.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Article",
+        "source": "class Article(Base):\n    \"\"\"An article with audit timestamps and a revision counter.\"\"\"\n\n    __tablename__ = \"articles\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    title: Mapped[str] = mapped_column(String(200))\n    body: Mapped[str]\n    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)\n    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)\n    revision: Mapped[int] = mapped_column(default=1)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "now",
+        "source": "def now() -> datetime:\n    \"\"\"Return the current time as naive UTC, the form stored in the table.\"\"\"\n    return datetime.now(UTC).replace(tzinfo=None)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_stamp_created",
+        "source": "@event.listens_for(Article, \"before_insert\")\ndef _stamp_created(\n    _mapper: Mapper[Article], _connection: Connection, target: Article\n) -> None:\n    stamp = now()\n    target.created_at = stamp\n    target.updated_at = stamp",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_stamp_updated",
+        "source": "@event.listens_for(Article, \"before_update\")\ndef _stamp_updated(\n    _mapper: Mapper[Article], _connection: Connection, target: Article\n) -> None:\n    session = object_session(target)\n    if session is None or not session.is_modified(target):\n        return\n    target.updated_at = now()\n    target.revision += 1",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "edit",
+        "source": "def edit(\n    session: Session,\n    article: Article,\n    *,\n    title: str | None = None,\n    body: str | None = None,\n) -> None:\n    \"\"\"Apply the given changes to an article and commit them.\"\"\"\n    if title is not None:\n        if not title.strip():\n            raise ValueError(\"title must not be blank\")\n        article.title = title\n    if body is not None:\n        article.body = body\n    session.commit()",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 6
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "before_update also fires for objects with no net change, so re-setting the same values bumps the revision.",
+      "caught_by": [
+        "test_setting_the_same_value_is_not_a_revision"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Reading the clock twice on insert gives the new article different created and updated times.",
+      "caught_by": [
+        "test_body_change_is_a_revision",
+        "test_insert_stamps_both_times_and_starts_at_revision_one",
+        "test_real_change_updates_the_stamp_and_revision",
+        "test_setting_the_same_value_is_not_a_revision"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Changes made in after_update dirty the object again, so commit keeps flushing until SQLAlchemy gives up.",
+      "caught_by": [
+        "test_body_change_is_a_revision",
+        "test_real_change_updates_the_stamp_and_revision"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A title of only spaces passes the check and is saved as the new title.",
+      "caught_by": [
+        "test_blank_title_is_rejected_and_nothing_changes"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "New articles start at revision zero instead of revision one.",
+      "caught_by": [
+        "test_blank_title_is_rejected_and_nothing_changes",
+        "test_body_change_is_a_revision",
+        "test_insert_stamps_both_times_and_starts_at_revision_one",
+        "test_real_change_updates_the_stamp_and_revision",
+        "test_setting_the_same_value_is_not_a_revision"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,148 @@
+{
+  "family_id": "45-numpy-inplace-mutation-semantics",
+  "domain": "numpy",
+  "area": "memory-mutation",
+  "capability": "inplace-mutation-semantics",
+  "requirement": "Implement SignalGainProcessor class for signal gain processing. It must enforce pure out-of-place transformations when in_place=False (never mutating the caller's input array buffer or sharing memory), support explicit in-place mutation when in_place=True, validate strictly positive gain factors, apply threshold gating, and reject non-floating-point array inputs.",
+  "skeleton": "SignalGainProcessor class with __init__ and process_signal methods enforcing out-of-place copy semantics and in-place gating.",
+  "caption": "A numpy signal processor that applies a gain above a threshold and makes buffer ownership explicit. SignalGainProcessor takes default_gain defaulting to 2.0 and raises ValueError unless it is strictly positive. process_signal(signal, gain=None, threshold=0.0, in_place=False) raises TypeError when the signal is not a numpy ndarray and TypeError when its dtype is not floating point, so integer arrays are refused rather than truncated. The effective gain is the explicit argument or the default, and ValueError is raised unless it is strictly positive. Out-of-place is the default: the method works on signal.copy(), and only when in_place is True does it operate on the caller's own array. It builds a mask of samples greater than or equal to the threshold, multiplies exactly those samples by the gain, leaves quieter samples untouched, and returns the working array. The fixture asserts that the input -1.0, 0.0, 1.0, 2.0 with gain 2.5 becomes -1.0, 0.0, 2.5, 5.0 while the original stays unchanged, that the default result never shares memory with the input, that integer signals are rejected, that a sample exactly at the threshold receives the gain, that negative samples below it keep their value, and that the explicit in-place mode does share memory and mutates the caller's buffer.",
+  "plan": {
+    "intent": "Apply gain above a threshold with explicit buffer ownership",
+    "target": "SignalGainProcessor",
+    "constraints": [
+      "A non-positive default or explicit gain raises ValueError",
+      "A non-ndarray or non-floating signal raises TypeError",
+      "By default the work happens on a copy that never shares memory with the input",
+      "Samples at or above the threshold are multiplied and the rest are unchanged",
+      "In-place mode mutates the caller's own array"
+    ]
+  },
+  "rationale": {
+    "teaches": "Out-of-place by default with an explicit copy, in-place only when asked, a floating dtype check, and an inclusive threshold gate.",
+    "why": "Whether the caller's buffer was touched is invisible in the return value. The fixture keeps a copy of the input and checks both equality and np.shares_memory."
+  },
+  "oracle": "fixtures/test_45_numpy_inplace_mutation_semantics.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "SignalGainProcessor",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "process_signal"
+        ]
+      }
+    ],
+    "imports": [
+      "numpy"
+    ],
+    "raises": [
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "SignalGainProcessor",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Amplify a float signal above a threshold without mutating the caller's array."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import numpy as np",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SignalGainProcessor",
+        "source": "class SignalGainProcessor:\n    \"\"\"Apply a gain to the samples of a signal at or above a threshold.\"\"\"\n\n    def __init__(self, default_gain: float = 2.0) -> None:\n        if default_gain <= 0.0:\n            raise ValueError(\"default_gain must be strictly positive\")\n        self.default_gain = float(default_gain)\n\n    def process_signal(\n        self,\n        signal: np.ndarray,\n        gain: float | None = None,\n        threshold: float = 0.0,\n        in_place: bool = False,\n    ) -> np.ndarray:\n        \"\"\"Return the signal with gain applied where it meets the threshold.\"\"\"\n        if not isinstance(signal, np.ndarray):\n            raise TypeError(\"signal must be a numpy ndarray\")\n        if not np.issubdtype(signal.dtype, np.floating):\n            raise TypeError(\"signal must have floating-point dtype\")\n\n        eff_gain = float(gain) if gain is not None else self.default_gain\n        if eff_gain <= 0.0:\n            raise ValueError(\"gain must be strictly positive\")\n\n        out = signal if in_place else signal.copy()\n        mask = out >= threshold\n        out[mask] = out[mask] * eff_gain\n        return out",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "in_place defaults to True, so the caller's signal buffer is overwritten without being asked.",
+      "caught_by": [
+        "test_gold_signal_processing",
+        "test_out_of_place_preserves_input_by_default"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Integer arrays are accepted, so the gain multiplication truncates or overflows silently.",
+      "caught_by": [
+        "test_rejects_integer_dtype_signal"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The gate uses > instead of >=, so samples exactly at the threshold are zeroed.",
+      "caught_by": [
+        "test_exact_threshold_value_receives_gain"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The gate is inverted, so samples below the threshold are kept and the loud ones are zeroed.",
+      "caught_by": [
+        "test_exact_threshold_value_receives_gain",
+        "test_explicit_in_place_false_does_not_share_memory",
+        "test_explicit_in_place_true_mutates_input",
+        "test_gating_branch_direction",
+        "test_gold_signal_processing"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The copy is skipped, so out-of-place mode still mutates the caller's array.",
+      "caught_by": [
+        "test_explicit_in_place_false_does_not_share_memory",
+        "test_gold_signal_processing",
+        "test_out_of_place_preserves_input_by_default"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,229 @@
+{
+  "family_id": "270-langgraph-send-map-reduce",
+  "domain": "python",
+  "area": "langgraph",
+  "capability": "langgraph-send-map-reduce",
+  "requirement": "Summarise many documents in parallel with a LangGraph-like Send fan-out and an operator.add reducer, keeping worker payloads private and the merged result in input order.",
+  "skeleton": "A fan-out limit, a frozen Send dataclass, a fan_out function building one Send per document, and a MapReduceGraph whose invoke runs workers, reduces with operator.add, orders by index and joins the summaries.",
+  "caption": "A LangGraph-style map-reduce fan-out written in the standard library with operator, functools reduce, dataclasses and typing and no third-party imports. Send is a frozen dataclass of node name and arg. fan_out raises ValueError past MAX_FANOUT of 32 documents and returns one Send to summarize per document whose arg holds only that doc and its index, never the rest of the state. MapReduceGraph.invoke raises ValueError for a Send to an unknown node, runs the worker for each Send to get a one-item summaries list of index and text, merges the lists with reduce and operator.add starting from an empty list, orders them by index, and returns a new state with summaries and final joined by newlines or (no documents) when empty. The fixture asserts private payloads, document order, kept duplicates, no workers for empty input, an unmutated input and the inclusive fan-out limit.",
+  "plan": {
+    "intent": "Summarise a batch of documents for a report",
+    "target": "map-reduce summariser",
+    "constraints": [
+      "More than 32 documents raises ValueError",
+      "Each worker receives only its document and index",
+      "A Send to an unknown node raises ValueError",
+      "Merged summaries follow the input order and keep duplicates",
+      "Empty input runs no workers and reports no documents"
+    ]
+  },
+  "rationale": {
+    "teaches": "Fan out with one Send per item carrying a minimal payload, then fold the partial updates with an operator.add reducer and restore order by index.",
+    "why": "Passing the whole state to workers leaks data and bloats payloads, and merging by completion or content order scrambles or drops results."
+  },
+  "oracle": "fixtures/test_270_langgraph_send_map_reduce.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "MAX_FANOUT"
+      },
+      {
+        "kind": "class",
+        "name": "Send",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "fan_out",
+        "params": [
+          "state"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "MapReduceGraph",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "_worker",
+          "invoke",
+          "payload_keys",
+          "worker_count"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "MAX_FANOUT",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "Send",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "fan_out",
+              "kind": "function",
+              "depends_on": [
+                "Send",
+                "MAX_FANOUT"
+              ]
+            },
+            {
+              "name": "MapReduceGraph",
+              "kind": "class",
+              "depends_on": [
+                "fan_out"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "A LangGraph-style map-reduce step that fans out with Send objects."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import operator",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from dataclasses import dataclass",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from functools import reduce",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MAX_FANOUT",
+        "source": "MAX_FANOUT = 32",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Send",
+        "source": "@dataclass(frozen=True)\nclass Send:\n    \"\"\"Dispatch one private payload to a named node.\"\"\"\n\n    node: str\n    arg: dict[str, Any]",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "fan_out",
+        "source": "def fan_out(state: dict[str, Any]) -> list[Send]:\n    \"\"\"Return one Send per document, carrying only that document.\"\"\"\n    documents = state[\"documents\"]\n    if len(documents) > MAX_FANOUT:\n        raise ValueError(f\"at most {MAX_FANOUT} documents per run\")\n    return [\n        Send(\"summarize\", {\"doc\": doc, \"index\": index})\n        for index, doc in enumerate(documents)\n    ]",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MapReduceGraph",
+        "source": "class MapReduceGraph:\n    \"\"\"Run each Send, then merge the partial summaries with operator.add.\"\"\"\n\n    def __init__(self, summarize: Callable[[str], str]) -> None:\n        self._summarize = summarize\n\n    def _worker(self, arg: dict[str, Any]) -> dict[str, list[tuple[int, str]]]:\n        return {\"summaries\": [(arg[\"index\"], self._summarize(arg[\"doc\"]))]}\n\n    def invoke(self, state: dict[str, Any]) -> dict[str, Any]:\n        \"\"\"Fan out, reduce the worker updates in document order, and join.\"\"\"\n        sends = fan_out(state)\n        for send in sends:\n            if send.node != \"summarize\":\n                raise ValueError(f\"unknown node {send.node!r}\")\n        updates = [self._worker(send.arg)[\"summaries\"] for send in sends]\n        merged: list[tuple[int, str]] = reduce(operator.add, updates, [])\n        ordered = [text for _, text in sorted(merged)]\n        return {\n            **state,\n            \"summaries\": ordered,\n            \"final\": \"\\n\".join(ordered) if ordered else \"(no documents)\",\n        }\n\n    def payload_keys(self, state: dict[str, Any]) -> list[set[str]]:\n        \"\"\"Return the keys each worker receives, for isolation checks.\"\"\"\n        return [set(send.arg) for send in fan_out(state)]\n\n    def worker_count(self, state: dict[str, Any]) -> int:\n        \"\"\"Return how many workers a run would start.\"\"\"\n        return len(fan_out(state))",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Every worker receives the full graph state instead of only its own document.",
+      "caught_by": [
+        "test_one_send_per_document_with_private_payload"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A batch of exactly 32 documents is rejected although the limit allows it.",
+      "caught_by": [
+        "test_fanout_limit_is_inclusive"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Summaries are sorted alphabetically, losing the order of the input documents.",
+      "caught_by": [
+        "test_summaries_are_reduced_in_document_order"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Identical summaries are deduplicated so duplicate documents lose their entries.",
+      "caught_by": [
+        "test_duplicate_documents_are_all_kept"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "An empty batch produces an empty final string instead of the no documents marker.",
+      "caught_by": [
+        "test_empty_input_skips_workers"
+      ]
+    }
+  ]
+}

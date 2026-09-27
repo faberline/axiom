@@ -1,0 +1,206 @@
+{
+  "family_id": "92-openai-tool-call-dispatch",
+  "domain": "python",
+  "area": "openai",
+  "capability": "tool-call-argument-validation-and-dispatch",
+  "requirement": "Implement an OpenAI tool dispatcher that parses serialized tool arguments JSON, validates against Pydantic schemas, handles malformed JSON, verifies argument types, and executes registered tools safely.",
+  "skeleton": "OpenAIToolDispatcher with register_tool and execute_tool_call methods returning ToolExecutionResult.",
+  "caption": "A pydantic dispatcher for OpenAI tool calls that turns the serialized arguments string into validated keyword arguments and reports every failure as a structured result instead of raising. ToolExecutionResult is a BaseModel with call_id, name, status, an optional output, and an optional error. OpenAIToolDispatcher keeps a registry mapping a tool name to its function and an optional schema model, filled by register_tool. execute_tool_call reads the call id, defaulting to unknown, and the function's name and arguments, defaulting the arguments to the JSON text of an empty object so a tool with no parameters can be called. An unregistered name returns an error result reporting an unrecognized tool rather than silently succeeding. The arguments are parsed with json.loads; a JSONDecodeError returns an error reporting malformed JSON arguments with the decoder's message, and a parsed value that is not an object returns an error stating that tool arguments must be a JSON object. When a schema is registered, the parsed dictionary is passed to model_validate, not to the JSON-string validator, and its model_dump becomes the keyword arguments; a ValidationError returns an error reporting that argument validation failed, so a wrong type never reaches the tool. Without a schema the parsed dictionary is used directly. The function is then called with those keywords, returning a success result with its output, and any exception it raises becomes an error reporting that tool execution failed. The fixture asserts a success with output 200, call id call_123, and name calculate; an argument validation failure; an unrecognized tool error; a ping tool with missing and with empty arguments both returning pong; and a malformed JSON arguments error.",
+  "plan": {
+    "intent": "Dispatch model tool calls with validated arguments and structured results",
+    "target": "OpenAIToolDispatcher",
+    "constraints": [
+      "Missing arguments default to an empty JSON object",
+      "An unknown tool, malformed JSON, or a non-object argument returns an error result",
+      "Registered schemas validate the parsed dict with model_validate, and failures return an error result",
+      "A tool exception becomes an error result instead of propagating",
+      "A successful call returns its output with the call id and name"
+    ]
+  },
+  "rationale": {
+    "teaches": "A tool dispatcher that parses the arguments JSON string, validates the parsed dict against the registered Pydantic schema, reports unknown tools and validation failures as errors, and defaults missing arguments to an empty object.",
+    "why": "Malformed JSON, a wrong argument type, and an unknown tool all reach the dispatcher as strings, so only executing the dispatch shows which path is taken. The fixture sends each malformed input and checks the result status and error text."
+  },
+  "oracle": "fixtures/test_92_openai_tool_call_dispatch.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "ToolExecutionResult",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "OpenAIToolDispatcher",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "register_tool",
+          "execute_tool_call"
+        ]
+      }
+    ],
+    "imports": [
+      "pydantic"
+    ],
+    "raises": [],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "ToolExecutionResult",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "OpenAIToolDispatcher",
+              "kind": "class",
+              "depends_on": [
+                "ToolExecutionResult"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Dispatch OpenAI tool calls to registered functions and report every failure."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import json",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel, ValidationError",
+        "group": 1
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "ToolExecutionResult",
+        "id": "pydantic_model",
+        "params": {
+          "name": "ToolExecutionResult",
+          "doc": "Outcome of one tool call, carrying its output or an error.",
+          "fields": [
+            {
+              "field": "call_id",
+              "declaration": "str"
+            },
+            {
+              "field": "name",
+              "declaration": "str"
+            },
+            {
+              "field": "status",
+              "declaration": "str"
+            },
+            {
+              "field": "output",
+              "declaration": "Any = None"
+            },
+            {
+              "field": "error",
+              "declaration": "str | None = None"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "OpenAIToolDispatcher",
+        "source": "class OpenAIToolDispatcher:\n    \"\"\"Registry mapping tool names to functions and optional argument schemas.\"\"\"\n\n    def __init__(self) -> None:\n        self._registry: dict[\n            str, tuple[Callable[..., Any], type[BaseModel] | None]\n        ] = {}\n\n    def register_tool(\n        self,\n        name: str,\n        func: Callable[..., Any],\n        schema: type[BaseModel] | None = None,\n    ) -> None:\n        \"\"\"Register func under name, validating arguments with schema when given.\"\"\"\n        self._registry[name] = (func, schema)\n\n    def execute_tool_call(self, tool_call: dict[str, Any]) -> ToolExecutionResult:\n        \"\"\"Run one tool call and return its result; never raises.\"\"\"\n        call_id = tool_call.get(\"id\", \"unknown\")\n        function_meta = tool_call.get(\"function\", {})\n        tool_name = function_meta.get(\"name\")\n        raw_args = function_meta.get(\"arguments\", \"{}\")\n\n        if tool_name not in self._registry:\n            return ToolExecutionResult(\n                call_id=call_id,\n                name=tool_name or \"unknown\",\n                status=\"error\",\n                error=f\"Unrecognized tool: {tool_name}\",\n            )\n\n        func, schema = self._registry[tool_name]\n\n        try:\n            parsed_args = json.loads(raw_args)\n            if not isinstance(parsed_args, dict):\n                return ToolExecutionResult(\n                    call_id=call_id,\n                    name=tool_name,\n                    status=\"error\",\n                    error=\"Tool arguments must be a JSON object\",\n                )\n        except json.JSONDecodeError as exc:\n            return ToolExecutionResult(\n                call_id=call_id,\n                name=tool_name,\n                status=\"error\",\n                error=f\"Malformed JSON arguments: {exc.msg}\",\n            )\n\n        if schema is not None:\n            try:\n                validated_model = schema.model_validate(parsed_args)\n                kwargs = validated_model.model_dump()\n            except ValidationError as val_err:\n                return ToolExecutionResult(\n                    call_id=call_id,\n                    name=tool_name,\n                    status=\"error\",\n                    error=f\"Argument validation failed: {val_err!s}\",\n                )\n        else:\n            kwargs = parsed_args\n\n        try:\n            result = func(**kwargs)\n            return ToolExecutionResult(\n                call_id=call_id,\n                name=tool_name,\n                status=\"success\",\n                output=result,\n            )\n        # Any tool failure is reported back to the model instead of raised.\n        except Exception as exc:  # pylint: disable=broad-exception-caught\n            return ToolExecutionResult(\n                call_id=call_id,\n                name=tool_name,\n                status=\"error\",\n                error=f\"Tool execution failed: {exc!s}\",\n            )",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 1,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "model_validate_json is called on an already-parsed dict, so every validation raises a type error.",
+      "caught_by": [
+        "test_tool_dispatch_success_with_schema"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Schema validation is skipped, so a wrong argument type reaches the tool function and fails inside it.",
+      "caught_by": [
+        "test_schema_validation_failure_captured"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "An unknown tool returns success with None, so a typo in the tool name is silently ignored.",
+      "caught_by": [
+        "test_unregistered_tool_error"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Missing arguments default to an empty string, so json.loads raises on a tool call with no arguments.",
+      "caught_by": [
+        "test_default_empty_arguments_handling"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "An empty argument object is rejected, so a tool with no parameters cannot be called.",
+      "caught_by": [
+        "test_default_empty_arguments_handling",
+        "test_zero_argument_tool_boundary"
+      ]
+    }
+  ]
+}

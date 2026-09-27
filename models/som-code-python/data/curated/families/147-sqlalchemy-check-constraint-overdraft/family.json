@@ -1,0 +1,220 @@
+{
+  "family_id": "147-sqlalchemy-check-constraint-overdraft",
+  "domain": "python",
+  "area": "sqlalchemy",
+  "capability": "check-constraint-integrity-error",
+  "requirement": "Withdraw from an account and let a database CHECK constraint refuse any balance below zero, translating the IntegrityError into a domain error after rolling back, rejecting non-positive amounts and unknown accounts, and committing successful withdrawals.",
+  "skeleton": "Account declarative model with a CheckConstraint in __table_args__, an InsufficientFundsError exception, and withdraw validating the amount, loading the account, subtracting, committing and translating IntegrityError after rollback.",
+  "caption": "Overdraft protection enforced by the database with SQLAlchemy. Account is a declarative model with an integer id, an owner of up to 50 characters and a non-null balance_cents, and its __table_args__ holds a CheckConstraint named balance_not_negative requiring balance_cents >= 0, so SQLite itself refuses a negative balance and raises IntegrityError on commit. InsufficientFundsError is a plain Exception subclass. withdraw(session, account_id, amount_cents) raises ValueError saying the amount must be positive when amount_cents is zero or negative, loads the account with session.get and raises LookupError naming the account that is not found, then subtracts the amount and commits. When the commit raises IntegrityError it calls session.rollback so the session is usable again and raises InsufficientFundsError saying account N cannot go below zero, chained from the original error. On success it returns the new balance. The fixture asserts that withdrawing 300 from 1000 returns 700 and survives a rollback, that withdrawing exactly 1000 returns 0, that withdrawing 1001 raises InsufficientFundsError and leaves the balance readable as 1000, that inserting an account with -1 raises IntegrityError, that amounts 0 and -5 raise ValueError, and that account 99 raises LookupError.",
+  "plan": {
+    "intent": "Refuse overdrafts at the database level",
+    "target": "account withdrawal",
+    "constraints": [
+      "The accounts table rejects negative balances with a CHECK constraint that raises IntegrityError",
+      "An overdraft raises InsufficientFundsError and leaves the balance and session usable",
+      "A balance of exactly zero is allowed",
+      "Zero or negative amounts raise ValueError",
+      "Unknown accounts raise LookupError",
+      "Successful withdrawals are committed"
+    ]
+  },
+  "rationale": {
+    "teaches": "A CheckConstraint in __table_args__ as the source of truth, with IntegrityError translated into a domain error after session.rollback.",
+    "why": "An application-only balance check races with concurrent writers, and a failed commit left without rollback poisons every later query in the same session, which a test only sees if it reads after the failure."
+  },
+  "oracle": "fixtures/test_147_sqlalchemy_check_constraint_overdraft.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Base",
+        "bases": [
+          "DeclarativeBase"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Account",
+        "bases": [
+          "Base"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "InsufficientFundsError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "withdraw",
+        "params": [
+          "session",
+          "account_id",
+          "amount_cents"
+        ]
+      }
+    ],
+    "imports": [
+      "sqlalchemy"
+    ],
+    "raises": [
+      "InsufficientFundsError",
+      "LookupError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Base",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Account",
+              "kind": "class",
+              "depends_on": [
+                "Base"
+              ]
+            },
+            {
+              "name": "InsufficientFundsError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "withdraw",
+              "kind": "function",
+              "depends_on": [
+                "Account",
+                "InsufficientFundsError"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Let the database refuse overdrafts through a CHECK constraint."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy import CheckConstraint, String",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.exc import IntegrityError",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Base",
+        "source": "class Base(DeclarativeBase):\n    \"\"\"Declarative base for the ledger tables.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Account",
+        "source": "class Account(Base):\n    \"\"\"A customer account whose balance may never drop below zero.\"\"\"\n\n    __tablename__ = \"accounts\"\n    __table_args__ = (\n        CheckConstraint(\"balance_cents >= 0\", name=\"balance_not_negative\"),\n    )\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    owner: Mapped[str] = mapped_column(String(50))\n    balance_cents: Mapped[int] = mapped_column(nullable=False)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "InsufficientFundsError",
+        "source": "class InsufficientFundsError(Exception):\n    \"\"\"Raised when a withdrawal would overdraw an account.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "withdraw",
+        "source": "def withdraw(session: Session, account_id: int, amount_cents: int) -> int:\n    \"\"\"Withdraw from an account and return the new balance in cents.\"\"\"\n    if amount_cents <= 0:\n        raise ValueError(\"amount must be positive\")\n    account = session.get(Account, account_id)\n    if account is None:\n        raise LookupError(f\"account {account_id} not found\")\n    account.balance_cents -= amount_cents\n    try:\n        session.commit()\n    except IntegrityError as exc:\n        session.rollback()\n        raise InsufficientFundsError(\n            f\"account {account_id} cannot go below zero\"\n        ) from exc\n    return account.balance_cents",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The constraint forbids a zero balance, so emptying an account exactly is refused.",
+      "caught_by": [
+        "test_withdrawing_to_exactly_zero_is_allowed"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "Without a rollback the failed session stays unusable and the next query raises PendingRollbackError.",
+      "caught_by": [
+        "test_overdraft_raises_and_keeps_the_balance"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A zero amount passes validation and is treated as a valid withdrawal.",
+      "caught_by": [
+        "test_non_positive_amounts_are_rejected"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The change is only flushed, so the withdrawal is lost when the session rolls back.",
+      "caught_by": [
+        "test_withdrawal_reduces_and_commits_the_balance"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "An unknown account id reaches attribute access on None instead of raising LookupError.",
+      "caught_by": [
+        "test_unknown_account_is_a_lookup_error"
+      ]
+    }
+  ]
+}

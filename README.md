@@ -8,6 +8,7 @@ details.
 
 | Project | What it is |
 |---------|------------|
+| [som-core](models/som-core/README.md) | SOM (Structured Outcome Model) Core - Model architecture and training pipeline. See [Architecture Design](models/som-core/docs/reference/architecture.md). |
 | [cap](apps/cap/README.md) | `cap` keeps heavy local commands (`cargo test`, `uv run`, `pnpm build`, …) from eating the whole machine. |
 | [vat](apps/vat/README.md) | `vat` is a headless local development test runner for the one operator Docker was never designed for: a coding/ML agent. |
 | [courier](apps/courier/README.md) | `courier` is a stateless, GCP-hosted proxy that centralizes GitHub-issue access for every axiom CLI. |

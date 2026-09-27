@@ -1,0 +1,242 @@
+{
+  "family_id": "268-langgraph-thread-checkpointer",
+  "domain": "python",
+  "area": "langgraph",
+  "capability": "langgraph-thread-checkpointer",
+  "requirement": "Give a LangGraph-like chat graph durable per-conversation memory, so each thread_id resumes its own history and stored checkpoints cannot be corrupted by callers.",
+  "skeleton": "A thread_id_of config helper, a MemorySaver storing deep-copied snapshots per thread with get, put and history, and a ChatGraph that resumes, appends a turn, checkpoints and counts snapshots.",
+  "caption": "A LangGraph-style MemorySaver checkpointer written in the standard library with copy, collections.abc and typing and no third-party imports. thread_id_of reads config configurable thread_id, treating a missing or None configurable as empty, and raises ValueError unless it is a non-empty string. MemorySaver keeps a per-thread list: put appends a deepcopy of the state, get returns a deepcopy of the latest snapshot or None, and history returns deep copies oldest first. ChatGraph.invoke resumes from get or starts with no messages and zero turns, appends the user message and the reply computed from the messages so far, increments turns, puts the new state and returns it; snapshot_count is the history length. The fixture asserts resumption, thread isolation, that tampering never reaches stored snapshots, ordered history, and ValueError for bad thread ids.",
+  "plan": {
+    "intent": "Keep separate memory for each user conversation",
+    "target": "thread checkpointer",
+    "constraints": [
+      "A missing, empty or non-string thread_id raises ValueError",
+      "Each thread resumes only its own latest checkpoint",
+      "Snapshots are deep-copied on put, get and history",
+      "Every turn appends a new checkpoint in order",
+      "A new thread starts empty and get returns None"
+    ]
+  },
+  "rationale": {
+    "teaches": "Key checkpoints by configurable.thread_id, append snapshots instead of overwriting, and deep-copy at every boundary so stored state is immutable.",
+    "why": "Sharing references lets a caller silently rewrite a conversation's past, and loose thread ids merge unrelated users into one history."
+  },
+  "oracle": "fixtures/test_268_langgraph_thread_checkpointer.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "State"
+      },
+      {
+        "kind": "assign",
+        "name": "Config"
+      },
+      {
+        "kind": "function",
+        "name": "thread_id_of",
+        "params": [
+          "config"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "MemorySaver",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "put",
+          "get",
+          "history"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "ChatGraph",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "invoke",
+          "snapshot_count"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "State",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "Config",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "thread_id_of",
+              "kind": "function",
+              "depends_on": [
+                "Config"
+              ]
+            },
+            {
+              "name": "MemorySaver",
+              "kind": "class",
+              "depends_on": [
+                "State",
+                "Config",
+                "thread_id_of"
+              ]
+            },
+            {
+              "name": "ChatGraph",
+              "kind": "class",
+              "depends_on": [
+                "MemorySaver",
+                "Config",
+                "State"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "A LangGraph-style in-memory checkpointer keyed by thread_id."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import copy",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable, Mapping",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "State",
+        "source": "State = dict[str, Any]",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Config",
+        "source": "Config = Mapping[str, Any]",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "thread_id_of",
+        "source": "def thread_id_of(config: Config) -> str:\n    \"\"\"Return config[\"configurable\"][\"thread_id\"] or raise ValueError.\"\"\"\n    configurable = config.get(\"configurable\") or {}\n    thread_id = configurable.get(\"thread_id\")\n    if not isinstance(thread_id, str) or not thread_id:\n        raise ValueError(\"config needs configurable.thread_id\")\n    return thread_id",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MemorySaver",
+        "source": "class MemorySaver:\n    \"\"\"Store deep-copied snapshots per thread, newest last.\"\"\"\n\n    def __init__(self) -> None:\n        self._threads: dict[str, list[State]] = {}\n\n    def put(self, config: Config, state: State) -> None:\n        \"\"\"Append a snapshot of state to the thread's history.\"\"\"\n        self._threads.setdefault(thread_id_of(config), []).append(copy.deepcopy(state))\n\n    def get(self, config: Config) -> State | None:\n        \"\"\"Return a copy of the latest snapshot, or None for a new thread.\"\"\"\n        history = self._threads.get(thread_id_of(config))\n        return copy.deepcopy(history[-1]) if history else None\n\n    def history(self, config: Config) -> list[State]:\n        \"\"\"Return copies of every snapshot, oldest first.\"\"\"\n        return copy.deepcopy(self._threads.get(thread_id_of(config), []))",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ChatGraph",
+        "source": "class ChatGraph:\n    \"\"\"Append each user turn and a reply to the thread's saved messages.\"\"\"\n\n    def __init__(self, reply: Callable[[list[str]], str], saver: MemorySaver) -> None:\n        self._reply = reply\n        self._saver = saver\n\n    def invoke(self, message: str, config: Config) -> State:\n        \"\"\"Resume the thread, add the turn, checkpoint and return the state.\"\"\"\n        state = self._saver.get(config) or {\"messages\": [], \"turns\": 0}\n        messages = [*state[\"messages\"], f\"user: {message}\"]\n        messages.append(f\"ai: {self._reply(messages)}\")\n        state = {\"messages\": messages, \"turns\": state[\"turns\"] + 1}\n        self._saver.put(config, state)\n        return state\n\n    def snapshot_count(self, config: Config) -> int:\n        \"\"\"Return how many checkpoints the thread has.\"\"\"\n        return len(self._saver.history(config))",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 5
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The caller's state object is stored by reference and later edits rewrite the checkpoint.",
+      "caught_by": [
+        "test_snapshots_are_immutable_copies"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "get returns the stored snapshot itself, so mutating the result corrupts the thread.",
+      "caught_by": [
+        "test_snapshots_are_immutable_copies"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Empty strings and integers are accepted as thread ids and share checkpoints.",
+      "caught_by": [
+        "test_thread_id_is_required"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Each put replaces the thread's history, so only the latest checkpoint survives.",
+      "caught_by": [
+        "test_history_keeps_every_turn_in_order",
+        "test_threads_are_isolated"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "A configurable value of None crashes with AttributeError instead of ValueError.",
+      "caught_by": [
+        "test_thread_id_is_required"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,244 @@
+{
+  "family_id": "290-redis-distributed-lock-token",
+  "domain": "python",
+  "area": "redis",
+  "capability": "redis-distributed-lock-token",
+  "requirement": "Guard a job with a Redis lock that expires on its own and can only be released or extended by the process holding its random token.",
+  "skeleton": "A LockError and a Lock class with acquire, release, extend and context-manager support built on SET NX PX and Lua compare scripts.",
+  "caption": "A Redis distributed lock using secrets token_hex, typing Protocol and types TracebackType, with a duck-typed client offering set and eval. The constructor raises ValueError for a non-positive TTL. acquire sets the key with nx and px to a fresh random token. release and extend run Lua compare-and-delete and compare-and-pexpire scripts so only the token holder succeeds, raising LockError when the lock is not held or was lost, and the context manager raises LockError when busy. The fixture asserts exclusion, safe release after expiry, double release, extension and the context manager.",
+  "plan": {
+    "intent": "Run a cron job on one worker",
+    "target": "token-owned distributed lock",
+    "constraints": [
+      "A non-positive TTL raises ValueError",
+      "The key is set with NX and a PX expiry",
+      "Release and extend compare the token atomically in Lua",
+      "Releasing twice or after loss raises LockError",
+      "Entering the context while busy raises LockError"
+    ]
+  },
+  "rationale": {
+    "teaches": "Store a random token with SET NX PX and release or extend only through a Lua script that checks the token.",
+    "why": "Plain DEL releases someone else's lock after expiry and SET without NX or PX breaks exclusion or never expires."
+  },
+  "oracle": "fixtures/test_290_redis_distributed_lock_token.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "RELEASE_SCRIPT"
+      },
+      {
+        "kind": "assign",
+        "name": "EXTEND_SCRIPT"
+      },
+      {
+        "kind": "class",
+        "name": "LockClient",
+        "bases": [
+          "Protocol"
+        ],
+        "methods": [
+          "set",
+          "eval"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "LockError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Lock",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "acquire",
+          "release",
+          "extend",
+          "__enter__",
+          "__exit__"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "LockError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "RELEASE_SCRIPT",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "EXTEND_SCRIPT",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "LockClient",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "LockError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Lock",
+              "kind": "class",
+              "depends_on": [
+                "LockClient",
+                "LockError",
+                "RELEASE_SCRIPT",
+                "EXTEND_SCRIPT"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "A Redis lock that only its holder can release or extend, via a random token."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import secrets",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from types import TracebackType",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Protocol",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "RELEASE_SCRIPT",
+        "source": "RELEASE_SCRIPT = (\n    \"if redis.call('get', KEYS[1]) == ARGV[1] then \"\n    \"return redis.call('del', KEYS[1]) else return 0 end\"\n)",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "EXTEND_SCRIPT",
+        "source": "EXTEND_SCRIPT = (\n    \"if redis.call('get', KEYS[1]) == ARGV[1] then \"\n    \"return redis.call('pexpire', KEYS[1], ARGV[2]) else return 0 end\"\n)",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "LockClient",
+        "source": "class LockClient(Protocol):\n    \"\"\"The subset of redis.Redis the lock uses.\"\"\"\n\n    def set(self, name: str, value: str, *, nx: bool, px: int) -> bool | None:\n        \"\"\"Set a key with options.\"\"\"\n\n    def eval(self, script: str, numkeys: int, *args: str | int) -> int:\n        \"\"\"Run a Lua script.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "LockError",
+        "source": "class LockError(Exception):\n    \"\"\"Raised when the lock is busy, not held, or was lost.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Lock",
+        "source": "class Lock:\n    \"\"\"An expiring mutual-exclusion lock identified by a per-acquire token.\"\"\"\n\n    def __init__(self, client: LockClient, name: str, ttl_ms: int) -> None:\n        if ttl_ms <= 0:\n            raise ValueError(\"ttl_ms must be positive\")\n        self._client = client\n        self._name = f\"lock:{name}\"\n        self._ttl_ms = ttl_ms\n        self._token: str | None = None\n\n    def acquire(self) -> bool:\n        \"\"\"Try once to take the lock and report whether it was taken.\"\"\"\n        token = secrets.token_hex(16)\n        taken = self._client.set(self._name, token, nx=True, px=self._ttl_ms)\n        if taken:\n            self._token = token\n        return bool(taken)\n\n    def release(self) -> None:\n        \"\"\"Release the lock if this holder still owns it, else raise LockError.\"\"\"\n        if self._token is None:\n            raise LockError(\"lock is not held\")\n        token, self._token = self._token, None\n        if not self._client.eval(RELEASE_SCRIPT, 1, self._name, token):\n            raise LockError(\"lock expired or was taken by another holder\")\n\n    def extend(self) -> None:\n        \"\"\"Reset the lock's TTL if this holder still owns it, else raise LockError.\"\"\"\n        if self._token is None:\n            raise LockError(\"lock is not held\")\n        if not self._client.eval(\n            EXTEND_SCRIPT, 1, self._name, self._token, self._ttl_ms\n        ):\n            self._token = None\n            raise LockError(\"lock expired or was taken by another holder\")\n\n    def __enter__(self) -> Lock:\n        if not self.acquire():\n            raise LockError(f\"{self._name} is busy\")\n        return self\n\n    def __exit__(\n        self,\n        exc_type: type[BaseException] | None,\n        exc: BaseException | None,\n        tb: TracebackType | None,\n    ) -> None:\n        self.release()",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 5
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Without NX a second worker overwrites the key and steals the lock.",
+      "caught_by": [
+        "test_context_manager",
+        "test_extend_keeps_the_lock_alive",
+        "test_mutual_exclusion_and_release"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The lock is set without an expiry, so a crashed holder blocks forever.",
+      "caught_by": [
+        "test_expired_lock_cannot_delete_new_holder",
+        "test_mutual_exclusion_and_release"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Release deletes the key unconditionally, removing a newer holder's lock.",
+      "caught_by": [
+        "test_expired_lock_cannot_delete_new_holder"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The token is kept after release, so a second release reports expiry instead.",
+      "caught_by": [
+        "test_release_twice_reports_not_held"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The context manager enters the block even when the lock is busy.",
+      "caught_by": [
+        "test_context_manager"
+      ]
+    }
+  ]
+}

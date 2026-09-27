@@ -1,0 +1,45 @@
+"""Project paths and small JSON helpers for the engine.
+
+``ROOT`` is the ``models/som-core`` project directory (``src/som_core`` is two
+levels below it); the base-model cache and ``sources.lock.json`` live there.
+"""
+
+import hashlib
+import json
+import os
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+os.environ.setdefault("HF_HOME", str(ROOT / ".cache" / "huggingface"))
+os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
+
+def read_json(path):
+    p = Path(path)
+    if not p.exists():
+        return {}
+    return json.loads(p.read_text())
+
+
+def write_json(path, value):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(value, indent=2, ensure_ascii=False, allow_nan=False) + "\n")
+    tmp.replace(path)
+
+
+def sha256(path):
+    p = Path(path)
+    if not p.exists():
+        return ""
+    with p.open("rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
+
+
+def sources():
+    path = ROOT / "sources.lock.json"
+    if path.exists():
+        return read_json(path)
+    return {"model": "mlx-community/Qwen2.5-Coder-0.5B-Instruct-4bit"}

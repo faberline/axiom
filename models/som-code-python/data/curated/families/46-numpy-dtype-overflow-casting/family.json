@@ -1,0 +1,147 @@
+{
+  "family_id": "46-numpy-dtype-overflow-casting",
+  "domain": "numpy",
+  "area": "dtype-casting",
+  "capability": "dtype-overflow-casting",
+  "requirement": "Implement SafeImagePixelRescaler class for intensity rescaling. It must prevent silent integer overflow and modulo wraparound by upcasting inputs to float64 prior to arithmetic, clamping output intensities to the target dtype's valid dynamic range ([0, 255] for uint8, [0, 65535] for uint16), validating scale factors and supported dtypes, and safely casting to the target dtype.",
+  "skeleton": "SafeImagePixelRescaler class with __init__ and rescale_intensity methods preventing modular integer wraparound via float64 upcasting.",
+  "caption": "A numpy image rescaler that avoids integer wraparound when multiplying pixel intensities. SafeImagePixelRescaler takes target_dtype defaulting to uint8 and raises ValueError for anything other than uint8 or uint16. rescale_intensity(image, scale=1.0, offset=0.0) raises TypeError when the image is not a numpy ndarray and ValueError when the scale is zero or negative. It chooses the ceiling 255.0 for uint8 and 65535.0 for uint16, converts the image to float64 before any arithmetic, computes the value times scale plus offset in that wide type, clips the result into the closed range from 0.0 to the ceiling, rounds, and only then casts to the target dtype. Because the multiplication happens in float64 and the clamp precedes the cast, a bright pixel saturates at the maximum instead of wrapping modulo the integer width, and a result below zero clamps to 0 instead of wrapping upward. The fixture asserts a rescaled and clipped uint8 array matching the expected pixels, that the default target is uint8 with no negative outputs, that zero and negative scales are rejected, that a value landing exactly on the uint8 limit stays 255, that uint16 output reaches 65535, that pixels which would overflow the input type saturate to 255, and the dtype and type validation messages.",
+  "plan": {
+    "intent": "Rescale pixel intensities without integer wraparound",
+    "target": "SafeImagePixelRescaler",
+    "constraints": [
+      "A target dtype other than uint8 or uint16 raises ValueError",
+      "A non-ndarray image raises TypeError and a non-positive scale raises ValueError",
+      "Arithmetic runs in float64 before any cast",
+      "Results are clipped to 0 and the dtype maximum, then rounded, before the cast",
+      "Bright pixels saturate at 255 or 65535 instead of wrapping"
+    ]
+  },
+  "rationale": {
+    "teaches": "Integer-safe rescaling: upcast to float64 before arithmetic, clamp to the target dtype's range, validate the scale, and support only uint8 and uint16.",
+    "why": "Multiplying a uint8 image without upcasting wraps modulo 256 and returns a valid-looking image. The fixture uses pixel values that overflow, where the wrapped result is visibly wrong."
+  },
+  "oracle": "fixtures/test_46_numpy_dtype_overflow_casting.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "SafeImagePixelRescaler",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "rescale_intensity"
+        ]
+      }
+    ],
+    "imports": [
+      "numpy"
+    ],
+    "raises": [
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "SafeImagePixelRescaler",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Rescale image intensities into uint8 or uint16 without integer wraparound."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import numpy as np",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SafeImagePixelRescaler",
+        "source": "class SafeImagePixelRescaler:\n    \"\"\"Scale, offset, clip, and round pixels into the target integer dtype.\"\"\"\n\n    def __init__(self, target_dtype: str = \"uint8\") -> None:\n        if target_dtype not in (\"uint8\", \"uint16\"):\n            raise ValueError(f\"Unsupported target_dtype: {target_dtype}\")\n        self.target_dtype = target_dtype\n\n    def rescale_intensity(\n        self,\n        image: np.ndarray,\n        scale: float = 1.0,\n        offset: float = 0.0,\n    ) -> np.ndarray:\n        \"\"\"Return the image rescaled and clipped to the target dtype's range.\"\"\"\n        if not isinstance(image, np.ndarray):\n            raise TypeError(\"image must be a numpy ndarray\")\n        if scale <= 0.0:\n            raise ValueError(\"scale must be strictly positive\")\n\n        max_val = 255.0 if self.target_dtype == \"uint8\" else 65535.0\n        work = image.astype(np.float64) * scale + offset\n        clipped = np.clip(work, 0.0, max_val)\n        return np.round(clipped).astype(self.target_dtype)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The default target is int8, so a rescaled image is clamped to 127 and negative values are possible.",
+      "caught_by": [
+        "test_default_target_dtype_is_uint8"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A non-positive scale is accepted, so the whole image collapses to the offset.",
+      "caught_by": [
+        "test_negative_or_zero_scale_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The uint8 ceiling is 256.0, so a clamped value of 256 wraps to 0 on the final cast.",
+      "caught_by": [
+        "test_clip_upper_bound_boundary_does_not_wrap",
+        "test_gold_rescaling_and_clipping",
+        "test_no_silent_intermediate_overflow",
+        "test_target_dtype_branch_limits"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The dtype ranges are swapped, so uint8 output is clamped at 65535 and wraps on cast.",
+      "caught_by": [
+        "test_clip_upper_bound_boundary_does_not_wrap",
+        "test_gold_rescaling_and_clipping",
+        "test_no_silent_intermediate_overflow",
+        "test_target_dtype_branch_limits"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Arithmetic runs in the input integer dtype, so bright pixels wrap around instead of saturating.",
+      "caught_by": [
+        "test_no_silent_intermediate_overflow"
+      ]
+    }
+  ]
+}

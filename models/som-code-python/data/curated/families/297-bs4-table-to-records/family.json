@@ -1,0 +1,217 @@
+{
+  "family_id": "297-bs4-table-to-records",
+  "domain": "python",
+  "area": "bs4",
+  "capability": "bs4-table-to-records",
+  "requirement": "Extract an HTML table selected by id into a list of dictionaries keyed by normalised header names, tolerating short rows but rejecting malformed tables.",
+  "skeleton": "A TableError exception, _cells and _header helpers, and table_records returning one dict per non-empty body row.",
+  "caption": "An HTML table scraper using bs4 BeautifulSoup and Tag with the html.parser backend. table_records finds the table by id and raises TableError, a ValueError subclass, when it is missing, has no header row, has duplicate column names after lower-casing and replacing spaces with underscores, or has a row with more cells than columns. Header names come from thead when present, cell text is joined with spaces and stripped, empty rows are skipped, and empty or missing cells become None. The fixture asserts normalised keys, None padding, id selection, a header without thead and every TableError case.",
+  "plan": {
+    "intent": "Scrape a table into records",
+    "target": "BeautifulSoup table extraction",
+    "constraints": [
+      "TableError subclasses ValueError",
+      "A missing table raises TableError",
+      "Duplicate normalised column names raise TableError",
+      "A row with too many cells raises TableError",
+      "Header names are lower-cased with spaces as underscores",
+      "Empty cells and missing trailing cells become None",
+      "Rows without cells are skipped",
+      "Nested tag text is joined with a space"
+    ]
+  },
+  "rationale": {
+    "teaches": "Normalise the header once, pad short rows with None, and fail loudly on ambiguity instead of silently dropping data.",
+    "why": "Scrapers that trust the table shape silently glue words, keep blank rows, or overwrite duplicate columns."
+  },
+  "oracle": "fixtures/test_297_bs4_table_to_records.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "TableError",
+        "bases": [
+          "ValueError"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "_cells",
+        "params": [
+          "row"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "_header",
+        "params": [
+          "table"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "table_records",
+        "params": [
+          "html",
+          "table_id"
+        ]
+      }
+    ],
+    "imports": [
+      "bs4"
+    ],
+    "raises": [
+      "TableError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "TableError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "_cells",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "_header",
+              "kind": "function",
+              "depends_on": [
+                "TableError",
+                "_cells"
+              ]
+            },
+            {
+              "name": "table_records",
+              "kind": "function",
+              "depends_on": [
+                "TableError",
+                "_header",
+                "_cells"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Turn an HTML table into a list of dict records with BeautifulSoup."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from bs4 import BeautifulSoup, Tag",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "TableError",
+        "source": "class TableError(ValueError):\n    \"\"\"The requested table is missing or malformed.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_cells",
+        "source": "def _cells(row: Tag) -> list[str]:\n    return [cell.get_text(\" \", strip=True) for cell in row.find_all([\"th\", \"td\"])]",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_header",
+        "source": "def _header(table: Tag) -> list[str]:\n    head = table.find(\"thead\")\n    row = head.find(\"tr\") if isinstance(head, Tag) else table.find(\"tr\")\n    if not isinstance(row, Tag):\n        raise TableError(\"table has no header row\")\n    names = [name.lower().replace(\" \", \"_\") for name in _cells(row)]\n    if len(set(names)) != len(names):\n        raise TableError(f\"duplicate column names: {names}\")\n    return names",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "table_records",
+        "source": "def table_records(html: str, table_id: str) -> list[dict[str, str | None]]:\n    \"\"\"Return one dict per body row of the table with the given id.\"\"\"\n    soup = BeautifulSoup(html, \"html.parser\")\n    table = soup.find(\"table\", id=table_id)\n    if not isinstance(table, Tag):\n        raise TableError(f\"no table with id {table_id!r}\")\n    names = _header(table)\n    rows = table.find_all(\"tr\")[1:]\n    records: list[dict[str, str | None]] = []\n    for row in rows:\n        values = _cells(row)\n        if not values:\n            continue\n        if len(values) > len(names):\n            raise TableError(f\"row has {len(values)} cells for {len(names)} columns\")\n        padded: list[str | None] = [value or None for value in values]\n        padded += [None] * (len(names) - len(values))\n        records.append(dict(zip(names, padded, strict=True)))\n    return records",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Rows without cells produce an all-None record instead of being skipped.",
+      "caught_by": [
+        "test_empty_rows_are_skipped_and_table_is_selected_by_id",
+        "test_records_use_normalised_header_names"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Empty cells stay as empty strings instead of None.",
+      "caught_by": [
+        "test_short_rows_and_empty_cells_become_none"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Header names keep their original case, so keys do not match.",
+      "caught_by": [
+        "test_errors",
+        "test_header_without_thead",
+        "test_records_use_normalised_header_names",
+        "test_short_rows_and_empty_cells_become_none"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Duplicate column names silently overwrite each other.",
+      "caught_by": [
+        "test_errors"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Nested tag text is glued together without a separating space.",
+      "caught_by": [
+        "test_records_use_normalised_header_names"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,196 @@
+{
+  "family_id": "244-sklearn-group-kfold-leakage",
+  "domain": "python",
+  "area": "scikit-learn",
+  "capability": "sklearn-group-kfold-leakage",
+  "requirement": "Evaluate a classifier on repeated measurements per patient using grouped cross-validation, so the score reflects generalization to unseen patients, with validation of group counts and alignment.",
+  "skeleton": "A frozen CVResult dataclass and grouped_cv_score validating group alignment and count, then calling cross_val_score with GroupKFold and returning scores, mean and sample std.",
+  "caption": "Cross-validating with scikit-learn when several rows belong to the same patient, so no patient appears in both training and test folds. CVResult is a frozen dataclass of a scores tuple, mean and std. grouped_cv_score(model, x, y, groups, *, n_splits=5) raises ValueError saying groups must align with y when their lengths differ, and raises ValueError saying it needs at least n_splits groups when there are fewer distinct groups. It converts groups with numpy and runs cross_val_score with that array, cv set to GroupKFold with n_splits and accuracy scoring, and returns the scores as floats with their mean and sample standard deviation using ddof 1. The fixture asserts that a 1-nearest-neighbour model scoring near perfect with plain five-fold drops below 0.8 when grouped, that scores match GroupKFold directly with the sample std, that exactly n_splits groups works, that four groups raises ValueError, that misaligned groups raise ValueError, and that the model is not fitted in place.",
+  "plan": {
+    "intent": "Estimate accuracy on new patients honestly",
+    "target": "grouped evaluation",
+    "constraints": [
+      "Groups whose length differs from y raise ValueError",
+      "Fewer distinct groups than n_splits raise ValueError",
+      "Folds come from GroupKFold using the real groups",
+      "The std is the sample standard deviation with ddof 1"
+    ]
+  },
+  "rationale": {
+    "teaches": "Pass groups through cross_val_score with GroupKFold so correlated rows never straddle folds, and validate the grouping before relying on it.",
+    "why": "Row-level folds let a model memorize each patient and report near-perfect scores that collapse on new patients, and population std understates fold variance."
+  },
+  "oracle": "fixtures/test_244_sklearn_group_kfold_leakage.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "CVResult",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "grouped_cv_score",
+        "params": [
+          "model",
+          "x",
+          "y",
+          "groups",
+          "n_splits"
+        ]
+      }
+    ],
+    "imports": [
+      "numpy",
+      "sklearn"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "CVResult",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "grouped_cv_score",
+              "kind": "function",
+              "depends_on": [
+                "CVResult"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Cross-validate with GroupKFold so no group spans train and test folds."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from dataclasses import dataclass",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import numpy as np",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from numpy.typing import ArrayLike",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sklearn.base import BaseEstimator",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sklearn.model_selection import GroupKFold, cross_val_score",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "CVResult",
+        "source": "@dataclass(frozen=True)\nclass CVResult:\n    \"\"\"Per-fold scores with their mean and sample standard deviation.\"\"\"\n\n    scores: tuple[float, ...]\n    mean: float\n    std: float",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "grouped_cv_score",
+        "source": "def grouped_cv_score(\n    model: BaseEstimator,\n    x: ArrayLike,\n    y: ArrayLike,\n    groups: ArrayLike,\n    *,\n    n_splits: int = 5,\n) -> CVResult:\n    \"\"\"Score ``model`` by accuracy with GroupKFold over ``groups``.\"\"\"\n    group_arr = np.asarray(groups)\n    if group_arr.shape[0] != np.asarray(y).shape[0]:\n        raise ValueError(\"groups must align with y\")\n    n_groups = np.unique(group_arr).size\n    if n_groups < n_splits:\n        raise ValueError(f\"need at least {n_splits} groups, got {n_groups}\")\n    scores = cross_val_score(\n        model,\n        x,\n        y,\n        groups=group_arr,\n        cv=GroupKFold(n_splits=n_splits),\n        scoring=\"accuracy\",\n    )\n    return CVResult(\n        scores=tuple(float(s) for s in scores),\n        mean=float(np.mean(scores)),\n        std=float(np.std(scores, ddof=1)),\n    )",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "GroupKFold receives no groups and raises instead of producing scores.",
+      "caught_by": [
+        "test_exactly_n_splits_groups_is_enough",
+        "test_grouping_removes_patient_leakage",
+        "test_model_is_not_fitted_in_place",
+        "test_scores_match_group_kfold_and_sample_std"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Every row is its own group so a patient's rows leak across folds.",
+      "caught_by": [
+        "test_grouping_removes_patient_leakage",
+        "test_scores_match_group_kfold_and_sample_std"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Exactly n_splits distinct groups is rejected though GroupKFold supports it.",
+      "caught_by": [
+        "test_exactly_n_splits_groups_is_enough"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The population standard deviation is reported instead of the sample one.",
+      "caught_by": [
+        "test_scores_match_group_kfold_and_sample_std"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Misaligned groups surface as a generic scikit-learn length error instead.",
+      "caught_by": [
+        "test_misaligned_groups_are_rejected"
+      ]
+    }
+  ]
+}

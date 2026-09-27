@@ -186,6 +186,32 @@ Status: ready
         self.assertIn("Return JSON only", prompt)
         self.assertNotIn("Return matching caller IDs", prompt)
 
+    def test_models_source_is_accepted_when_its_directory_exists(self) -> None:
+        (self.repo / "models/demo").mkdir(parents=True)
+        (self.repo / "models/demo/README.md").write_text("# Model demo\n", encoding="utf-8")
+        text = VALID_README.replace(
+            "`apps/demo`, `libs/shared`, `external:runtime`",
+            "`apps/demo`, `models/demo`, `external:runtime`",
+        ).replace(
+            "  - [`libs/shared`](../../libs/shared/README.md) provides reusable index mechanics.",
+            "  - [`models/demo`](../../models/demo/README.md) provides the trained ranking head.",
+        )
+        report = self.validate(text)
+        self.assertTrue(report.ok, report.as_dict())
+        self.assertEqual([capability.sources for capability in report.capabilities],
+                         [["apps/demo", "models/demo", "external:runtime"]])
+
+    def test_models_source_must_exist_on_disk(self) -> None:
+        text = VALID_README.replace(
+            "`apps/demo`, `libs/shared`, `external:runtime`",
+            "`apps/demo`, `models/missing`, `external:runtime`",
+        ).replace(
+            "  - [`libs/shared`](../../libs/shared/README.md) provides reusable index mechanics.",
+            "  - `models/missing` provides the trained ranking head.",
+        )
+        report = self.validate(text)
+        self.assertIn("R7", self.rules(report))
+
 
 class RuntimeSkillStaysDeletedTest(unittest.TestCase):
     def test_no_skill_mirror_reappears(self) -> None:

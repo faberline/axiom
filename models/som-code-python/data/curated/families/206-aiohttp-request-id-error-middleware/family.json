@@ -1,0 +1,236 @@
+{
+  "family_id": "206-aiohttp-request-id-error-middleware",
+  "domain": "python",
+  "area": "aiohttp",
+  "capability": "aiohttp-request-id-error-middleware",
+  "requirement": "Give every aiohttp.web request a safe request id taken from X-Request-ID or generated, expose it to handlers and responses, and turn HTTP exceptions and crashes into JSON error bodies without leaking exception text.",
+  "skeleton": "A header constant, an id pattern, and a web.middleware function choosing the id, calling the handler, mapping HTTPException and other exceptions to JSON responses, and setting the header.",
+  "caption": "Request ids and JSON errors as aiohttp.web middleware. request_id_middleware, decorated with web.middleware, keeps an incoming X-Request-ID only when it fully matches 1 to 64 letters, digits or dashes, otherwise generates uuid4().hex, and stores it as request['request_id'] for handlers. It awaits the handler; a web.HTTPException becomes a JSON body with its reason and the request id under the exception's own status, and any other Exception is logged with logger.exception naming the id and becomes a generic 500 body saying internal server error, never the exception text. Every response, success or error, carries the X-Request-ID header. The fixture asserts, over an aiohttp TestServer, that abc-123 and a 64-character id are echoed to handler and header, that a spaced id, a 65-character id or no id get a fresh 32-hex id, that a RuntimeError is a 500 without its secret and is logged with the id, that HTTPForbidden keeps 403 and its reason, and that an unknown path is a JSON 404 Not Found.",
+  "plan": {
+    "intent": "Correlate logs and client errors without exposing internals",
+    "target": "web middleware",
+    "constraints": [
+      "Incoming ids are kept only if they match 1 to 64 letters, digits or dashes",
+      "Other requests get uuid4().hex",
+      "HTTPException keeps its status and reason in a JSON body",
+      "Unhandled exceptions are logged and answered with a generic JSON 500",
+      "X-Request-ID is set on every response"
+    ]
+  },
+  "rationale": {
+    "teaches": "Validate client-supplied correlation ids, handle HTTPException separately from crashes in middleware, and log details server-side while returning generic errors.",
+    "why": "Echoing arbitrary header values enables log injection, folding HTTPException into 500 breaks 403 and 404, and returning str(exc) leaks secrets."
+  },
+  "oracle": "fixtures/test_206_aiohttp_request_id_error_middleware.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "REQUEST_ID_HEADER"
+      },
+      {
+        "kind": "assign",
+        "name": "_VALID_ID"
+      },
+      {
+        "kind": "assign",
+        "name": "Handler"
+      },
+      {
+        "kind": "assign",
+        "name": "logger"
+      },
+      {
+        "kind": "async_function",
+        "name": "request_id_middleware",
+        "params": [
+          "request",
+          "handler"
+        ]
+      }
+    ],
+    "imports": [
+      "aiohttp"
+    ],
+    "raises": [],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "REQUEST_ID_HEADER",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "_VALID_ID",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "Handler",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "logger",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "request_id_middleware",
+              "kind": "function",
+              "depends_on": [
+                "Handler",
+                "REQUEST_ID_HEADER",
+                "_VALID_ID",
+                "logger"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Request-id propagation and JSON error bodies as aiohttp.web middleware."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import logging",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import re",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import uuid",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Awaitable, Callable",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from aiohttp import web",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "REQUEST_ID_HEADER",
+        "source": "REQUEST_ID_HEADER = \"X-Request-ID\"",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_VALID_ID",
+        "source": "_VALID_ID = re.compile(r\"[A-Za-z0-9-]{1,64}\")",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Handler",
+        "source": "Handler = Callable[[web.Request], Awaitable[web.StreamResponse]]",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "logger",
+        "source": "logger = logging.getLogger(__name__)",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "request_id_middleware",
+        "source": "@web.middleware\nasync def request_id_middleware(\n    request: web.Request, handler: Handler\n) -> web.StreamResponse:\n    \"\"\"Tag every request with an id and turn errors into JSON responses.\"\"\"\n    incoming = request.headers.get(REQUEST_ID_HEADER, \"\")\n    request_id = incoming if _VALID_ID.fullmatch(incoming) else uuid.uuid4().hex\n    request[\"request_id\"] = request_id\n    response: web.StreamResponse\n    try:\n        response = await handler(request)\n    except web.HTTPException as exc:\n        body = {\"error\": exc.reason, \"request_id\": request_id}\n        response = web.json_response(body, status=exc.status)\n    except Exception:  # pylint: disable=broad-exception-caught\n        logger.exception(\"unhandled error in request %s\", request_id)\n        body = {\"error\": \"internal server error\", \"request_id\": request_id}\n        response = web.json_response(body, status=500)\n    response.headers[REQUEST_ID_HEADER] = request_id\n    return response",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 5
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Ids longer than 32 characters are replaced even though up to 64 are allowed.",
+      "caught_by": [
+        "test_valid_incoming_id_is_kept"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Any client header value, spaces and all, is trusted as the request id.",
+      "caught_by": [
+        "test_invalid_or_missing_ids_are_generated"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "HTTP exceptions such as 403 and 404 are swallowed into generic 500 responses.",
+      "caught_by": [
+        "test_http_exceptions_keep_their_status"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Generated ids use the dashed 36-character uuid form instead of the 32-hex form.",
+      "caught_by": [
+        "test_invalid_or_missing_ids_are_generated"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The 500 body echoes the exception text, leaking secrets to the client.",
+      "caught_by": [
+        "test_unhandled_error_is_generic_json_500"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,230 @@
+{
+  "family_id": "252-pyyaml-duplicate-key-loader",
+  "domain": "python",
+  "area": "pyyaml",
+  "capability": "pyyaml-duplicate-key-loader",
+  "requirement": "Load configuration YAML so that a key written twice in the same mapping is an error pointing at its line, while merge keys and python tag rejection keep working.",
+  "skeleton": "A merge tag constant, a ConfigError carrying a line, a UniqueKeyLoader SafeLoader subclass overriding construct_mapping to track seen keys, and load_strict converting marked errors to one-based lines.",
+  "caption": "A PyYAML loader that refuses mappings which repeat a key, where plain yaml.safe_load silently keeps the last value. ConfigError is a plain Exception built from a message and a one-based line, formatted as line N: message. UniqueKeyLoader subclasses yaml.SafeLoader and overrides construct_mapping: it walks the key nodes, skipping merge keys, constructs each key and raises yaml's ConstructorError naming the duplicate key at its mark, then defers to the parent. load_strict(text) calls yaml.load with that loader and turns any yaml.MarkedYAMLError into ConfigError with the problem and the problem mark's zero-based line plus one, chained. The fixture asserts normal loading, duplicate top-level and nested keys with their lines, sibling mappings, merge key overrides, rejected python tags, a one-based syntax error line, and that the global SafeLoader is untouched.",
+  "plan": {
+    "intent": "Catch copy-paste mistakes in config files",
+    "target": "strict yaml loader",
+    "constraints": [
+      "UniqueKeyLoader subclasses yaml.SafeLoader without changing the global loader",
+      "A repeated key in one mapping raises ConstructorError converted to ConfigError",
+      "Merge keys may be overridden",
+      "yaml.MarkedYAMLError becomes ConfigError with a one-based line"
+    ]
+  },
+  "rationale": {
+    "teaches": "Override construct_mapping on a private SafeLoader subclass to detect repeated keys before delegating, skip merge keys, and report one-based lines from problem_mark.",
+    "why": "Duplicate keys silently drop the earlier value so a config reads correctly but runs with the wrong setting, and zero-based line numbers send people to the wrong line."
+  },
+  "oracle": "fixtures/test_252_pyyaml_duplicate_key_loader.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "MERGE_TAG"
+      },
+      {
+        "kind": "class",
+        "name": "ConfigError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": [
+          "__init__"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "UniqueKeyLoader",
+        "bases": [
+          "yaml.SafeLoader"
+        ],
+        "methods": [
+          "construct_mapping"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "load_strict",
+        "params": [
+          "text"
+        ]
+      }
+    ],
+    "imports": [
+      "yaml"
+    ],
+    "raises": [
+      "ConfigError",
+      "ConstructorError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "MERGE_TAG",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "ConfigError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "UniqueKeyLoader",
+              "kind": "class",
+              "depends_on": [
+                "MERGE_TAG"
+              ]
+            },
+            {
+              "name": "load_strict",
+              "kind": "function",
+              "depends_on": [
+                "UniqueKeyLoader",
+                "ConfigError"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Load YAML with a SafeLoader subclass that rejects duplicate mapping keys."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import yaml",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from yaml.constructor import ConstructorError",
+        "group": 2
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from yaml.nodes import MappingNode",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MERGE_TAG",
+        "source": "MERGE_TAG = \"tag:yaml.org,2002:merge\"",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ConfigError",
+        "source": "class ConfigError(Exception):\n    \"\"\"Raised with a one-based line number when the YAML is rejected.\"\"\"\n\n    def __init__(self, message: str, line: int) -> None:\n        super().__init__(f\"line {line}: {message}\")\n        self.line = line",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "UniqueKeyLoader",
+        "source": "class UniqueKeyLoader(yaml.SafeLoader):  # pylint: disable=too-many-ancestors\n    \"\"\"A SafeLoader that refuses a mapping which repeats a key.\"\"\"\n\n    def construct_mapping(\n        self, node: MappingNode, deep: bool = False\n    ) -> dict[Any, Any]:\n        seen: set[Any] = set()\n        for key_node, _ in node.value:\n            if key_node.tag == MERGE_TAG:\n                continue\n            key = self.construct_object(key_node, deep=deep)\n            if key in seen:\n                raise ConstructorError(\n                    \"while constructing a mapping\",\n                    node.start_mark,\n                    f\"found duplicate key {key!r}\",\n                    key_node.start_mark,\n                )\n            seen.add(key)\n        return super().construct_mapping(node, deep=deep)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "load_strict",
+        "source": "def load_strict(text: str) -> Any:\n    \"\"\"Parse text, raising ConfigError for duplicates or invalid YAML.\"\"\"\n    try:\n        return yaml.load(text, Loader=UniqueKeyLoader)\n    except yaml.MarkedYAMLError as exc:\n        mark = exc.problem_mark\n        line = mark.line + 1 if mark is not None else 0\n        raise ConfigError(str(exc.problem), line) from exc",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Keys are never recorded as seen, so duplicates load silently.",
+      "caught_by": [
+        "test_duplicate_nested_key_is_rejected",
+        "test_duplicate_top_level_key_reports_its_line"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The default safe loader is used and the duplicate check never runs.",
+      "caught_by": [
+        "test_duplicate_nested_key_is_rejected",
+        "test_duplicate_top_level_key_reports_its_line"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The loader extends UnsafeLoader and builds python tuples from tags.",
+      "caught_by": [
+        "test_python_tags_are_still_rejected"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "A merge key reaches construct_object and crashes the load.",
+      "caught_by": [
+        "test_merge_keys_may_be_overridden"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Errors report zero-based lines, one line above the real problem.",
+      "caught_by": [
+        "test_duplicate_nested_key_is_rejected",
+        "test_duplicate_top_level_key_reports_its_line"
+      ]
+    }
+  ]
+}

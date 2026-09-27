@@ -1,0 +1,9 @@
+{
+  "id": "sqlalchemy_get_db",
+  "description": "The request-scoped session dependency: one session per request, always closed.",
+  "imports": [
+    "from collections.abc import Generator",
+    "from sqlalchemy.orm import Session"
+  ],
+  "template": "def get_db() -> Generator[Session, None, None]:\n    \"\"\"Yield one database session per request and close it afterwards.\"\"\"\n    db = session_factory()\n    try:\n        yield db\n    finally:\n        db.close()"
+}

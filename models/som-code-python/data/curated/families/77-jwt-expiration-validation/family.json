@@ -1,0 +1,172 @@
+{
+  "family_id": "77-jwt-expiration-validation",
+  "domain": "python",
+  "area": "security",
+  "capability": "jwt-expiration-and-clock-skew",
+  "requirement": "JWT validation utility strictly enforcing expiration ('exp') claims, requiring mandatory 'exp' presence, limiting clock skew leeway to safe boundaries (<= 30s), and rejecting expired tokens.",
+  "skeleton": "ExpirableTokenManager class with issue_token and decode_token methods using PyJWT.",
+  "caption": "A PyJWT token manager that insists on an expiry claim, enforces it with a small bounded clock-skew allowance, and turns expiry into a hard error. MAX_ALLOWED_LEEWAY is 30 seconds. ExpirableTokenManager takes a secret and leeway_seconds defaulting to 10; it raises ValueError when the secret is shorter than 16 characters and when the leeway is negative or above 30 seconds, so a caller cannot widen the window enough to accept long-expired tokens. issue_token(subject, ttl_seconds) raises ValueError when the time-to-live, defaulting to 300, is not positive, and signs a payload with sub, iat set to the current integer time, and exp set to that time plus the TTL, so every issued token expires in the future. decode_token raises ValueError for an empty or non-string token and calls jwt.decode with HS256 only, the configured leeway, exp and iat marked as required, and expiry verification explicitly on. An ExpiredSignatureError is converted into ValueError reporting that the token has expired rather than returning the claims with a flag the caller might ignore, and any other PyJWTError, including a missing exp claim, becomes ValueError reporting that token validation failed. The fixture asserts that a fresh token returns sub user-active with exp later than now, that a token whose exp is in the past raises ValueError reporting Token has expired, that a token without exp raises ValueError reporting Token validation failed, that a leeway above 30 is rejected with the range message, and that a negative TTL is rejected.",
+  "plan": {
+    "intent": "Require and enforce JWT expiry with a small clock-skew allowance",
+    "target": "ExpirableTokenManager",
+    "constraints": [
+      "A short secret, or a leeway that is negative or above 30 seconds, raises ValueError",
+      "A non-positive TTL raises ValueError, and issued tokens carry iat and a future exp",
+      "Decoding requires exp and iat with expiry verification on",
+      "An expired token raises ValueError reporting expiry",
+      "Any other PyJWT error becomes ValueError reporting failed validation"
+    ]
+  },
+  "rationale": {
+    "teaches": "JWT decoding that requires exp and iat, verifies expiry, caps leeway at 30 seconds, raises on an expired token, and issues tokens that expire in the future.",
+    "why": "An expired token has a valid signature, so only the exp check rejects it. The fixture issues a token with a past exp and expects a ValueError, and checks the leeway boundary."
+  },
+  "oracle": "fixtures/test_77_jwt_expiration_validation.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "MAX_ALLOWED_LEEWAY"
+      },
+      {
+        "kind": "class",
+        "name": "ExpirableTokenManager",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "issue_token",
+          "decode_token"
+        ]
+      }
+    ],
+    "imports": [
+      "jwt"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "MAX_ALLOWED_LEEWAY",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "ExpirableTokenManager",
+              "kind": "class",
+              "depends_on": [
+                "MAX_ALLOWED_LEEWAY"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Issue short-lived HS256 JWTs and verify expiry with a bounded leeway."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import time",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import jwt",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MAX_ALLOWED_LEEWAY",
+        "source": "MAX_ALLOWED_LEEWAY = 30",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ExpirableTokenManager",
+        "source": "class ExpirableTokenManager:\n    \"\"\"JWT manager strictly verifying expiration and restricting clock skew leeway.\"\"\"\n\n    def __init__(self, secret_key: str, leeway_seconds: int = 10) -> None:\n        if not secret_key or len(secret_key) < 16:\n            raise ValueError(\"Secret key must be at least 16 characters\")\n        if leeway_seconds < 0 or leeway_seconds > MAX_ALLOWED_LEEWAY:\n            raise ValueError(\n                f\"Leeway must be between 0 and {MAX_ALLOWED_LEEWAY} seconds\"\n            )\n        self._secret_key = secret_key\n        self._leeway_seconds = leeway_seconds\n\n    def issue_token(self, subject: str, ttl_seconds: int = 300) -> str:\n        \"\"\"Sign a token for subject that expires ttl_seconds from now.\"\"\"\n        if ttl_seconds <= 0:\n            raise ValueError(\"TTL must be greater than 0\")\n        now = int(time.time())\n        payload = {\n            \"sub\": subject,\n            \"iat\": now,\n            \"exp\": now + ttl_seconds,\n        }\n        return jwt.encode(payload, self._secret_key, algorithm=\"HS256\")\n\n    def decode_token(self, token: str) -> dict[str, Any]:\n        \"\"\"Verify token and its exp and iat claims within the configured leeway.\"\"\"\n        if not token or not isinstance(token, str):\n            raise ValueError(\"Token must be a non-empty string\")\n        try:\n            return jwt.decode(\n                token,\n                self._secret_key,\n                algorithms=[\"HS256\"],\n                leeway=self._leeway_seconds,\n                options={\n                    \"require\": [\"exp\", \"iat\"],\n                    \"verify_exp\": True,\n                },\n            )\n        except jwt.ExpiredSignatureError as exc:\n            raise ValueError(\"Token has expired\") from exc\n        except jwt.PyJWTError as exc:\n            raise ValueError(f\"Token validation failed: {exc}\") from exc",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "verify_exp is off, so an expired token is accepted.",
+      "caught_by": [
+        "test_expired_token_raises_value_error",
+        "test_token_missing_exp_claim_rejected"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "exp is not required, so a token that never expires is accepted.",
+      "caught_by": [
+        "test_token_missing_exp_claim_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Leeway has no upper bound, so a caller can set an hour of leeway and accept long-expired tokens.",
+      "caught_by": [
+        "test_excessive_leeway_rejected_in_init"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "An expired token is returned with an is_expired flag, so callers who ignore the flag accept it.",
+      "caught_by": [
+        "test_expired_token_raises_value_error"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "exp is set to now minus ttl, so every issued token is already expired.",
+      "caught_by": [
+        "test_valid_unexpired_token"
+      ]
+    }
+  ]
+}

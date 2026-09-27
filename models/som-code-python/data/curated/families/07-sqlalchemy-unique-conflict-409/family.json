@@ -1,0 +1,513 @@
+{
+  "family_id": "07-sqlalchemy-unique-conflict-409",
+  "domain": "python",
+  "area": "sqlalchemy",
+  "capability": "unique-conflict-409",
+  "requirement": "User registration endpoint POST /users enforcing unique email constraint, catching SQLAlchemy IntegrityError upon commit, rolling back the session, and returning HTTP 409 Conflict.",
+  "skeleton": "FastAPI user registration endpoint with SQLAlchemy unique constraint handling and session rollback.",
+  "caption": "A FastAPI user registration service over SQLAlchemy and in-memory SQLite in which the email uniqueness rule lives in the schema and the conflict is translated at commit time. The module builds a StaticPool engine, a DeclarativeBase, and a User table with integer id, an indexed email column declared unique=True and nullable=False, and a non-null username; reset_db drops and recreates the schema, the sessionmaker has autocommit and autoflush off, and get_db yields one session per request and closes it in finally. pydantic models are UserCreate with email and username and UserResponse with id, email, and username read from ORM attributes. GET /users returns every user, and GET /users/{user_id} loads by primary key and raises HTTPException 404 when absent. POST /users declares status 201, builds a User from the payload, adds it, and wraps the commit and refresh in a try block. When the database rejects the insert because the email already exists, the IntegrityError from sqlalchemy.exc is caught, the session is rolled back so it can be used again, and the handler raises HTTPException 409 with detail Email already registered. The existing user is never modified by a duplicate attempt, and a fresh registration with a different email succeeds immediately after a conflict.",
+  "plan": {
+    "intent": "Register users with a unique email address",
+    "target": "User",
+    "constraints": [
+      "Email uniqueness is enforced by the database schema",
+      "A new user answers 201",
+      "A duplicate email is caught as an integrity failure at commit, rolled back, and raises HTTPException 409",
+      "The existing user is left unchanged and the session stays usable",
+      "GET /users/{user_id} raises HTTPException 404 for a missing user"
+    ]
+  },
+  "rationale": {
+    "teaches": "Unique-constraint conflict handling: declare the constraint on the column, catch IntegrityError at commit, roll back, and answer 409.",
+    "why": "Generated registration code commonly answers 500, answers 400, or silently overwrites. Reading both the status and the persisted state after a duplicate request tells all of these apart."
+  },
+  "oracle": "fixtures/test_07_sqlalchemy_unique_conflict_409.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "engine"
+      },
+      {
+        "kind": "class",
+        "name": "Base",
+        "bases": [
+          "DeclarativeBase"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "User",
+        "bases": [
+          "Base"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "assign",
+        "name": "session_factory"
+      },
+      {
+        "kind": "function",
+        "name": "get_db",
+        "params": []
+      },
+      {
+        "kind": "class",
+        "name": "UserCreate",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "UserResponse",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "list_users",
+        "params": [
+          "db"
+        ],
+        "route": "GET /users"
+      },
+      {
+        "kind": "function",
+        "name": "get_user",
+        "params": [
+          "user_id",
+          "db"
+        ],
+        "route": "GET /users/{user_id}"
+      },
+      {
+        "kind": "function",
+        "name": "create_user",
+        "params": [
+          "payload",
+          "db"
+        ],
+        "route": "POST /users"
+      }
+    ],
+    "imports": [
+      "fastapi",
+      "pydantic",
+      "sqlalchemy"
+    ],
+    "raises": [
+      "HTTPException"
+    ],
+    "status_codes": [
+      201,
+      404,
+      409
+    ],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "engine",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "Base",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "User",
+              "kind": "class",
+              "depends_on": [
+                "Base"
+              ]
+            },
+            {
+              "name": "Base.metadata.create_all",
+              "kind": "statement",
+              "depends_on": [
+                "Base",
+                "engine"
+              ]
+            },
+            {
+              "name": "reset_db",
+              "kind": "function",
+              "depends_on": [
+                "Base",
+                "engine"
+              ]
+            },
+            {
+              "name": "session_factory",
+              "kind": "constant",
+              "depends_on": [
+                "engine"
+              ]
+            },
+            {
+              "name": "get_db",
+              "kind": "function",
+              "depends_on": [
+                "session_factory"
+              ]
+            },
+            {
+              "name": "UserCreate",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "UserResponse",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "list_users",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "UserResponse",
+                "get_db",
+                "User"
+              ]
+            },
+            {
+              "name": "get_user",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "UserResponse",
+                "get_db",
+                "User"
+              ]
+            },
+            {
+              "name": "create_user",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "UserResponse",
+                "UserCreate",
+                "get_db",
+                "User"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "User service: register users and answer 409 when an email is already taken."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Generator",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import Depends, FastAPI, HTTPException",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel, ConfigDict",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy import create_engine, select",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.exc import IntegrityError",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.pool import StaticPool",
+        "group": 1
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "engine",
+        "id": "sqlalchemy_memory_engine",
+        "params": {},
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "Base",
+        "id": "sqlalchemy_declarative_base",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "User",
+        "id": "sqlalchemy_table",
+        "params": {
+          "name": "User",
+          "doc": "A registered user with a unique email.",
+          "table": "users",
+          "columns": [
+            {
+              "column": "id",
+              "type": "int",
+              "value": "mapped_column(primary_key=True, index=True)"
+            },
+            {
+              "column": "email",
+              "type": "str",
+              "value": "mapped_column(unique=True, nullable=False, index=True)"
+            },
+            {
+              "column": "username",
+              "type": "str",
+              "value": "mapped_column(nullable=False)"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "Base.metadata.create_all",
+        "id": "sqlalchemy_create_all",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "reset_db",
+        "id": "sqlalchemy_reset_db",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "session_factory",
+        "id": "sqlalchemy_session_factory",
+        "params": {
+          "name": "session_factory"
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "get_db",
+        "id": "sqlalchemy_get_db",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "UserCreate",
+        "id": "pydantic_model",
+        "params": {
+          "name": "UserCreate",
+          "doc": "Payload accepted when registering a user.",
+          "fields": [
+            {
+              "field": "email",
+              "declaration": "str"
+            },
+            {
+              "field": "username",
+              "declaration": "str"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "UserResponse",
+        "id": "pydantic_orm_model",
+        "params": {
+          "name": "UserResponse",
+          "doc": "User representation returned to clients.",
+          "fields": [
+            {
+              "field": "id",
+              "declaration": "int"
+            },
+            {
+              "field": "email",
+              "declaration": "str"
+            },
+            {
+              "field": "username",
+              "declaration": "str"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "app",
+        "id": "fastapi_app",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "list_users",
+        "id": "fastapi_list_all",
+        "params": {
+          "path": "/users",
+          "response_model": "UserResponse",
+          "name": "list_users",
+          "model": "User",
+          "doc": "Return every user."
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "get_user",
+        "id": "fastapi_get_by_id",
+        "params": {
+          "path": "/users/{user_id}",
+          "response_model": "UserResponse",
+          "name": "get_user",
+          "key": "user_id",
+          "model": "User",
+          "doc": "Return one user by id, or 404 when it does not exist.",
+          "row": "user",
+          "detail": "User not found"
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "create_user",
+        "source": "@app.post(\"/users\", status_code=201, response_model=UserResponse)\ndef create_user(payload: UserCreate, db: Session = Depends(get_db)) -> User:\n    \"\"\"Persist a new user, or answer 409 when the email is already registered.\"\"\"\n    user = User(email=payload.email, username=payload.username)\n    db.add(user)\n    try:\n        db.commit()\n        db.refresh(user)\n        return user\n    except IntegrityError as exc:\n        db.rollback()\n        raise HTTPException(status_code=409, detail=\"Email already registered\") from exc",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 12,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A duplicate email raises an unhandled IntegrityError, so the client receives 500 instead of 409.",
+      "caught_by": [
+        "test_duplicate_email_does_not_overwrite_existing_user",
+        "test_duplicate_email_returns_409_conflict",
+        "test_session_clean_after_conflict_allows_subsequent_registration"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A duplicate email answers 400 instead of 409 Conflict.",
+      "caught_by": [
+        "test_duplicate_email_does_not_overwrite_existing_user",
+        "test_duplicate_email_returns_409_conflict",
+        "test_session_clean_after_conflict_allows_subsequent_registration"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The session is not rolled back after the IntegrityError, so the next operation on it fails with a pending-rollback error.",
+      "caught_by": [
+        "test_session_clean_after_conflict_allows_subsequent_registration"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Registering an existing email overwrites that user's username and returns 200, so anyone can rename another account.",
+      "caught_by": [
+        "test_duplicate_email_does_not_overwrite_existing_user",
+        "test_duplicate_email_returns_409_conflict",
+        "test_session_clean_after_conflict_allows_subsequent_registration"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The email column carries no unique constraint, so duplicate registrations succeed and two users share one email.",
+      "caught_by": [
+        "test_duplicate_email_does_not_overwrite_existing_user",
+        "test_duplicate_email_returns_409_conflict",
+        "test_session_clean_after_conflict_allows_subsequent_registration"
+      ]
+    }
+  ]
+}

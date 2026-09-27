@@ -1,0 +1,175 @@
+{
+  "family_id": "94-anthropic-stream-lifecycle",
+  "domain": "python",
+  "area": "anthropic",
+  "capability": "stream-context-and-truncation-handling",
+  "requirement": "Implement an Anthropic message streaming handler that safely manages stream context lifecycle, records text chunks, detects token limit truncation, and handles stream errors.",
+  "skeleton": "AnthropicStreamHandler with collect_stream and stream_text_chunks methods returning StreamSummary dataclass.",
+  "caption": "An Anthropic-style message streaming handler written against an injected client, in the standard library with a frozen dataclass and no third-party imports, that keeps every stream inside its context manager so the connection is always closed. StreamSummary holds the joined text, the stop reason, an is_truncated flag, and the chunk count. collect_stream(model, max_tokens, messages) uses a Claude Sonnet model name by default and max_tokens defaulting to 1024, and raises ValueError reporting that messages must not be empty before opening any stream. It opens client.messages.stream with those arguments in a with block, appends every piece of stream.text_stream to a list, and, while still inside the block, calls get_final_message and reads its stop_reason, falling back to end_turn when it is missing. The summary is truncated only when the stop reason is max_tokens, so a normal end_turn completion is never reported as cut off. The summary is built and returned from inside the block, and leaving the block closes the stream. stream_text_chunks applies the same empty-message check and is a generator that opens the stream in a with block and yields each text chunk, so the stream closes when iteration finishes. The fixture asserts that two chunks produce the text Part 1 Part 2 with stop reason end_turn, not truncated, and a closed stream; that a max_tokens stop reason is reported as truncated; that empty messages raise ValueError for both methods; that the stream is opened with max_tokens 1024 by default; that the chunk count is 2; and that the generator yields A, B, and C and leaves the stream closed.",
+  "plan": {
+    "intent": "Consume a message stream entirely inside its context manager",
+    "target": "Stream handler",
+    "constraints": [
+      "Empty messages raise ValueError before any stream opens",
+      "Text chunks and the final stop reason are read inside the with block",
+      "A missing stop reason falls back to end_turn",
+      "Only a max_tokens stop reason marks the result truncated",
+      "The generator variant closes the stream when iteration ends"
+    ]
+  },
+  "rationale": {
+    "teaches": "Streaming through the messages.stream context manager, reading the final message inside it, flagging max_tokens as truncation, refusing empty messages, and defaulting max_tokens to 1024.",
+    "why": "A stream used outside its context manager still yields text, but its connection is never closed. The fixture uses a fake stream that records enter and exit and reports stop_reason."
+  },
+  "oracle": "fixtures/test_94_anthropic_stream_lifecycle.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "StreamSummary",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "AnthropicStreamHandler",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "collect_stream",
+          "stream_text_chunks"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "StreamSummary",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "AnthropicStreamHandler",
+              "kind": "class",
+              "depends_on": [
+                "StreamSummary"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Consume Anthropic message streams inside their context manager."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Iterator",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from dataclasses import dataclass",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "StreamSummary",
+        "source": "@dataclass(frozen=True)\nclass StreamSummary:\n    \"\"\"Collected text and stop metadata of one finished stream.\"\"\"\n\n    text: str\n    stop_reason: str\n    is_truncated: bool\n    chunk_count: int",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "AnthropicStreamHandler",
+        "source": "class AnthropicStreamHandler:\n    \"\"\"Stream Anthropic messages while keeping each stream's lifetime scoped.\"\"\"\n\n    def __init__(self, client: Any) -> None:\n        self.client = client\n\n    def collect_stream(\n        self,\n        model: str = \"claude-3-5-sonnet-20241022\",\n        max_tokens: int = 1024,\n        messages: list[dict[str, str]] | None = None,\n    ) -> StreamSummary:\n        \"\"\"Drain one stream and summarise its text, stop reason, and truncation.\"\"\"\n        if not messages:\n            raise ValueError(\"messages must not be empty\")\n\n        accumulated: list[str] = []\n        with self.client.messages.stream(\n            model=model,\n            max_tokens=max_tokens,\n            messages=messages,\n        ) as stream:\n            for text_chunk in stream.text_stream:\n                accumulated.append(text_chunk)\n\n            final_message = stream.get_final_message()\n            stop_reason = getattr(final_message, \"stop_reason\", None) or \"end_turn\"\n            is_truncated = stop_reason == \"max_tokens\"\n\n            return StreamSummary(\n                text=\"\".join(accumulated),\n                stop_reason=stop_reason,\n                is_truncated=is_truncated,\n                chunk_count=len(accumulated),\n            )\n\n    def stream_text_chunks(\n        self,\n        model: str = \"claude-3-5-sonnet-20241022\",\n        max_tokens: int = 1024,\n        messages: list[dict[str, str]] | None = None,\n    ) -> Iterator[str]:\n        \"\"\"Yield text chunks while the underlying stream stays open.\"\"\"\n        if not messages:\n            raise ValueError(\"messages must not be empty\")\n\n        with self.client.messages.stream(\n            model=model,\n            max_tokens=max_tokens,\n            messages=messages,\n        ) as stream:\n            yield from stream.text_stream",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The stream is used outside its context manager, so the connection is never closed after the final message.",
+      "caught_by": [
+        "test_stream_context_cleanup_on_completion"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "end_turn is flagged as truncation, so every normal completion is reported as truncated and real truncation is not.",
+      "caught_by": [
+        "test_stream_context_cleanup_on_completion",
+        "test_truncation_detection_on_max_tokens"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Empty message lists are sent to the API, so the error surfaces from the client instead of as a ValueError.",
+      "caught_by": [
+        "test_empty_messages_validation"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "max_tokens defaults to 100, so a normal response is truncated by default.",
+      "caught_by": [
+        "test_default_max_tokens_parameter"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "get_final_message is called after leaving the context, so the stop reason is read from a closed stream.",
+      "caught_by": [
+        "test_default_max_tokens_parameter",
+        "test_final_message_retrieval_sequence",
+        "test_stream_context_cleanup_on_completion",
+        "test_truncation_detection_on_max_tokens"
+      ]
+    }
+  ]
+}

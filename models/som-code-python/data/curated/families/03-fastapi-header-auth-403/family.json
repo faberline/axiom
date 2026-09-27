@@ -1,0 +1,442 @@
+{
+  "family_id": "03-fastapi-header-auth-403",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "header-auth-tenant-isolation",
+  "requirement": "Implement GET /documents/{doc_id} requiring X-Tenant-ID header, scoping documents to matching tenants with 403 Forbidden on tenant mismatch, 404 on missing document, and 422 on missing header.",
+  "skeleton": "FastAPI route with Header dependency and multi-tenant authorization guard.",
+  "caption": "A multi-tenant FastAPI document service with SQLAlchemy persistence in an in-memory SQLite database. Module setup builds the StaticPool engine, sessionmaker, DeclarativeBase, and a Document table with integer id, an indexed non-null tenant_id string, and non-null title and content. seed_database inserts two documents when id 1 is absent: Alpha Strategy owned by tenant-alpha and Beta Plans owned by tenant-beta; reset_db drops, recreates, and reseeds; get_db yields a session per request inside try/finally. The pydantic DocumentOut model returns id, tenant_id, title, and content from ORM attributes. The single GET /documents/{doc_id} route reads a required header through Header with alias X-Tenant-ID, so a request without that header fails validation with 422 before the handler runs. The handler first selects the document by id and raises HTTPException 404 with detail Document not found when nothing matches. Only then does it compare the stored tenant_id with the header value the caller actually sent, raising HTTPException 403 with detail Forbidden: Tenant mismatch on inequality. A matching tenant receives the full document. Existence is decided before ownership, and ownership is decided against the request header, never against a fixed tenant name.",
+  "plan": {
+    "intent": "Serve a document only to the tenant that owns it",
+    "target": "Document",
+    "constraints": [
+      "The X-Tenant-ID header is required and its absence fails validation",
+      "An unknown document id raises HTTPException 404 before ownership is checked",
+      "A document owned by another tenant than the header names raises HTTPException 403",
+      "The owning tenant receives the whole document"
+    ]
+  },
+  "rationale": {
+    "teaches": "Header-based tenant isolation and the status ladder around it: 422 when the header is absent, 404 for a missing document, 403 when the document belongs to another tenant, and a comparison against the caller's header rather than a constant.",
+    "why": "An insecure direct object reference is invisible at the type level; the route still compiles, runs, and returns documents. Only a fixture with two tenants observes the leak, which is exactly what the oracle provides."
+  },
+  "oracle": "fixtures/test_03_fastapi_header_auth_403.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "engine"
+      },
+      {
+        "kind": "assign",
+        "name": "session_factory"
+      },
+      {
+        "kind": "class",
+        "name": "Base",
+        "bases": [
+          "DeclarativeBase"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Document",
+        "bases": [
+          "Base"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "seed_database",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "get_db",
+        "params": []
+      },
+      {
+        "kind": "class",
+        "name": "DocumentOut",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "get_document",
+        "params": [
+          "doc_id",
+          "x_tenant_id",
+          "db"
+        ],
+        "route": "GET /documents/{doc_id}"
+      }
+    ],
+    "imports": [
+      "fastapi",
+      "pydantic",
+      "sqlalchemy"
+    ],
+    "raises": [
+      "HTTPException"
+    ],
+    "status_codes": [
+      403,
+      404
+    ],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "engine",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "session_factory",
+              "kind": "constant",
+              "depends_on": [
+                "engine"
+              ]
+            },
+            {
+              "name": "Base",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Document",
+              "kind": "class",
+              "depends_on": [
+                "Base"
+              ]
+            },
+            {
+              "name": "Base.metadata.create_all",
+              "kind": "statement",
+              "depends_on": [
+                "Base",
+                "engine"
+              ]
+            },
+            {
+              "name": "seed_database",
+              "kind": "function",
+              "depends_on": [
+                "session_factory",
+                "Document"
+              ]
+            },
+            {
+              "name": "seed_database#2",
+              "kind": "statement",
+              "depends_on": [
+                "seed_database"
+              ]
+            },
+            {
+              "name": "reset_db",
+              "kind": "function",
+              "depends_on": [
+                "Base",
+                "engine",
+                "seed_database"
+              ]
+            },
+            {
+              "name": "get_db",
+              "kind": "function",
+              "depends_on": [
+                "session_factory"
+              ]
+            },
+            {
+              "name": "DocumentOut",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "get_document",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "DocumentOut",
+                "get_db",
+                "Document"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Multi-tenant document service that refuses reads across tenants."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Generator",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import Depends, FastAPI, Header, HTTPException, status",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel, ConfigDict",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy import create_engine, select",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.pool import StaticPool",
+        "group": 1
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "engine",
+        "id": "sqlalchemy_memory_engine",
+        "params": {},
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "session_factory",
+        "id": "sqlalchemy_session_factory",
+        "params": {
+          "name": "session_factory"
+        },
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "Base",
+        "id": "sqlalchemy_declarative_base",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "Document",
+        "id": "sqlalchemy_table",
+        "params": {
+          "name": "Document",
+          "doc": "A document owned by exactly one tenant.",
+          "table": "documents",
+          "columns": [
+            {
+              "column": "id",
+              "type": "int",
+              "value": "mapped_column(primary_key=True, index=True, autoincrement=True)"
+            },
+            {
+              "column": "tenant_id",
+              "type": "str",
+              "value": "mapped_column(nullable=False, index=True)"
+            },
+            {
+              "column": "title",
+              "type": "str",
+              "value": "mapped_column(nullable=False)"
+            },
+            {
+              "column": "content",
+              "type": "str",
+              "value": "mapped_column(nullable=False)"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "Base.metadata.create_all",
+        "id": "sqlalchemy_create_all",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "seed_database",
+        "source": "def seed_database() -> None:\n    \"\"\"Insert one document for each of two tenants when the table is empty.\"\"\"\n    db = session_factory()\n    try:\n        if db.scalar(select(Document).where(Document.id == 1)) is None:\n            db.add(\n                Document(\n                    id=1,\n                    tenant_id=\"tenant-alpha\",\n                    title=\"Alpha Strategy\",\n                    content=\"Classified Alpha\",\n                )\n            )\n            db.add(\n                Document(\n                    id=2,\n                    tenant_id=\"tenant-beta\",\n                    title=\"Beta Plans\",\n                    content=\"Classified Beta\",\n                )\n            )\n            db.commit()\n    finally:\n        db.close()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "seed_database#2",
+        "source": "seed_database()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "reset_db",
+        "id": "sqlalchemy_reset_db_seeded",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "get_db",
+        "id": "sqlalchemy_get_db",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "DocumentOut",
+        "id": "pydantic_orm_model",
+        "params": {
+          "name": "DocumentOut",
+          "doc": "Document representation returned to clients.",
+          "fields": [
+            {
+              "field": "id",
+              "declaration": "int"
+            },
+            {
+              "field": "tenant_id",
+              "declaration": "str"
+            },
+            {
+              "field": "title",
+              "declaration": "str"
+            },
+            {
+              "field": "content",
+              "declaration": "str"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "app",
+        "id": "fastapi_app_titled",
+        "params": {
+          "title": "Multi-Tenant Document Service"
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_document",
+        "source": "@app.get(\"/documents/{doc_id}\", response_model=DocumentOut)\ndef get_document(\n    doc_id: int,\n    x_tenant_id: str = Header(..., alias=\"X-Tenant-ID\"),\n    db: Session = Depends(get_db),\n) -> Document:\n    \"\"\"Return a document to its own tenant: 404 when missing, 403 across tenants.\"\"\"\n    stmt = select(Document).where(Document.id == doc_id)\n    doc = db.scalar(stmt)\n    if doc is None:\n        raise HTTPException(\n            status_code=status.HTTP_404_NOT_FOUND,\n            detail=\"Document not found\",\n        )\n    if doc.tenant_id != x_tenant_id:\n        raise HTTPException(\n            status_code=status.HTTP_403_FORBIDDEN,\n            detail=\"Forbidden: Tenant mismatch\",\n        )\n    return doc",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 9,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The tenant check is gone, so any caller presenting any X-Tenant-ID can read every tenant's document.",
+      "caught_by": [
+        "test_access_other_tenant_document_forbidden_403"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The header is optional, so a request with no X-Tenant-ID receives 200 and the document instead of 422.",
+      "caught_by": [
+        "test_missing_tenant_header_rejected_422"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A tenant mismatch answers 401 Unauthorized, telling clients to re-authenticate instead of that access is forbidden.",
+      "caught_by": [
+        "test_access_other_tenant_document_forbidden_403"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "A non-existent document answers 403 instead of 404, so a client cannot tell missing from foreign and existence is decided by the wrong status.",
+      "caught_by": [
+        "test_nonexistent_document_returns_404_even_with_valid_header"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The document's tenant is compared to the literal admin, so other tenants are denied their own documents and admin's documents are readable by anyone.",
+      "caught_by": [
+        "test_access_own_tenant_document_success_200",
+        "test_access_second_tenant_document_success_200"
+      ]
+    }
+  ]
+}

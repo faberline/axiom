@@ -1,0 +1,198 @@
+{
+  "family_id": "74-crypto-predictable-iv-nonce",
+  "domain": "python",
+  "area": "security",
+  "capability": "cryptographic-nonce-generation",
+  "requirement": "Cryptographic initialization vector manager for AES-CBC with Encrypt-then-MAC (HMAC-SHA256), strictly enforcing cryptographically random 16-byte IVs per encryption, constant-time MAC verification, and preventing IV reuse or predictable sequences.",
+  "skeleton": "SecureCBCEncryptor class with encrypt and decrypt methods using cryptography.hazmat.primitives.ciphers and hmac.",
+  "caption": "A cryptography AES-CBC encryptor that pairs an unpredictable random IV per message with Encrypt-then-MAC authentication. BLOCK_SIZE_BYTES is 16 and KEY_SIZE_BYTES is 32. SecureCBCEncryptor takes separate encryption and MAC keys and raises ValueError when either is not exactly 32 bytes. encrypt(plaintext) raises TypeError when the plaintext is not bytes, draws a fresh 16-byte IV from secrets.token_bytes for every call rather than using a counter, a timestamp, a padded short value, or one IV fixed at construction, pads the plaintext with PKCS7 to the 128-bit block size, and encrypts it with AES in CBC mode under that IV. It then computes an HMAC-SHA256 tag over the IV concatenated with the ciphertext and returns the ciphertext, IV, and 32-byte tag. decrypt(ciphertext, iv, mac) raises ValueError when the IV is not exactly 16 bytes, recomputes the tag over IV and ciphertext, and compares it with hmac.compare_digest in constant time, raising ValueError reporting that message authentication failed before any decryption happens, so tampered data never reaches the padding logic. Only after a valid tag does it decrypt and strip the PKCS7 padding. The fixture asserts a 16-byte IV, a 32-byte tag, and a correct round trip, that five encryptions produce five distinct IVs whose values are not consecutive and are not mostly zero bytes, that a flipped tag byte and a flipped ciphertext byte each raise ValueError reporting Message authentication failed, and that wrong encryption and MAC key lengths raise ValueError with their messages.",
+  "plan": {
+    "intent": "Encrypt with AES-CBC using a random IV and encrypt-then-MAC",
+    "target": "SecureCBCEncryptor",
+    "constraints": [
+      "Encryption and MAC keys must be exactly 32 bytes, otherwise ValueError",
+      "Non-bytes plaintext raises TypeError",
+      "Every message gets a fresh random 16-byte IV and PKCS7 padding",
+      "The HMAC-SHA256 tag covers the IV and the ciphertext",
+      "The tag is checked in constant time before any decryption, and a mismatch or wrong IV length raises ValueError"
+    ]
+  },
+  "rationale": {
+    "teaches": "AES-CBC with a fresh random 16-byte IV per message, Encrypt-then-MAC over IV plus ciphertext, constant-time MAC verification before decryption, and IV length validated.",
+    "why": "A predictable IV yields valid ciphertext that decrypts correctly, so a round-trip test passes. The fixture encrypts twice and compares IVs, and tampers with the MAC to check decryption is refused."
+  },
+  "oracle": "fixtures/test_74_crypto_predictable_iv_nonce.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "BLOCK_SIZE_BYTES"
+      },
+      {
+        "kind": "assign",
+        "name": "KEY_SIZE_BYTES"
+      },
+      {
+        "kind": "class",
+        "name": "SecureCBCEncryptor",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "encrypt",
+          "decrypt"
+        ]
+      }
+    ],
+    "imports": [
+      "cryptography"
+    ],
+    "raises": [
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "BLOCK_SIZE_BYTES",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "KEY_SIZE_BYTES",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "SecureCBCEncryptor",
+              "kind": "class",
+              "depends_on": [
+                "KEY_SIZE_BYTES",
+                "BLOCK_SIZE_BYTES"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Encrypt with AES-CBC under a random IV, then authenticate with HMAC-SHA256."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import hmac",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import secrets",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from cryptography.hazmat.primitives import padding",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "BLOCK_SIZE_BYTES",
+        "source": "BLOCK_SIZE_BYTES = 16",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "KEY_SIZE_BYTES",
+        "source": "KEY_SIZE_BYTES = 32",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SecureCBCEncryptor",
+        "source": "class SecureCBCEncryptor:\n    \"\"\"AES-CBC encryptor with unique random IVs and Encrypt-then-MAC authentication.\"\"\"\n\n    def __init__(self, enc_key: bytes, mac_key: bytes) -> None:\n        if len(enc_key) != KEY_SIZE_BYTES:\n            raise ValueError(f\"Encryption key must be {KEY_SIZE_BYTES} bytes\")\n        if len(mac_key) != KEY_SIZE_BYTES:\n            raise ValueError(f\"MAC key must be {KEY_SIZE_BYTES} bytes\")\n        self._enc_key = enc_key\n        self._mac_key = mac_key\n\n    def encrypt(self, plaintext: bytes) -> tuple[bytes, bytes, bytes]:\n        \"\"\"Pad and encrypt plaintext, returning the ciphertext, IV, and MAC.\"\"\"\n        if not isinstance(plaintext, bytes):\n            raise TypeError(\"Plaintext must be bytes\")\n        iv = secrets.token_bytes(BLOCK_SIZE_BYTES)\n        padder = padding.PKCS7(128).padder()\n        padded_data = padder.update(plaintext) + padder.finalize()\n\n        cipher = Cipher(algorithms.AES(self._enc_key), modes.CBC(iv))\n        encryptor = cipher.encryptor()\n        ciphertext = encryptor.update(padded_data) + encryptor.finalize()\n\n        mac = hmac.new(self._mac_key, iv + ciphertext, \"sha256\").digest()\n        return ciphertext, iv, mac\n\n    def decrypt(self, ciphertext: bytes, iv: bytes, mac: bytes) -> bytes:\n        \"\"\"Verify the MAC in constant time, then decrypt and unpad.\"\"\"\n        if len(iv) != BLOCK_SIZE_BYTES:\n            raise ValueError(f\"IV must be exactly {BLOCK_SIZE_BYTES} bytes\")\n        expected_mac = hmac.new(self._mac_key, iv + ciphertext, \"sha256\").digest()\n        if not hmac.compare_digest(mac, expected_mac):\n            raise ValueError(\"Message authentication failed: invalid MAC\")\n\n        cipher = Cipher(algorithms.AES(self._enc_key), modes.CBC(iv))\n        decryptor = cipher.decryptor()\n        padded_data = decryptor.update(ciphertext) + decryptor.finalize()\n\n        unpadder = padding.PKCS7(128).unpadder()\n        return unpadder.update(padded_data) + unpadder.finalize()",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The IV is a counter, so an attacker who sees one IV predicts every later one.",
+      "caught_by": [
+        "test_iv_uniqueness_and_non_predictability"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The IV is the current timestamp, so two messages in the same second share an IV and IVs are guessable.",
+      "caught_by": [
+        "test_iv_uniqueness_and_non_predictability"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "One IV is generated at construction and reused, so every message from the instance shares it.",
+      "caught_by": [
+        "test_iv_uniqueness_and_non_predictability"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The MAC check is skipped, so a tampered ciphertext decrypts to garbage without an error.",
+      "caught_by": [
+        "test_tampered_ciphertext_fails_mac",
+        "test_tampered_mac_rejected"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The IV is 8 random bytes zero-padded to 16, so half of each IV is constant.",
+      "caught_by": [
+        "test_roundtrip_cbc_encryption",
+        "test_tampered_ciphertext_fails_mac",
+        "test_tampered_mac_rejected"
+      ]
+    }
+  ]
+}

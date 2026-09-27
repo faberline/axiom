@@ -1,0 +1,372 @@
+{
+  "family_id": "123-fastapi-etag-conditional-get",
+  "domain": "python",
+  "area": "fastapi",
+  "capability": "etag-if-none-match-304",
+  "requirement": "Serve articles with a quoted content-derived ETag and Cache-Control no-cache, answer 304 with an empty body and the same ETag when If-None-Match lists the current tag, a wildcard or its weak form, and change the tag when the article is replaced.",
+  "skeleton": "Article model with a seeded ARTICLES dict and reset_db, etag_for hashing the sorted JSON dump, matches parsing a comma-separated If-None-Match header, a GET handler returning either a 304 Response or the article with headers, and a PUT handler replacing content.",
+  "caption": "Conditional GET with ETags in FastAPI. Article is a pydantic model with id, title and body; ARTICLES holds one seeded article and reset_db restores it. etag_for(article) serializes model_dump with json.dumps and sort_keys, hashes it with hashlib.sha256 and returns the first sixteen hex characters wrapped in double quotes, so any content change changes the tag. matches(header, tag) returns False for a missing header and otherwise splits it on commas, strips each entry and matches the wildcard, the exact quoted tag, or the weak form prefixed with W/. GET /articles/{article_id} reads the If-None-Match header, raises HTTPException 404 for an unknown article, and when the header matches returns a bare Response with status 304 carrying ETag and Cache-Control no-cache headers; otherwise it sets the same headers on the injected response and returns the article through response_model. PUT /articles/{article_id} replaces an existing article, keeping its id. The fixture asserts an 18-character quoted ETag and no-cache on a 200 and 404 for an unknown id, a 304 with empty body and the same tag, that a list, a wildcard and a weak tag all give 304 while another tag gives 200, and that after a PUT the old tag gets 200 with a new tag.",
+  "plan": {
+    "intent": "Let clients skip downloading articles they already have",
+    "target": "conditional article reads",
+    "constraints": [
+      "ETags are quoted and derived from the whole article content",
+      "If-None-Match may list several tags, a wildcard or weak tags",
+      "A match answers 304 with no body but still sends the ETag",
+      "Every read sends Cache-Control no-cache",
+      "Unknown articles raise HTTPException with 404"
+    ]
+  },
+  "rationale": {
+    "teaches": "Returning a bare Response for 304 from a handler with a response_model, content-hash ETags, and RFC-style If-None-Match list parsing.",
+    "why": "ETag code that hashes only the id, compares the raw header string, or drops the tag from 304 appears to work for the simplest request and breaks caches in practice, so the fixture probes lists, weak tags and updates."
+  },
+  "oracle": "fixtures/test_123_fastapi_etag_conditional_get.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Article",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "ARTICLES"
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "function",
+        "name": "etag_for",
+        "params": [
+          "article"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "matches",
+        "params": [
+          "header",
+          "tag"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "_lookup",
+        "params": [
+          "article_id"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "read_article",
+        "params": [
+          "article_id",
+          "response",
+          "if_none_match"
+        ],
+        "route": "GET /articles/{article_id}"
+      },
+      {
+        "kind": "function",
+        "name": "replace_article",
+        "params": [
+          "article_id",
+          "body"
+        ],
+        "route": "PUT /articles/{article_id}"
+      }
+    ],
+    "imports": [
+      "fastapi",
+      "pydantic"
+    ],
+    "raises": [
+      "HTTPException"
+    ],
+    "status_codes": [
+      304
+    ],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Article",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "ARTICLES",
+              "kind": "constant",
+              "depends_on": [
+                "Article"
+              ]
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "reset_db",
+              "kind": "function",
+              "depends_on": [
+                "ARTICLES",
+                "Article"
+              ]
+            },
+            {
+              "name": "reset_db#2",
+              "kind": "statement",
+              "depends_on": [
+                "reset_db"
+              ]
+            },
+            {
+              "name": "etag_for",
+              "kind": "function",
+              "depends_on": [
+                "Article"
+              ]
+            },
+            {
+              "name": "matches",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "_lookup",
+              "kind": "function",
+              "depends_on": [
+                "Article",
+                "ARTICLES"
+              ]
+            },
+            {
+              "name": "read_article",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "Article",
+                "_lookup",
+                "etag_for",
+                "matches"
+              ]
+            },
+            {
+              "name": "replace_article",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "Article",
+                "_lookup",
+                "ARTICLES"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Article API that supports conditional GET with strong ETags."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import hashlib",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import json",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Annotated",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import FastAPI, Header, HTTPException, Response, status",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel",
+        "group": 1
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "Article",
+        "id": "pydantic_model",
+        "params": {
+          "name": "Article",
+          "doc": "A published article.",
+          "fields": [
+            {
+              "field": "id",
+              "declaration": "int"
+            },
+            {
+              "field": "title",
+              "declaration": "str"
+            },
+            {
+              "field": "body",
+              "declaration": "str"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ARTICLES",
+        "source": "ARTICLES: dict[int, Article] = {}",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "app",
+        "id": "fastapi_app_titled",
+        "params": {
+          "title": "Articles"
+        },
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db",
+        "source": "def reset_db() -> None:\n    \"\"\"Restore the single seeded article.\"\"\"\n    ARTICLES.clear()\n    ARTICLES[1] = Article(id=1, title=\"Hello\", body=\"First post\")",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db#2",
+        "source": "reset_db()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "etag_for",
+        "source": "def etag_for(article: Article) -> str:\n    \"\"\"Return a quoted tag derived from the article's full content.\"\"\"\n    payload = json.dumps(article.model_dump(), sort_keys=True).encode()\n    return f'\"{hashlib.sha256(payload).hexdigest()[:16]}\"'",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "matches",
+        "source": "def matches(header: str | None, tag: str) -> bool:\n    \"\"\"Return whether an If-None-Match header selects the current tag.\"\"\"\n    if header is None:\n        return False\n    candidates = [part.strip() for part in header.split(\",\")]\n    return \"*\" in candidates or tag in candidates or f\"W/{tag}\" in candidates",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_lookup",
+        "source": "def _lookup(article_id: int) -> Article:\n    article = ARTICLES.get(article_id)\n    if article is None:\n        raise HTTPException(status.HTTP_404_NOT_FOUND, \"article not found\")\n    return article",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "read_article",
+        "source": "@app.get(\"/articles/{article_id}\", response_model=Article)\ndef read_article(\n    article_id: int,\n    response: Response,\n    if_none_match: Annotated[str | None, Header()] = None,\n) -> Article | Response:\n    \"\"\"Return the article, or 304 when the client already holds this version.\"\"\"\n    article = _lookup(article_id)\n    tag = etag_for(article)\n    headers = {\"ETag\": tag, \"Cache-Control\": \"no-cache\"}\n    if matches(if_none_match, tag):\n        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=headers)\n    response.headers.update(headers)\n    return article",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "replace_article",
+        "source": "@app.put(\"/articles/{article_id}\", response_model=Article)\ndef replace_article(article_id: int, body: Article) -> Article:\n    \"\"\"Replace an existing article's content.\"\"\"\n    _lookup(article_id)\n    ARTICLES[article_id] = body.model_copy(update={\"id\": article_id})\n    return ARTICLES[article_id]",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 2,
+      "literal_blocks": 8
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "The tag is sent without surrounding quotes, which is not a valid entity tag.",
+      "caught_by": [
+        "test_get_sends_a_quoted_etag"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The header must equal the tag exactly, so lists, wildcards and weak tags never match.",
+      "caught_by": [
+        "test_lists_wildcards_and_weak_tags_match"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The tag hashes only the id, so edits keep the old tag and stale copies get 304.",
+      "caught_by": [
+        "test_update_changes_the_tag"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The 304 response omits the ETag and Cache-Control headers.",
+      "caught_by": [
+        "test_matching_tag_returns_304_with_the_tag"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Weak W/ tags are not recognised, so revalidation with a weak tag downloads again.",
+      "caught_by": [
+        "test_lists_wildcards_and_weak_tags_match"
+      ]
+    }
+  ]
+}

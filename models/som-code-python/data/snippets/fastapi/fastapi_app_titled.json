@@ -1,0 +1,8 @@
+{
+  "id": "fastapi_app_titled",
+  "description": "The application object with a title for its OpenAPI document.",
+  "imports": [
+    "from fastapi import FastAPI"
+  ],
+  "template": "app = FastAPI(title=\"{{title}}\")"
+}

@@ -1,0 +1,186 @@
+{
+  "family_id": "75-jwt-algorithm-none-bypass",
+  "domain": "python",
+  "area": "security",
+  "capability": "jwt-algorithm-enforcement",
+  "requirement": "JWT authentication service enforcing strict signature algorithm whitelists, explicitly forbidding and rejecting 'none' algorithm bypass attacks, and validating token signature integrity with secret keys.",
+  "skeleton": "JWTAuthService class with create_token and decode_token methods using PyJWT.",
+  "caption": "A PyJWT authentication service that fixes its signing algorithms on the server and never lets a token choose an unsigned algorithm. FORBIDDEN_ALGORITHMS holds none in its common spellings plus the empty string, and ALLOWED_ALGORITHMS defaults to HS256 alone. JWTAuthService raises ValueError when the secret key is missing or shorter than 16 characters, and raises ValueError reporting the algorithm is forbidden when any entry of the requested whitelist lowercases to a forbidden name, so none cannot be enabled even deliberately. create_token raises TypeError when the payload is not a dictionary and signs it with the first allowed algorithm. decode_token raises ValueError for an empty or non-string token, then calls jwt.decode with the secret, the server's own algorithm list rather than the one in the token header, and signature verification explicitly on. Any PyJWTError, whether from an unsigned token, an algorithm outside the list, or a signature made with another secret, is converted into ValueError reporting an invalid token, chained from the original; there is no fallback that decodes without verification. The fixture asserts that a signed token round-trips with user alice and role admin, that a hand-built token whose header declares alg none and whose signature is empty is rejected as Invalid token, that a token signed with a different secret is rejected the same way, that whitelisting none in either lowercase or capitalised form raises ValueError reporting it is forbidden, and that a short secret raises ValueError.",
+  "plan": {
+    "intent": "Verify JWTs only with server-fixed signing algorithms",
+    "target": "JWTAuthService",
+    "constraints": [
+      "A secret shorter than 16 characters, or any spelling of none in the whitelist, raises ValueError",
+      "A non-dict payload raises TypeError",
+      "Decoding uses the server's algorithm list with signature verification on",
+      "Every PyJWT error, including an unsigned token, becomes ValueError reporting an invalid token",
+      "There is no unverified fallback"
+    ]
+  },
+  "rationale": {
+    "teaches": "JWT decoding with a server-side algorithm whitelist, none rejected at construction, signature verification always on, no unverified fallback, and a secret of at least 16 characters.",
+    "why": "A token with alg=none and an empty signature decodes to a valid-looking payload if any path skips verification. The fixture forges such a token and one with a wrong secret and expects both to be rejected."
+  },
+  "oracle": "fixtures/test_75_jwt_algorithm_none_bypass.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "FORBIDDEN_ALGORITHMS"
+      },
+      {
+        "kind": "assign",
+        "name": "ALLOWED_ALGORITHMS"
+      },
+      {
+        "kind": "class",
+        "name": "JWTAuthService",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "create_token",
+          "decode_token"
+        ]
+      }
+    ],
+    "imports": [
+      "jwt"
+    ],
+    "raises": [
+      "TypeError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "FORBIDDEN_ALGORITHMS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "ALLOWED_ALGORITHMS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "JWTAuthService",
+              "kind": "class",
+              "depends_on": [
+                "ALLOWED_ALGORITHMS",
+                "FORBIDDEN_ALGORITHMS"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Issue and verify HS256 JWTs while refusing the none algorithm."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import jwt",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "FORBIDDEN_ALGORITHMS",
+        "source": "FORBIDDEN_ALGORITHMS = {\"none\", \"None\", \"NONE\", \"\"}",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ALLOWED_ALGORITHMS",
+        "source": "ALLOWED_ALGORITHMS = [\"HS256\"]",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "JWTAuthService",
+        "source": "class JWTAuthService:\n    \"\"\"JWT authentication service strictly enforcing signature algorithm safety.\"\"\"\n\n    def __init__(\n        self, secret_key: str, allowed_algorithms: list[str] | None = None\n    ) -> None:\n        if not secret_key or len(secret_key) < 16:\n            raise ValueError(\"Secret key must be at least 16 characters\")\n        algorithms = allowed_algorithms or ALLOWED_ALGORITHMS\n        for alg in algorithms:\n            if alg.lower() in FORBIDDEN_ALGORITHMS:\n                raise ValueError(f\"Insecure algorithm '{alg}' is forbidden\")\n        self._secret_key = secret_key\n        self._allowed_algorithms = list(algorithms)\n\n    def create_token(self, payload: dict[str, Any]) -> str:\n        \"\"\"Sign payload with the first allowed algorithm.\"\"\"\n        if not isinstance(payload, dict):\n            raise TypeError(\"Payload must be a dictionary\")\n        return jwt.encode(\n            payload, self._secret_key, algorithm=self._allowed_algorithms[0]\n        )\n\n    def decode_token(self, token: str) -> dict[str, Any]:\n        \"\"\"Verify token against the allowed algorithms and return its claims.\"\"\"\n        if not token or not isinstance(token, str):\n            raise ValueError(\"Token must be a non-empty string\")\n        try:\n            return jwt.decode(\n                token,\n                self._secret_key,\n                algorithms=self._allowed_algorithms,\n                options={\"verify_signature\": True},\n            )\n        except jwt.PyJWTError as exc:\n            raise ValueError(f\"Invalid token: {exc}\") from exc",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 3
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Signature verification is disabled and none is whitelisted, so any unsigned token is accepted.",
+      "caught_by": [
+        "test_alg_none_token_rejected",
+        "test_forbidden_none_algorithm_init_rejected",
+        "test_invalid_signature_rejected"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The algorithm is read from the token header, so a client chooses none and bypasses the signature.",
+      "caught_by": [
+        "test_alg_none_token_rejected",
+        "test_forbidden_none_algorithm_init_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The forbidden-algorithm check is dropped, so a caller can whitelist none.",
+      "caught_by": [
+        "test_forbidden_none_algorithm_init_rejected"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "A signature failure falls back to unverified decoding, so a token with a wrong secret is accepted.",
+      "caught_by": [
+        "test_invalid_signature_rejected"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "An empty secret is the default and verification is tied to its truthiness, so the default service verifies nothing.",
+      "caught_by": [
+        "test_short_secret_rejected"
+      ]
+    }
+  ]
+}

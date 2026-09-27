@@ -1,0 +1,592 @@
+{
+  "family_id": "05-sqlalchemy-session-lifecycle",
+  "domain": "python",
+  "area": "sqlalchemy",
+  "capability": "session-lifecycle",
+  "requirement": "FastAPI get_db dependency generator using try...finally: db.close() to ensure SQLAlchemy sessions are always closed after request execution, including on HTTP exceptions and errors.",
+  "skeleton": "FastAPI dependency generator get_db() managing SQLAlchemy Session lifecycle.",
+  "caption": "A FastAPI service instrumented to make the SQLAlchemy session lifecycle observable. The module creates a StaticPool engine over in-memory SQLite, a DeclarativeBase, and an Item table with integer id and non-null name. A SessionMetrics class holds two class-level counters, created and closed, and reset_db drops and recreates the schema while zeroing both. TrackedSession subclasses Session and overrides close to increment the closed counter before delegating to the parent; the sessionmaker is built with class_=TrackedSession. The get_db dependency increments created, opens one session, yields it, and closes it in a finally clause, so teardown runs whether the route returns or raises. The pydantic models are ItemCreate with a name and ItemResponse with id and name from ORM attributes. Routes: GET /session-metrics returns both counters as JSON; POST /items adds, commits, refreshes, and answers 201; GET /items lists every row; GET /error-http raises HTTPException 400 with detail Custom HTTP Error; POST /uncommitted-leak adds an item and then raises HTTPException 400 before any commit, so the pending row is discarded with the session; POST /items-validated raises HTTPException 422 with detail Invalid item name when the name is FAIL_TRIGGER, before adding anything, and otherwise persists and answers 201. Every request gets its own session, and the closed count rises by one after both a successful request and a request that raised.",
+  "plan": {
+    "intent": "Guarantee that every request's database session is closed",
+    "target": "Session lifecycle",
+    "constraints": [
+      "One session is opened per request and closed in a finally clause",
+      "The closed count rises after a successful request and after one that raised HTTPException 400",
+      "A row added before a raised error is never committed",
+      "The validated create raises HTTPException 422 for the trigger name and otherwise answers 201",
+      "Session counters are readable over HTTP"
+    ]
+  },
+  "rationale": {
+    "teaches": "A dependency generator that closes its session on every path: try/finally around the yield, one session per request, no swallowed HTTPException, and validation before commit.",
+    "why": "A session leak never fails the request that caused it; it exhausts the pool later. The fixture observes close calls and exception propagation directly, turning a delayed production failure into an immediate red."
+  },
+  "oracle": "fixtures/test_05_sqlalchemy_session_lifecycle.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "engine"
+      },
+      {
+        "kind": "class",
+        "name": "Base",
+        "bases": [
+          "DeclarativeBase"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Item",
+        "bases": [
+          "Base"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "SessionMetrics",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "reset_db",
+        "params": []
+      },
+      {
+        "kind": "class",
+        "name": "TrackedSession",
+        "bases": [
+          "Session"
+        ],
+        "methods": [
+          "close"
+        ]
+      },
+      {
+        "kind": "assign",
+        "name": "session_factory"
+      },
+      {
+        "kind": "function",
+        "name": "get_db",
+        "params": []
+      },
+      {
+        "kind": "class",
+        "name": "ItemCreate",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ItemResponse",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "assign",
+        "name": "app"
+      },
+      {
+        "kind": "function",
+        "name": "get_session_metrics",
+        "params": [],
+        "route": "GET /session-metrics"
+      },
+      {
+        "kind": "function",
+        "name": "create_item",
+        "params": [
+          "payload",
+          "db"
+        ],
+        "route": "POST /items"
+      },
+      {
+        "kind": "function",
+        "name": "list_items",
+        "params": [
+          "db"
+        ],
+        "route": "GET /items"
+      },
+      {
+        "kind": "function",
+        "name": "trigger_http_error",
+        "params": [
+          "_db"
+        ],
+        "route": "GET /error-http"
+      },
+      {
+        "kind": "function",
+        "name": "uncommitted_leak",
+        "params": [
+          "db"
+        ],
+        "route": "POST /uncommitted-leak"
+      },
+      {
+        "kind": "function",
+        "name": "create_item_validated",
+        "params": [
+          "payload",
+          "db"
+        ],
+        "route": "POST /items-validated"
+      }
+    ],
+    "imports": [
+      "fastapi",
+      "pydantic",
+      "sqlalchemy"
+    ],
+    "raises": [
+      "HTTPException"
+    ],
+    "status_codes": [
+      201,
+      400,
+      422
+    ],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "engine",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "Base",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Item",
+              "kind": "class",
+              "depends_on": [
+                "Base"
+              ]
+            },
+            {
+              "name": "Base.metadata.create_all",
+              "kind": "statement",
+              "depends_on": [
+                "Base",
+                "engine"
+              ]
+            },
+            {
+              "name": "SessionMetrics",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "reset_db",
+              "kind": "function",
+              "depends_on": [
+                "Base",
+                "engine",
+                "SessionMetrics"
+              ]
+            },
+            {
+              "name": "TrackedSession",
+              "kind": "class",
+              "depends_on": [
+                "SessionMetrics"
+              ]
+            },
+            {
+              "name": "session_factory",
+              "kind": "constant",
+              "depends_on": [
+                "TrackedSession",
+                "engine"
+              ]
+            },
+            {
+              "name": "get_db",
+              "kind": "function",
+              "depends_on": [
+                "SessionMetrics",
+                "session_factory"
+              ]
+            },
+            {
+              "name": "ItemCreate",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "ItemResponse",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "app",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "get_session_metrics",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "SessionMetrics"
+              ]
+            },
+            {
+              "name": "create_item",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "ItemResponse",
+                "ItemCreate",
+                "get_db",
+                "Item"
+              ]
+            },
+            {
+              "name": "list_items",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "ItemResponse",
+                "get_db",
+                "Item"
+              ]
+            },
+            {
+              "name": "trigger_http_error",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "get_db"
+              ]
+            },
+            {
+              "name": "uncommitted_leak",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "get_db",
+                "Item"
+              ]
+            },
+            {
+              "name": "create_item_validated",
+              "kind": "route",
+              "depends_on": [
+                "app",
+                "ItemResponse",
+                "ItemCreate",
+                "get_db",
+                "Item"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Item service that counts the sessions it opens and closes, to prove none leak."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Generator",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from fastapi import Depends, FastAPI, HTTPException",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel, ConfigDict",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy import create_engine, select",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.pool import StaticPool",
+        "group": 1
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "engine",
+        "id": "sqlalchemy_memory_engine",
+        "params": {},
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "Base",
+        "id": "sqlalchemy_declarative_base",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "Item",
+        "id": "sqlalchemy_table",
+        "params": {
+          "name": "Item",
+          "doc": "A persisted catalog item.",
+          "table": "items",
+          "columns": [
+            {
+              "column": "id",
+              "type": "int",
+              "value": "mapped_column(primary_key=True, index=True)"
+            },
+            {
+              "column": "name",
+              "type": "str",
+              "value": "mapped_column(nullable=False)"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "Base.metadata.create_all",
+        "id": "sqlalchemy_create_all",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SessionMetrics",
+        "source": "class SessionMetrics:\n    \"\"\"Process-wide counters of sessions opened and closed.\"\"\"\n\n    created: int = 0\n    closed: int = 0",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "reset_db",
+        "source": "def reset_db() -> None:\n    \"\"\"Recreate every table and zero the session counters.\"\"\"\n    Base.metadata.drop_all(bind=engine)\n    Base.metadata.create_all(bind=engine)\n    SessionMetrics.created = 0\n    SessionMetrics.closed = 0",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "TrackedSession",
+        "source": "class TrackedSession(Session):\n    \"\"\"Session that counts every close.\"\"\"\n\n    def close(self) -> None:\n        \"\"\"Count this close, then close the session.\"\"\"\n        SessionMetrics.closed += 1\n        super().close()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "session_factory",
+        "source": "session_factory = sessionmaker(\n    class_=TrackedSession,\n    autocommit=False,\n    autoflush=False,\n    bind=engine,\n)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_db",
+        "source": "def get_db() -> Generator[Session, None, None]:\n    \"\"\"Open one counted session per request and always close it.\"\"\"\n    SessionMetrics.created += 1\n    db = session_factory()\n    try:\n        yield db\n    finally:\n        db.close()",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "ItemCreate",
+        "id": "pydantic_model",
+        "params": {
+          "name": "ItemCreate",
+          "doc": "Payload accepted when creating an item.",
+          "fields": [
+            {
+              "field": "name",
+              "declaration": "str"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "ItemResponse",
+        "id": "pydantic_orm_model",
+        "params": {
+          "name": "ItemResponse",
+          "doc": "Item representation returned to clients.",
+          "fields": [
+            {
+              "field": "id",
+              "declaration": "int"
+            },
+            {
+              "field": "name",
+              "declaration": "str"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "app",
+        "id": "fastapi_app",
+        "params": {},
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "get_session_metrics",
+        "source": "@app.get(\"/session-metrics\")\ndef get_session_metrics() -> dict[str, int]:\n    \"\"\"Report how many sessions were opened and closed.\"\"\"\n    return {\n        \"created\": SessionMetrics.created,\n        \"closed\": SessionMetrics.closed,\n    }",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "create_item",
+        "source": "@app.post(\"/items\", status_code=201, response_model=ItemResponse)\ndef create_item(payload: ItemCreate, db: Session = Depends(get_db)) -> Item:\n    \"\"\"Persist a new item and return it.\"\"\"\n    item = Item(name=payload.name)\n    db.add(item)\n    db.commit()\n    db.refresh(item)\n    return item",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "list_items",
+        "id": "fastapi_list_all",
+        "params": {
+          "path": "/items",
+          "response_model": "ItemResponse",
+          "name": "list_items",
+          "model": "Item",
+          "doc": "Return every item."
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "trigger_http_error",
+        "source": "@app.get(\"/error-http\")\ndef trigger_http_error(_db: Session = Depends(get_db)) -> None:\n    \"\"\"Open a session, then fail with 400 before using it.\"\"\"\n    raise HTTPException(status_code=400, detail=\"Custom HTTP Error\")",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "uncommitted_leak",
+        "source": "@app.post(\"/uncommitted-leak\")\ndef uncommitted_leak(db: Session = Depends(get_db)) -> None:\n    \"\"\"Add an item, then abort with 400 before committing it.\"\"\"\n    item = Item(name=\"Leaked Item\")\n    db.add(item)\n    raise HTTPException(status_code=400, detail=\"Aborted before commit\")",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "create_item_validated",
+        "source": "@app.post(\"/items-validated\", status_code=201, response_model=ItemResponse)\ndef create_item_validated(payload: ItemCreate, db: Session = Depends(get_db)) -> Item:\n    \"\"\"Refuse a reserved name with 422 before touching the session.\"\"\"\n    if payload.name == \"FAIL_TRIGGER\":\n        raise HTTPException(status_code=422, detail=\"Invalid item name\")\n    item = Item(name=payload.name)\n    db.add(item)\n    db.commit()\n    db.refresh(item)\n    return item",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 8,
+      "literal_blocks": 10
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "When the route raises, the statement after the yield never runs and the session is left open.",
+      "caught_by": [
+        "test_session_closed_on_http_exception"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "get_db returns the session instead of yielding it, so FastAPI never runs teardown and close is never called.",
+      "caught_by": [
+        "test_session_closed_on_http_exception",
+        "test_session_closed_on_success"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "shared_default_factory",
+      "why_wrong": "One module-level session is shared by every request, so state and failed transactions bleed across requests.",
+      "caught_by": [
+        "test_session_closed_on_http_exception",
+        "test_session_closed_on_success",
+        "test_session_isolation_discards_uncommitted_state",
+        "test_validation_failure_prevents_persistence"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "An HTTPException raised by the route is swallowed inside the dependency, so the client never sees the intended status.",
+      "caught_by": [
+        "test_http_exception_propagates_correct_status_code",
+        "test_session_closed_on_http_exception",
+        "test_session_isolation_discards_uncommitted_state",
+        "test_validation_failure_prevents_persistence"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The invalid item is committed before the validation error is raised, so the database keeps a row the client was told was rejected.",
+      "caught_by": [
+        "test_validation_failure_prevents_persistence"
+      ]
+    }
+  ]
+}

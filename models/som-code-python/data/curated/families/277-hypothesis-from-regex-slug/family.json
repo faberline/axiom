@@ -1,0 +1,272 @@
+{
+  "family_id": "277-hypothesis-from-regex-slug",
+  "domain": "python",
+  "area": "hypothesis",
+  "capability": "hypothesis-from-regex-slug",
+  "requirement": "Generate and validate URL slugs, using Hypothesis st.from_regex with fullmatch so the strategy only yields strings that the validator accepts.",
+  "skeleton": "A SlugError, an NFKD-folding slugify with safe truncation, a fullmatch-based is_slug, and a slugs strategy built from the same regex.",
+  "caption": "URL slug helpers with a Hypothesis strategy, using re, unicodedata and hypothesis strategies. SlugError is a ValueError subclass. slugify folds accents with NFKD normalization, drops non-ASCII, lowercases, joins runs of other characters with single dashes, strips edge dashes, truncates to MAX_LEN and strips a dash left by truncation, raising SlugError when nothing remains. is_slug requires a fullmatch of the slug pattern within MAX_LEN, and slugs builds valid slugs with st.from_regex using fullmatch=True filtered by length. The fixture asserts, with derandomized settings, generated slugs are valid fixed points, slugify output is always a slug, accent folding, truncation without a trailing dash, SlugError cases and malformed slug rejection.",
+  "plan": {
+    "intent": "Build URL slugs for blog posts",
+    "target": "regex-derived strategy",
+    "constraints": [
+      "slugify raises SlugError when no slug characters remain",
+      "Accents fold to ASCII through NFKD normalization",
+      "Truncation to MAX_LEN never leaves a trailing dash",
+      "is_slug matches the whole text, not a prefix",
+      "slugs uses st.from_regex with fullmatch=True"
+    ]
+  },
+  "rationale": {
+    "teaches": "Derive the strategy and the validator from one regex and require whole-string matches in both.",
+    "why": "from_regex without fullmatch and re.match both accept strings that only start with a valid slug, so invalid URLs slip through."
+  },
+  "oracle": "fixtures/test_277_hypothesis_from_regex_slug.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "SLUG_PATTERN"
+      },
+      {
+        "kind": "assign",
+        "name": "SLUG_RE"
+      },
+      {
+        "kind": "assign",
+        "name": "MAX_LEN"
+      },
+      {
+        "kind": "class",
+        "name": "SlugError",
+        "bases": [
+          "ValueError"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "slugify",
+        "params": [
+          "title"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "is_slug",
+        "params": [
+          "text"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "slugs",
+        "params": []
+      }
+    ],
+    "imports": [
+      "hypothesis"
+    ],
+    "raises": [
+      "SlugError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "SLUG_PATTERN",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "SLUG_RE",
+              "kind": "constant",
+              "depends_on": [
+                "SLUG_PATTERN"
+              ]
+            },
+            {
+              "name": "MAX_LEN",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "SlugError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "slugify",
+              "kind": "function",
+              "depends_on": [
+                "MAX_LEN",
+                "SlugError"
+              ]
+            },
+            {
+              "name": "is_slug",
+              "kind": "function",
+              "depends_on": [
+                "MAX_LEN",
+                "SLUG_RE"
+              ]
+            },
+            {
+              "name": "slugs",
+              "kind": "function",
+              "depends_on": [
+                "SLUG_PATTERN",
+                "MAX_LEN"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "URL slugs with a validator and a Hypothesis from_regex strategy."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import re",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import unicodedata",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from hypothesis import strategies as st",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SLUG_PATTERN",
+        "source": "SLUG_PATTERN = r\"[a-z0-9]+(?:-[a-z0-9]+)*\"",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SLUG_RE",
+        "source": "SLUG_RE = re.compile(SLUG_PATTERN)",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MAX_LEN",
+        "source": "MAX_LEN = 40",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SlugError",
+        "source": "class SlugError(ValueError):\n    \"\"\"Raised when a title has no characters usable in a slug.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "slugify",
+        "source": "def slugify(title: str) -> str:\n    \"\"\"Return a lowercase ASCII slug of at most MAX_LEN characters.\"\"\"\n    folded = unicodedata.normalize(\"NFKD\", title)\n    ascii_title = folded.encode(\"ascii\", \"ignore\").decode(\"ascii\")\n    slug = re.sub(r\"[^a-z0-9]+\", \"-\", ascii_title.lower()).strip(\"-\")\n    slug = slug[:MAX_LEN].rstrip(\"-\")\n    if not slug:\n        raise SlugError(f\"cannot build a slug from {title!r}\")\n    return slug",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "is_slug",
+        "source": "def is_slug(text: str) -> bool:\n    \"\"\"Return whether the whole text is a valid slug within MAX_LEN.\"\"\"\n    return len(text) <= MAX_LEN and SLUG_RE.fullmatch(text) is not None",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "slugs",
+        "source": "def slugs() -> st.SearchStrategy[str]:\n    \"\"\"Return a strategy producing only valid slugs.\"\"\"\n    return st.from_regex(SLUG_PATTERN, fullmatch=True).filter(\n        lambda text: len(text) <= MAX_LEN\n    )",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 7
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Generated slugs carry arbitrary junk around the matching part.",
+      "caught_by": [
+        "test_generated_slugs_are_valid_and_fixed_points"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A long title truncated at a separator ends with a dash.",
+      "caught_by": [
+        "test_truncation_never_leaves_a_trailing_dash"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Text that merely begins with a slug, like a--b, is accepted.",
+      "caught_by": [
+        "test_is_slug_rejects_malformed_text"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Accented letters are dropped instead of folded, so Crème becomes crme.",
+      "caught_by": [
+        "test_accents_and_punctuation_are_folded"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Punctuation-only titles produce an empty slug instead of an error.",
+      "caught_by": [
+        "test_slugify_output_is_always_a_slug",
+        "test_titles_without_slug_characters_raise"
+      ]
+    }
+  ]
+}

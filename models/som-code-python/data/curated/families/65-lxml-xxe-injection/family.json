@@ -1,0 +1,144 @@
+{
+  "family_id": "65-lxml-xxe-injection",
+  "domain": "python",
+  "area": "lxml",
+  "capability": "secure-xml-parsing-xxe",
+  "requirement": "Implement SecureXmlParser wrapping lxml.etree.XMLParser with strict XXE protection: resolve_entities=False, no_network=True, and load_dtd=False. Constructor must validate security parameters, reject unsafe entity resolution, and safely parse untrusted XML strings and streams into DOM elements and flat dictionaries.",
+  "skeleton": "SecureXmlParser class with __init__, parse_string, and extract_flat_dict using lxml.etree.",
+  "caption": "An lxml XML parser wrapper hardened against external entity attacks, so untrusted documents cannot read local files or reach the network through entity expansion. SecureXmlParser takes resolve_entities defaulting to False, no_network defaulting to True, and load_dtd defaulting to False. The constructor raises ValueError when resolve_entities is True and when no_network is False, so an unsafe configuration cannot even be built, and it creates a single etree.XMLParser with entity resolution off, network access off, and DTD loading off, keeping the flags as attributes. parse_string raises ValueError when the input is empty or whitespace only, encodes a str to UTF-8 bytes, and passes the data to etree.fromstring together with the hardened parser instance, never the library default parser. extract_flat_dict parses the document and returns a mapping from each immediate child tag to its stripped text, using an empty string for elements without text. The fixture feeds a document whose DOCTYPE declares an external entity pointing at a local file and asserts that the name field is still Alice while the data field does not contain the expanded file contents, asserts the three stored flags, patches fromstring to confirm it is called exactly once with the parser's own instance, asserts that enabling entity resolution or disabling the network guard raises ValueError naming the flag, parses a benign document into name Bob and role Admin, and asserts that empty and blank input raise ValueError mentioning empty.",
+  "plan": {
+    "intent": "Parse untrusted XML without resolving external entities",
+    "target": "SecureXmlParser",
+    "constraints": [
+      "Enabling entity resolution or network access raises ValueError",
+      "One hardened parser with entities, network, and DTD loading off is built and reused",
+      "Every parse passes that parser explicitly, never the library default",
+      "Empty or blank input raises ValueError",
+      "An external entity is left unexpanded and child tags map to their stripped text"
+    ]
+  },
+  "rationale": {
+    "teaches": "An lxml parser hardened against XXE: resolve_entities False, no_network True, load_dtd False, enforced in the constructor, used on every parse, with an empty-input check.",
+    "why": "XXE protection is a parser flag that every benign document ignores. The fixture parses a document with an external entity pointing at a local file and expects the entity to stay unresolved."
+  },
+  "oracle": "fixtures/test_65_lxml_xxe_injection.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "SecureXmlParser",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "parse_string",
+          "extract_flat_dict"
+        ]
+      }
+    ],
+    "imports": [
+      "lxml"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "SecureXmlParser",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Secure XML parser preventing XML External Entity (XXE) vulnerabilities."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from lxml import etree",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SecureXmlParser",
+        "source": "class SecureXmlParser:\n    \"\"\"Wraps lxml.etree to safely parse untrusted XML with XXE protections.\"\"\"\n\n    def __init__(\n        self,\n        resolve_entities: bool = False,\n        no_network: bool = True,\n        load_dtd: bool = False,\n    ) -> None:\n        if resolve_entities:\n            raise ValueError(\"resolve_entities must be False to prevent XXE attacks\")\n        if not no_network:\n            raise ValueError(\n                \"no_network must be True to prevent network entity expansion\"\n            )\n\n        self.resolve_entities = resolve_entities\n        self.no_network = no_network\n        self.load_dtd = load_dtd\n        self._parser = etree.XMLParser(\n            resolve_entities=False,\n            no_network=no_network,\n            load_dtd=load_dtd,\n        )\n\n    def parse_string(self, xml_content: str | bytes) -> etree._Element:\n        \"\"\"Parse XML string or bytes safely using the hardened parser.\"\"\"\n        if not xml_content or (\n            isinstance(xml_content, str) and not xml_content.strip()\n        ):\n            raise ValueError(\"xml_content cannot be empty\")\n        data = (\n            xml_content.encode(\"utf-8\") if isinstance(xml_content, str) else xml_content\n        )\n        return etree.fromstring(data, parser=self._parser)\n\n    def extract_flat_dict(self, xml_content: str | bytes) -> dict[str, str]:\n        \"\"\"Parse XML and extract immediate child tag text as a dictionary.\"\"\"\n        root = self.parse_string(xml_content)\n        return {child.tag: (child.text or \"\").strip() for child in root}",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "resolve_entities defaults to True and the guard is inverted, so external entities are expanded and a crafted document reads local files.",
+      "caught_by": [
+        "test_parser_configuration_flags",
+        "test_reject_unsafe_resolve_entities",
+        "test_xxe_entity_expansion_blocked"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "fromstring is called without the hardened parser, so the default parser resolves entities.",
+      "caught_by": [
+        "test_uses_hardened_parser_instance",
+        "test_xxe_entity_expansion_blocked"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The guard is inverted, so resolve_entities=True is accepted silently.",
+      "caught_by": [
+        "test_reject_unsafe_resolve_entities"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The guard is inverted, so no_network=False is accepted silently.",
+      "caught_by": [
+        "test_reject_unsafe_no_network"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The empty-input check is replaced by a size check, so an empty string reaches the parser and raises XMLSyntaxError instead of ValueError.",
+      "caught_by": [
+        "test_empty_input_validation"
+      ]
+    }
+  ]
+}

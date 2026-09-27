@@ -1,0 +1,153 @@
+{
+  "family_id": "96-fastmcp-tool-schema-validator",
+  "domain": "python",
+  "area": "fastmcp",
+  "capability": "strict-tool-schema-generation-and-validation",
+  "requirement": "Implement a FastMCP tool schema validator that inspects Python function signatures and type hints, generates strict JSON Schemas with additionalProperties=False, maps types including arrays, and validates schema compliance.",
+  "skeleton": "FastMCPToolSchemaValidator with generate_schema_for_function and validate_schema methods.",
+  "caption": "A standard-library tool schema generator and checker for MCP-style function tools, built on inspect and typing introspection with no third-party imports, that emits strict JSON Schemas by default. TYPE_MAP translates str, int, float, and bool to string, integer, number, and boolean. FastMCPToolSchemaValidator takes strict_mode defaulting to True. Its parameter resolver turns a list annotation into an array schema whose items schema is resolved recursively from the element type, defaulting to string, maps known scalar types through the table, and falls back to string. generate_schema_for_function reads the function's signature and resolved type hints, skips self and cls, and builds one property per parameter; in strict mode every parameter is listed as required, and otherwise only parameters without a default are. The parameters schema has type object, never dict, with the properties and required list, and in strict mode additionalProperties is set to False so unknown keys are refused. The result is a function tool entry carrying the function's name, its docstring as description, the parameters schema, and the strict flag. validate_schema collects errors when the parameters type is not object, when strict mode lacks additionalProperties set to False, when strict mode leaves any property out of required, when a property has no explicit type, and when an array property has no items schema, and returns whether the list is empty together with the errors. The fixture asserts that a strict schema has additionalProperties False and validates, that a list of strings parameter becomes an array with string items, that strict mode is the default, that query, limit, tags, and is_active are all required, that the parameters type is object, and that a malformed schema is invalid with at least three errors.",
+  "plan": {
+    "intent": "Generate and check strict JSON Schemas for tool functions",
+    "target": "FastMCPToolSchemaValidator",
+    "constraints": [
+      "Parameters map to JSON types and lists become arrays with an items schema",
+      "Strict mode is the default, requires every parameter, and sets additionalProperties to false",
+      "The parameters schema type is object",
+      "Validation reports every structural error instead of stopping at the first",
+      "self and cls are skipped"
+    ]
+  },
+  "rationale": {
+    "teaches": "A schema generator that emits type object with additionalProperties false in strict mode, resolves list item types, marks parameters without defaults as required, and defaults to strict.",
+    "why": "A schema missing additionalProperties false accepts every payload, and a bare array type accepts any items. The fixture validates a payload with an extra key and a wrongly typed list against the generated schema."
+  },
+  "oracle": "fixtures/test_96_fastmcp_tool_schema_validator.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "FastMCPToolSchemaValidator",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "_resolve_param_schema",
+          "generate_schema_for_function",
+          "validate_schema"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "FastMCPToolSchemaValidator",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Generate strict tool schemas from function signatures and validate them."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import inspect",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Callable",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any, ClassVar, get_args, get_origin, get_type_hints",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "FastMCPToolSchemaValidator",
+        "source": "class FastMCPToolSchemaValidator:\n    \"\"\"Build and check JSON tool schemas, optionally in strict mode.\"\"\"\n\n    TYPE_MAP: ClassVar[dict[type, str]] = {\n        str: \"string\",\n        int: \"integer\",\n        float: \"number\",\n        bool: \"boolean\",\n    }\n\n    def __init__(self, strict_mode: bool = True) -> None:\n        self.strict_mode = strict_mode\n\n    def _resolve_param_schema(self, py_type: Any) -> dict[str, Any]:\n        \"\"\"Map a Python type hint to its JSON schema, defaulting to string.\"\"\"\n        origin = get_origin(py_type)\n        if origin is list:\n            args = get_args(py_type)\n            item_type = args[0] if args else str\n            item_schema = self._resolve_param_schema(item_type)\n            return {\"type\": \"array\", \"items\": item_schema}\n\n        if py_type in self.TYPE_MAP:\n            return {\"type\": self.TYPE_MAP[py_type]}\n\n        return {\"type\": \"string\"}\n\n    def generate_schema_for_function(self, func: Callable[..., Any]) -> dict[str, Any]:\n        \"\"\"Return a function-calling schema for func's signature and docstring.\"\"\"\n        sig = inspect.signature(func)\n        type_hints = get_type_hints(func)\n\n        properties: dict[str, Any] = {}\n        required: list[str] = []\n\n        for param_name, param in sig.parameters.items():\n            if param_name in (\"self\", \"cls\"):\n                continue\n\n            param_type = type_hints.get(param_name, str)\n            properties[param_name] = self._resolve_param_schema(param_type)\n\n            if self.strict_mode or param.default is inspect.Parameter.empty:\n                required.append(param_name)\n\n        parameters_schema: dict[str, Any] = {\n            \"type\": \"object\",\n            \"properties\": properties,\n            \"required\": required,\n        }\n\n        if self.strict_mode:\n            parameters_schema[\"additionalProperties\"] = False\n\n        return {\n            \"type\": \"function\",\n            \"function\": {\n                \"name\": func.__name__,\n                \"description\": inspect.getdoc(func) or \"\",\n                \"parameters\": parameters_schema,\n                \"strict\": self.strict_mode,\n            },\n        }\n\n    def validate_schema(self, schema: dict[str, Any]) -> tuple[bool, list[str]]:\n        \"\"\"Return whether schema is valid, with every problem found.\"\"\"\n        errors: list[str] = []\n        func_schema = schema.get(\"function\", {})\n        params = func_schema.get(\"parameters\", {})\n\n        if params.get(\"type\") != \"object\":\n            errors.append(\"Top-level parameters must have type 'object'\")\n\n        if self.strict_mode and params.get(\"additionalProperties\") is not False:\n            errors.append(\"Strict schemas must set additionalProperties to false\")\n\n        props = params.get(\"properties\", {})\n        req = params.get(\"required\", [])\n\n        if self.strict_mode:\n            missing_req = set(props.keys()) - set(req)\n            if missing_req:\n                errors.append(\n                    \"Strict mode requires all properties in 'required', missing: \"\n                    f\"{missing_req}\"\n                )\n\n        for p_name, p_schema in props.items():\n            if \"type\" not in p_schema:\n                errors.append(f\"Property '{p_name}' missing explicit type\")\n            if p_schema.get(\"type\") == \"array\" and \"items\" not in p_schema:\n                errors.append(f\"Array property '{p_name}' missing 'items' schema\")\n\n        return (len(errors) == 0, errors)",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "additionalProperties is never set, so a payload with unknown keys validates.",
+      "caught_by": [
+        "test_strict_schema_has_additional_properties_false"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "List parameters emit a bare array schema, so a list of the wrong item type validates.",
+      "caught_by": [
+        "test_array_parameter_includes_items_schema",
+        "test_strict_schema_has_additional_properties_false"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "strict_mode defaults to False, so the default generator accepts unknown keys.",
+      "caught_by": [
+        "test_default_strict_mode_is_true"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The required list is built only in strict mode by the wrong condition, so optional parameters are marked required and required ones are not.",
+      "caught_by": [
+        "test_strict_mode_requires_all_parameters",
+        "test_strict_schema_has_additional_properties_false"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The root type is dict instead of object, so the schema is invalid JSON Schema.",
+      "caught_by": [
+        "test_strict_schema_has_additional_properties_false",
+        "test_top_level_parameters_type_is_object"
+      ]
+    }
+  ]
+}

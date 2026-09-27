@@ -1,0 +1,152 @@
+{
+  "family_id": "48-sklearn-imbalanced-metric-target-encoding",
+  "domain": "python",
+  "area": "scikit-learn",
+  "capability": "imbalanced-metric-target-encoding",
+  "requirement": "Implement ImbalancedClassificationEvaluator class that computes balanced evaluation metrics (balanced accuracy, precision, recall, F1, and ROC-AUC), enforces binary label validation, ensures minority class sample quotas, and suppresses misleading raw accuracy when class imbalance exceeds a safety threshold.",
+  "skeleton": "ImbalancedClassificationEvaluator class with threshold_probabilities and evaluate methods returning metric dictionaries.",
+  "caption": "A scikit-learn evaluator for binary classifiers on heavily imbalanced data. ImbalancedClassificationEvaluator takes pos_label defaulting to 1, min_minority defaulting to 5, and imbalance_threshold defaulting to 5.0, raising ValueError when pos_label is not 0 or 1, when min_minority is below 1, and when the threshold is not above 1.0. threshold_probabilities raises ValueError for a threshold outside 0.0 to 1.0 and converts the probabilities with numpy and maps each one greater than or equal to the threshold to class 1 and the rest to 0. evaluate(y_true, y_pred=None, y_prob=None) derives predictions from probabilities when none are given and raises ValueError when both are missing, when the lengths differ, when any label or prediction falls outside the binary set 0 and 1, and when the minority class has fewer samples than min_minority, so exactly the minimum is accepted. It reports balanced_accuracy_score as balanced_accuracy, precision, recall, and F1 for pos_label from precision_recall_fscore_support with zero_division 0.0, and the majority-to-minority imbalance_ratio. When probabilities are supplied it adds roc_auc_score as roc_auc, inverted for positive label 0. Raw accuracy_score is added only while the imbalance ratio stays below the threshold. The fixture asserts that an all-zero predictor on skewed data gets zero recall, precision, and F1, balanced accuracy 0.5, and no accuracy key, that non-binary labels are rejected, that a perfect model at the minority minimum scores 1.0, and that a well-ranked model's roc_auc exceeds 0.95.",
+  "plan": {
+    "intent": "Evaluate a binary classifier honestly on imbalanced data",
+    "target": "ImbalancedClassificationEvaluator",
+    "constraints": [
+      "Invalid construction arguments, a threshold outside 0 to 1, missing predictions, mismatched lengths, non-binary labels, or too few minority samples raise ValueError",
+      "Probabilities at or above the threshold become class 1",
+      "Balanced accuracy, precision, recall, and F1 for the positive label are always reported",
+      "ROC AUC is added when probabilities are given",
+      "Plain accuracy is reported only while the imbalance ratio is below the threshold"
+    ]
+  },
+  "rationale": {
+    "teaches": "Imbalance-aware evaluation: binary label validation, a minority quota, a probability threshold that maps to the positive class, balanced accuracy as the primary metric, and raw accuracy withheld above the imbalance threshold.",
+    "why": "On a 95:5 dataset a constant classifier scores 95 percent raw accuracy. The fixture builds that dataset so the evaluator's choice of metric decides pass or fail."
+  },
+  "oracle": "fixtures/test_48_sklearn_imbalanced_metric_target_encoding.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "ImbalancedClassificationEvaluator",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "threshold_probabilities",
+          "evaluate",
+          "_imbalance_ratio"
+        ]
+      }
+    ],
+    "imports": [
+      "numpy",
+      "sklearn"
+    ],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "ImbalancedClassificationEvaluator",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Score binary classifiers on imbalanced data without trusting raw accuracy."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import numpy as np",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sklearn.metrics import (\n    accuracy_score,\n    balanced_accuracy_score,\n    precision_recall_fscore_support,\n    roc_auc_score,\n)",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ImbalancedClassificationEvaluator",
+        "source": "class ImbalancedClassificationEvaluator:\n    \"\"\"Report balanced metrics and withhold raw accuracy under heavy imbalance.\"\"\"\n\n    def __init__(\n        self,\n        pos_label: int = 1,\n        min_minority: int = 5,\n        imbalance_threshold: float = 5.0,\n    ) -> None:\n        if pos_label not in (0, 1):\n            raise ValueError(f\"pos_label must be 0 or 1, got {pos_label}\")\n        if min_minority < 1:\n            raise ValueError(f\"min_minority must be >= 1, got {min_minority}\")\n        if imbalance_threshold <= 1.0:\n            raise ValueError(\n                f\"imbalance_threshold must be > 1.0, got {imbalance_threshold}\"\n            )\n\n        self.pos_label = pos_label\n        self.min_minority = min_minority\n        self.imbalance_threshold = imbalance_threshold\n\n    def threshold_probabilities(\n        self,\n        y_prob: np.ndarray,\n        threshold: float = 0.5,\n    ) -> np.ndarray:\n        \"\"\"Map predicted positive-class probabilities to binary labels.\"\"\"\n        prob_arr = np.asarray(y_prob, dtype=np.float64)\n        if not 0.0 <= threshold <= 1.0:\n            raise ValueError(f\"threshold must be between 0.0 and 1.0, got {threshold}\")\n        return np.where(prob_arr >= threshold, 1, 0)\n\n    def evaluate(\n        self,\n        y_true: np.ndarray,\n        y_pred: np.ndarray | None = None,\n        y_prob: np.ndarray | None = None,\n    ) -> dict[str, float]:\n        \"\"\"Return balanced metrics for pos_label, plus roc_auc when y_prob is given.\"\"\"\n        if y_pred is None:\n            if y_prob is None:\n                raise ValueError(\"Either y_pred or y_prob must be provided\")\n            y_pred = self.threshold_probabilities(y_prob)\n\n        y_t = np.asarray(y_true, dtype=np.int64)\n        y_p = np.asarray(y_pred, dtype=np.int64)\n        if len(y_t) != len(y_p):\n            raise ValueError(\n                f\"y_true and y_pred lengths must match: {len(y_t)} vs {len(y_p)}\"\n            )\n        if not set(np.unique(y_t)) | set(np.unique(y_p)) <= {0, 1}:\n            raise ValueError(\"Target labels and predictions must be binary in {0, 1}\")\n\n        imbalance_ratio = self._imbalance_ratio(y_t)\n        precision, recall, f1, _ = precision_recall_fscore_support(\n            y_t, y_p, pos_label=self.pos_label, average=\"binary\", zero_division=0.0\n        )\n        metrics = {\n            \"balanced_accuracy\": float(balanced_accuracy_score(y_t, y_p)),\n            \"precision\": float(precision),\n            \"recall\": float(recall),\n            \"f1\": float(f1),\n            \"imbalance_ratio\": imbalance_ratio,\n        }\n\n        if y_prob is not None:\n            prob_arr = np.asarray(y_prob, dtype=np.float64)\n            if len(prob_arr) != len(y_t):\n                raise ValueError(\"y_prob and y_true lengths must match\")\n            auc = float(roc_auc_score(y_t, prob_arr))\n            metrics[\"roc_auc\"] = 1.0 - auc if self.pos_label == 0 else auc\n\n        if imbalance_ratio < self.imbalance_threshold:\n            metrics[\"accuracy\"] = float(accuracy_score(y_t, y_p))\n\n        return metrics\n\n    def _imbalance_ratio(self, y_t: np.ndarray) -> float:\n        \"\"\"Return the majority-to-minority ratio, refusing a too-small minority.\"\"\"\n        n_1 = int(np.count_nonzero(y_t))\n        minority, majority = sorted((len(y_t) - n_1, n_1))\n        if minority < self.min_minority:\n            raise ValueError(\n                f\"Minority class count {minority} is less than required minimum \"\n                f\"{self.min_minority}\"\n            )\n        return majority / minority",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "pos_label defaults to 0, so precision, recall, and F1 are computed for the majority class.",
+      "caught_by": [
+        "test_default_pos_label_evaluates_minority_class"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The explicit binary check is gone, so a three-class input fails inside scikit-learn with an unrelated error instead of the documented binary message.",
+      "caught_by": [
+        "test_rejects_non_binary_target_labels"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The minority quota uses <=, so exactly min_minority samples is rejected.",
+      "caught_by": [
+        "test_boundary_exact_min_minority_accepted",
+        "test_refuses_raw_accuracy_on_imbalanced_data"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The threshold branch is inverted, so probabilities below the threshold become the positive class.",
+      "caught_by": [
+        "test_probability_threshold_positive_branch"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Raw accuracy is reported as the primary metric and balanced accuracy is omitted, so the imbalanced dataset looks excellent.",
+      "caught_by": [
+        "test_boundary_exact_min_minority_accepted",
+        "test_dummy_all_zero_model_has_zero_recall_and_f1",
+        "test_refuses_raw_accuracy_on_imbalanced_data"
+      ]
+    }
+  ]
+}

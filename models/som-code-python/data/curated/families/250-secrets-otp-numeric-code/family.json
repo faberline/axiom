@@ -1,0 +1,264 @@
+{
+  "family_id": "250-secrets-otp-numeric-code",
+  "domain": "python",
+  "area": "secrets",
+  "capability": "secrets-otp-numeric-code",
+  "requirement": "Generate numeric one-time login codes with a cryptographic RNG and verify them with a hard limit on attempts and single use.",
+  "skeleton": "Digit and attempt constants, an OtpLockedError, generate_code validating the digit count and zero-padding randbelow, and an OtpChallenge with remaining and a check that locks, counts, and compares in constant time.",
+  "caption": "Numeric one-time codes drawn with secrets and checked with hmac under an attempt limit. OtpLockedError is a plain Exception. generate_code(digits=6) raises ValueError saying digits must be between 4 and 10 outside that range, and otherwise returns secrets.randbelow(10**digits) formatted zero-padded to the digit count. OtpChallenge(code) tracks attempts and whether it was used; remaining returns zero once used, else MAX_ATTEMPTS of 3 minus the attempts. check raises OtpLockedError saying challenge closed when used or out of attempts, counts the attempt, and when hmac.compare_digest of the encoded strings matches marks it used and returns True, else False. The fixture asserts six digit codes, zero padding and the randbelow bound through a fake, digit validation, one accepted use, locking after three wrong tries, and a compare_digest call on bytes.",
+  "plan": {
+    "intent": "Send and verify SMS login codes",
+    "target": "one-time code",
+    "constraints": [
+      "Codes come from secrets.randbelow(10**digits) and are zero padded",
+      "Digit counts outside 4 to 10 raise ValueError",
+      "A correct code is accepted once",
+      "Three wrong attempts lock the challenge",
+      "A closed challenge raises OtpLockedError",
+      "Codes are compared with hmac.compare_digest"
+    ]
+  },
+  "rationale": {
+    "teaches": "Draw codes with randbelow over the full range, pad with a format spec, and gate checks on used and attempt counters before a constant-time compare.",
+    "why": "Unpadded codes shrink the keyspace and leak their shape, and unlimited or reusable attempts let a six digit code be brute forced in minutes."
+  },
+  "oracle": "fixtures/test_250_secrets_otp_numeric_code.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "DIGITS"
+      },
+      {
+        "kind": "assign",
+        "name": "MIN_DIGITS"
+      },
+      {
+        "kind": "assign",
+        "name": "MAX_DIGITS"
+      },
+      {
+        "kind": "assign",
+        "name": "MAX_ATTEMPTS"
+      },
+      {
+        "kind": "class",
+        "name": "OtpLockedError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "generate_code",
+        "params": [
+          "digits"
+        ]
+      },
+      {
+        "kind": "class",
+        "name": "OtpChallenge",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "remaining",
+          "check"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "OtpLockedError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "DIGITS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "MIN_DIGITS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "MAX_DIGITS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "MAX_ATTEMPTS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "OtpLockedError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "generate_code",
+              "kind": "function",
+              "depends_on": [
+                "DIGITS",
+                "MIN_DIGITS",
+                "MAX_DIGITS"
+              ]
+            },
+            {
+              "name": "OtpChallenge",
+              "kind": "class",
+              "depends_on": [
+                "MAX_ATTEMPTS",
+                "OtpLockedError"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Numeric one-time codes from secrets.randbelow with an attempt limit."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import hmac",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import secrets",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "DIGITS",
+        "source": "DIGITS = 6",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MIN_DIGITS",
+        "source": "MIN_DIGITS = 4",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MAX_DIGITS",
+        "source": "MAX_DIGITS = 10",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MAX_ATTEMPTS",
+        "source": "MAX_ATTEMPTS = 3",
+        "blank_before": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "OtpLockedError",
+        "source": "class OtpLockedError(Exception):\n    \"\"\"Raised when a challenge was already used or ran out of attempts.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "generate_code",
+        "source": "def generate_code(digits: int = DIGITS) -> str:\n    \"\"\"Return a uniformly random zero-padded numeric code.\"\"\"\n    if not MIN_DIGITS <= digits <= MAX_DIGITS:\n        raise ValueError(f\"digits must be between {MIN_DIGITS} and {MAX_DIGITS}\")\n    return f\"{secrets.randbelow(10**digits):0{digits}d}\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "OtpChallenge",
+        "source": "class OtpChallenge:\n    \"\"\"Accept one correct code within MAX_ATTEMPTS tries.\"\"\"\n\n    def __init__(self, code: str) -> None:\n        self._code = code\n        self._attempts = 0\n        self._used = False\n\n    def remaining(self) -> int:\n        \"\"\"Return how many attempts are left.\"\"\"\n        return 0 if self._used else MAX_ATTEMPTS - self._attempts\n\n    def check(self, submitted: str) -> bool:\n        \"\"\"Return whether submitted matches; raise once the challenge closed.\"\"\"\n        if self._used or self._attempts >= MAX_ATTEMPTS:\n            raise OtpLockedError(\"challenge closed\")\n        self._attempts += 1\n        if hmac.compare_digest(submitted.encode(), self._code.encode()):\n            self._used = True\n            return True\n        return False",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 7
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Small random values produce codes shorter than the requested digit count.",
+      "caught_by": [
+        "test_codes_are_six_digits_by_default",
+        "test_codes_are_zero_padded_from_randbelow"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A fourth guess is allowed after the three attempt limit.",
+      "caught_by": [
+        "test_three_wrong_attempts_lock_the_challenge"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "An accepted code stays usable and can log in again.",
+      "caught_by": [
+        "test_correct_code_is_accepted_once"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Codes are compared with == which short-circuits and leaks timing.",
+      "caught_by": [
+        "test_comparison_is_constant_time"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Too few digits are accepted, producing trivially guessable codes.",
+      "caught_by": [
+        "test_digit_count_is_validated"
+      ]
+    }
+  ]
+}

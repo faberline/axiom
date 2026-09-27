@@ -1,0 +1,147 @@
+{
+  "family_id": "160-syntax-reiterable-date-range",
+  "domain": "python",
+  "area": "syntax",
+  "capability": "reiterable-container-generator-iter",
+  "requirement": "Represent a half-open stepped range of dates that can be iterated repeatedly, reports its length rounded up, and answers membership arithmetically, rejecting non-positive steps and a stop before start.",
+  "skeleton": "DateRange class validating in __init__, a generator __iter__ over a local cursor, a ceiling-division __len__, and an arithmetic __contains__ that excludes non-dates and datetimes.",
+  "caption": "A re-iterable container of dates built with the standard-library datetime module and collections.abc Iterator, as opposed to a one-shot iterator. DateRange(start, stop, step_days=1) raises ValueError saying step_days must be at least 1, and ValueError saying stop must not be before start; equal start and stop give an empty range. It keeps start, stop and step_days unchanged for its whole life. __iter__ is a generator that copies start into a local cursor and yields dates while the cursor is strictly before stop, advancing by a timedelta of step_days days, so every call to iter produces a fresh independent iterator and nested loops over the same range work. __len__ returns the day span divided by step_days rounded up, so a partial final step still counts and len agrees with iteration. __contains__ returns False for anything that is not a date and for datetime instances, which subclass date, and otherwise checks that the day offset from start is at least zero, below the span and a multiple of step_days, without iterating. The fixture asserts that January 1 to 8 every 3 days yields the 1st, 4th and 7th while ending on the 7th excludes it, that the same range can be listed twice and nested, that lengths are 3, 2 and 0 and match iteration for a February range, that membership is true only for the 4th among several dates, a datetime and a string, and that both invalid ranges raise ValueError.",
+  "plan": {
+    "intent": "Loop over calendar dates more than once",
+    "target": "date range",
+    "constraints": [
+      "Invalid steps and a stop before start raise ValueError",
+      "Iteration excludes stop and can be repeated or nested",
+      "Length counts a partial final step",
+      "Membership honours the step and rejects datetimes and non-dates",
+      "The range never mutates its own bounds"
+    ]
+  },
+  "rationale": {
+    "teaches": "Making a class iterable with a generator __iter__ over local state, plus __len__ and __contains__ computed arithmetically.",
+    "why": "Advancing state stored on the object turns a container into a one-shot iterator that is silently empty the second time, and off-by-one bounds only show at the edges."
+  },
+  "oracle": "fixtures/test_160_syntax_reiterable_date_range.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "DateRange",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "__iter__",
+          "__len__",
+          "__contains__"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "DateRange",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "A half-open range of dates that can be iterated any number of times."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Iterator",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from datetime import date, datetime, timedelta",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "DateRange",
+        "source": "class DateRange:\n    \"\"\"Dates from start up to but excluding stop, every step_days days.\"\"\"\n\n    def __init__(self, start: date, stop: date, step_days: int = 1) -> None:\n        if step_days < 1:\n            raise ValueError(\"step_days must be at least 1\")\n        if stop < start:\n            raise ValueError(\"stop must not be before start\")\n        self.start = start\n        self.stop = stop\n        self.step_days = step_days\n\n    def __iter__(self) -> Iterator[date]:\n        current = self.start\n        while current < self.stop:\n            yield current\n            current += timedelta(days=self.step_days)\n\n    def __len__(self) -> int:\n        span = (self.stop - self.start).days\n        return (span + self.step_days - 1) // self.step_days\n\n    def __contains__(self, item: object) -> bool:\n        if not isinstance(item, date) or isinstance(item, datetime):\n            return False\n        offset = (item - self.start).days\n        span = (self.stop - self.start).days\n        return 0 <= offset < span and offset % self.step_days == 0",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Advancing self.start consumes the range, so a second iteration yields nothing.",
+      "caught_by": [
+        "test_can_be_iterated_repeatedly"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The loop includes stop, so a range ending exactly on a step yields one date too many.",
+      "caught_by": [
+        "test_iterates_half_open_with_step"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Floor division drops the partial final step, so len disagrees with iteration.",
+      "caught_by": [
+        "test_len_matches_iteration",
+        "test_len_rounds_up_partial_steps"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Membership ignores the step, so dates between steps are reported as contained.",
+      "caught_by": [
+        "test_membership"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A step of zero is accepted, which would make iteration loop forever.",
+      "caught_by": [
+        "test_invalid_ranges_are_rejected"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,222 @@
+{
+  "family_id": "294-click-option-validation-callback",
+  "domain": "python",
+  "area": "click",
+  "capability": "click-option-validation-callback",
+  "requirement": "Validate a HOST:PORT option and a repeatable tag option with click callbacks that normalize values and report clean usage errors.",
+  "skeleton": "parse_target and parse_tags callbacks raising click.BadParameter, and a main command wiring them with a positive FloatRange timeout.",
+  "caption": "A click command whose options are checked by parameter callbacks, using click, json and re. parse_target splits HOST:PORT with rpartition and raises click.BadParameter for a missing host or separator or a port outside 1..65535. parse_tags lower-cases and strips each tag, raises click.BadParameter unless the whole tag matches the pattern via fullmatch, and de-duplicates in first-seen order. --timeout uses click.FloatRange with an open lower bound at zero, and the command prints the options as JSON. The fixture asserts normalization, target bounds and errors, tag errors, the timeout range and the required target.",
+  "plan": {
+    "intent": "Validate CLI connection flags",
+    "target": "click parameter callbacks",
+    "constraints": [
+      "An empty host, missing colon or port outside 1..65535 raises BadParameter",
+      "Tags are stripped, lower-cased and de-duplicated",
+      "A tag must match the whole pattern",
+      "The timeout must be strictly positive",
+      "--target is required"
+    ]
+  },
+  "rationale": {
+    "teaches": "Do the parsing inside callbacks, raise click.BadParameter so click prints a usage error, and use fullmatch and open ranges for strict bounds.",
+    "why": "Hand-rolled option checks after parsing give tracebacks instead of usage errors and accept values like port 0 or partial pattern matches."
+  },
+  "oracle": "fixtures/test_294_click_option_validation_callback.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "TAG_PATTERN"
+      },
+      {
+        "kind": "function",
+        "name": "parse_target",
+        "params": [
+          "_ctx",
+          "_param",
+          "value"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "parse_tags",
+        "params": [
+          "_ctx",
+          "_param",
+          "value"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "main",
+        "params": [
+          "target",
+          "tags",
+          "timeout"
+        ],
+        "route": "command"
+      }
+    ],
+    "imports": [
+      "click"
+    ],
+    "raises": [
+      "BadParameter"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "TAG_PATTERN",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "parse_target",
+              "kind": "function",
+              "depends_on": []
+            },
+            {
+              "name": "parse_tags",
+              "kind": "function",
+              "depends_on": [
+                "TAG_PATTERN"
+              ]
+            },
+            {
+              "name": "main",
+              "kind": "command",
+              "depends_on": [
+                "parse_target",
+                "parse_tags"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Validate and normalize click options with parameter callbacks."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import json",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import re",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import click",
+        "group": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "TAG_PATTERN",
+        "source": "TAG_PATTERN = re.compile(r\"[a-z][a-z0-9-]{0,19}\")",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "parse_target",
+        "source": "def parse_target(\n    _ctx: click.Context, _param: click.Parameter, value: str\n) -> tuple[str, int]:\n    \"\"\"Turn HOST:PORT into a (host, port) pair or raise BadParameter.\"\"\"\n    host, sep, port = value.rpartition(\":\")\n    if not sep or not host:\n        raise click.BadParameter(\"expected HOST:PORT\")\n    if not port.isdigit() or not 1 <= int(port) <= 65535:\n        raise click.BadParameter(\"port must be between 1 and 65535\")\n    return host, int(port)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "parse_tags",
+        "source": "def parse_tags(\n    _ctx: click.Context, _param: click.Parameter, value: tuple[str, ...]\n) -> tuple[str, ...]:\n    \"\"\"Lower-case, validate and de-duplicate tags, keeping first-seen order.\"\"\"\n    seen: list[str] = []\n    for raw in value:\n        normalized = raw.strip().lower()\n        if not TAG_PATTERN.fullmatch(normalized):\n            raise click.BadParameter(f\"invalid tag {raw!r}\")\n        if normalized not in seen:\n            seen.append(normalized)\n    return tuple(seen)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "main",
+        "source": "@click.command()\n@click.option(\"--target\", required=True, callback=parse_target)\n@click.option(\"--tag\", \"tags\", multiple=True, callback=parse_tags)\n@click.option(\n    \"--timeout\",\n    type=click.FloatRange(min=0, min_open=True),\n    default=5.0,\n    show_default=True,\n)\ndef main(target: tuple[str, int], tags: tuple[str, ...], timeout: float) -> None:\n    \"\"\"Print the validated options as JSON.\"\"\"\n    host, port = target\n    payload = {\"host\": host, \"port\": port, \"tags\": list(tags), \"timeout\": timeout}\n    click.echo(json.dumps(payload))",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A target such as ':80' with an empty host is accepted.",
+      "caught_by": [
+        "test_ipv6_style_host_and_port_bounds"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Port 0 is accepted as a valid target port.",
+      "caught_by": [
+        "test_ipv6_style_host_and_port_bounds"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Tags are not lower-cased, so ' Prod ' is rejected instead of normalized.",
+      "caught_by": [
+        "test_valid_options_are_normalized"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "re.match accepts tags such as 'bad!' that only match a prefix.",
+      "caught_by": [
+        "test_bad_tags_are_rejected"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A zero timeout is accepted because the range is closed at zero.",
+      "caught_by": [
+        "test_timeout_must_be_positive"
+      ]
+    }
+  ]
+}

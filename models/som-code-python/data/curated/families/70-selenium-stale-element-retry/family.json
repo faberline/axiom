@@ -1,0 +1,171 @@
+{
+  "family_id": "70-selenium-stale-element-retry",
+  "domain": "python",
+  "area": "selenium",
+  "capability": "stale-element-recovery",
+  "requirement": "Implement ResilientElementAccessor that re-locates DOM elements from the WebDriver upon encountering StaleElementReferenceException, retrying up to max_retries with configurable delay, validating retry parameters and propagating non-stale exceptions.",
+  "skeleton": "class StaleElementReferenceException(Exception):\n    pass\n\nclass ResilientElementAccessor:\n    def __init__(self, max_retries: int = 3, retry_delay: float = 0.05) -> None:\n        ...\n    def get_text(self, driver, by: str, value: str) -> str:\n        ...\n    def click(self, driver, by: str, value: str) -> None:\n        ...\n",
+  "caption": "A Selenium-style element accessor, written in the standard library against a duck-typed driver with no third-party imports, that recovers from stale element references by locating the element again. StaleElementReferenceException subclasses Exception. ResilientElementAccessor takes max_retries defaulting to 3 and retry_delay defaulting to 0.05, raising ValueError when max_retries is below 1 and when retry_delay is negative. A helper treats an exception as stale when it is an instance of the local class or when its class name is StaleElementReferenceException, so the driver's own exception type is recognised without importing it. get_text(driver, by, value) loops up to max_retries times; each attempt calls driver.find_element afresh and returns the element's text, so a re-rendered node is picked up rather than reusing a dead reference. On a stale error it records the error, sleeps retry_delay unless this was the last attempt or the delay is zero, and continues; any other exception is re-raised immediately without retrying. When every attempt was stale it raises the last recorded error. click follows the same loop but clicks the freshly located element and returns. The fixture asserts that a driver whose first element goes stale yields Refreshed Content after exactly two find_element calls, that a KeyError is raised after a single call, that invalid retry counts and a negative delay raise ValueError naming the parameter, that a click on a stale element succeeds on the fresh element after two lookups, and that exhausted retries raise an exception identified as stale rather than returning an empty string.",
+  "plan": {
+    "intent": "Recover from stale element references by locating the element again",
+    "target": "ResilientElementAccessor",
+    "constraints": [
+      "A retry count below 1 or a negative delay raises ValueError",
+      "Every attempt calls find_element afresh",
+      "StaleElementReferenceException is recognized by type or by class name and retried",
+      "Any other exception is re-raised immediately without retry",
+      "When every attempt is stale the last stale error is raised"
+    ]
+  },
+  "rationale": {
+    "teaches": "A stale-element retry that re-locates the element from the driver on each attempt, retries only StaleElementReferenceException, sleeps between attempts, validates its parameters, and raises the last error when retries run out.",
+    "why": "Retry loops look correct whether they re-locate or not; only a driver whose element goes stale between calls tells them apart. The fixture uses a fake driver that invalidates the element after the first lookup and counts find_element calls."
+  },
+  "oracle": "fixtures/test_70_selenium_stale_element_retry.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "StaleElementReferenceException",
+        "bases": [
+          "Exception"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ResilientElementAccessor",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "_is_stale",
+          "get_text",
+          "click"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "StaleElementReferenceException",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "StaleElementReferenceException",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "ResilientElementAccessor",
+              "kind": "class",
+              "depends_on": [
+                "StaleElementReferenceException"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Selenium resilient element accessor with retry recovery on stale DOM references."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import time",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "StaleElementReferenceException",
+        "source": "# Named after selenium.common.exceptions.StaleElementReferenceException.\nclass StaleElementReferenceException(Exception):  # noqa: N818\n    \"\"\"Raised when a reference to an element is no longer attached to the DOM.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ResilientElementAccessor",
+        "source": "class ResilientElementAccessor:\n    \"\"\"Read and click DOM elements, re-querying them after a stale re-render.\"\"\"\n\n    def __init__(self, max_retries: int = 3, retry_delay: float = 0.05) -> None:\n        if max_retries < 1:\n            raise ValueError(\"max_retries must be at least 1\")\n        if retry_delay < 0:\n            raise ValueError(\"retry_delay cannot be negative\")\n        self.max_retries = max_retries\n        self.retry_delay = retry_delay\n\n    def _is_stale(self, exc: Exception) -> bool:\n        \"\"\"Check if exception is a stale element reference exception.\"\"\"\n        return (\n            isinstance(exc, StaleElementReferenceException)\n            or exc.__class__.__name__ == \"StaleElementReferenceException\"\n        )\n\n    def get_text(self, driver: Any, by: str, value: str) -> str:\n        \"\"\"Retrieve element text, re-querying driver if element becomes stale.\"\"\"\n        last_error: Exception | None = None\n        for attempt in range(self.max_retries):\n            try:\n                element = driver.find_element(by, value)\n                text: str = element.text\n                return text\n            except Exception as exc:\n                if self._is_stale(exc):\n                    last_error = exc\n                    if attempt < self.max_retries - 1 and self.retry_delay > 0:\n                        time.sleep(self.retry_delay)\n                    continue\n                raise\n        if last_error is not None:\n            raise last_error\n        raise StaleElementReferenceException(f\"Failed to access element {by}={value}\")\n\n    def click(self, driver: Any, by: str, value: str) -> None:\n        \"\"\"Click element, re-querying driver if element becomes stale.\"\"\"\n        last_error: Exception | None = None\n        for attempt in range(self.max_retries):\n            try:\n                element = driver.find_element(by, value)\n                element.click()\n                return\n            except Exception as exc:\n                if self._is_stale(exc):\n                    last_error = exc\n                    if attempt < self.max_retries - 1 and self.retry_delay > 0:\n                        time.sleep(self.retry_delay)\n                    continue\n                raise\n        if last_error is not None:\n            raise last_error\n        raise StaleElementReferenceException(f\"Failed to click element {by}={value}\")",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 2
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The element is located once outside the loop, so every retry reuses the same stale reference and never succeeds.",
+      "caught_by": [
+        "test_gold_stale_element_refetches_from_driver_and_succeeds",
+        "test_stale_reference_is_retried_on_click"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Every exception is retried, so a NoSuchElementException is swallowed and retried until the count runs out.",
+      "caught_by": [
+        "test_non_stale_exception_not_retried"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "A zero max_retries or negative delay is accepted, so the accessor never tries or sleeps for a negative time.",
+      "caught_by": [
+        "test_retry_parameters_validation"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "break replaces continue after a stale error, so the loop stops after the first failure instead of retrying.",
+      "caught_by": [
+        "test_gold_stale_element_refetches_from_driver_and_succeeds",
+        "test_stale_reference_is_retried_on_click"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "An empty string is returned when retries are exhausted, so callers cannot tell a missing element from empty text.",
+      "caught_by": [
+        "test_exhausted_retries_raises_stale_exception"
+      ]
+    }
+  ]
+}

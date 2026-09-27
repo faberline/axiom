@@ -1,0 +1,240 @@
+{
+  "family_id": "139-sqlalchemy-version-id-stale-conflict",
+  "domain": "python",
+  "area": "sqlalchemy",
+  "capability": "optimistic-locking-version-id-col",
+  "requirement": "Protect document renames against lost updates with a mapper version counter, translating the stale-row failure into a domain ConflictError after rolling the session back, and rejecting blank titles before any change is made.",
+  "skeleton": "Declarative Document model with a version column registered as version_id_col, a ConflictError exception, create_document committing a new row, and rename validating the title then committing inside a try that catches StaleDataError.",
+  "caption": "Optimistic locking with SQLAlchemy 2.0 typed declarative mapping. Document has an integer id, a title of up to 200 characters and a non-null integer version column registered through __mapper_args__ as version_id_col, so SQLAlchemy sets it to 1 on insert, adds WHERE version = current to every UPDATE and raises StaleDataError from sqlalchemy.orm.exc when no row matched. create_document(session, title) adds and commits a document. rename(document, session, title) raises ValueError saying the title must not be blank when the stripped title is empty, before assigning anything; otherwise it remembers the id, assigns the title and commits. If the commit raises StaleDataError it calls session.rollback so the session is usable again and raises ConflictError, a module-level Exception subclass, saying document N was changed by someone else, chained from the original error. The fixture asserts that a new document has version 1 and version 2 after a rename, that when two sessions load the same row and one renames first the other gets ConflictError whose cause is StaleDataError, sees the winning title and can rename again to reach version 3, and that a blank title raises ValueError leaving the title and version unchanged.",
+  "plan": {
+    "intent": "Stop two editors from silently overwriting each other",
+    "target": "versioned documents",
+    "constraints": [
+      "Each document carries a version starting at 1 that increases on every rename",
+      "A rename based on an outdated version raises ConflictError chained from StaleDataError",
+      "After a conflict the session is rolled back and can retry",
+      "Blank titles raise ValueError before the document is modified"
+    ]
+  },
+  "rationale": {
+    "teaches": "version_id_col in __mapper_args__ for optimistic concurrency, catching StaleDataError around commit, rolling back, and re-raising a domain error.",
+    "why": "Without a version guard the last writer silently wins, and catching the stale error without rolling back leaves the session wedged, so every later call fails in a way far from the cause."
+  },
+  "oracle": "fixtures/test_139_sqlalchemy_version_id_stale_conflict.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "Base",
+        "bases": [
+          "DeclarativeBase"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "ConflictError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "Document",
+        "bases": [
+          "Base"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "create_document",
+        "params": [
+          "session",
+          "title"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "rename",
+        "params": [
+          "document",
+          "session",
+          "title"
+        ]
+      }
+    ],
+    "imports": [
+      "sqlalchemy"
+    ],
+    "raises": [
+      "ConflictError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Base",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "ConflictError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "Document",
+              "kind": "class",
+              "depends_on": [
+                "Base"
+              ]
+            },
+            {
+              "name": "create_document",
+              "kind": "function",
+              "depends_on": [
+                "Document"
+              ]
+            },
+            {
+              "name": "rename",
+              "kind": "function",
+              "depends_on": [
+                "Document",
+                "ConflictError"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Documents protected against lost updates by a SQLAlchemy version counter."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy import String",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from sqlalchemy.orm.exc import StaleDataError",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Base",
+        "source": "class Base(DeclarativeBase):\n    \"\"\"Declarative base for this module's tables.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ConflictError",
+        "source": "class ConflictError(Exception):\n    \"\"\"Raised when another session changed the row first.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Document",
+        "source": "class Document(Base):\n    \"\"\"A document whose version column guards every UPDATE.\"\"\"\n\n    __tablename__ = \"documents\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    title: Mapped[str] = mapped_column(String(200))\n    version: Mapped[int] = mapped_column(nullable=False)\n\n    __mapper_args__ = {\"version_id_col\": version}  # noqa: RUF012",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "create_document",
+        "source": "def create_document(session: Session, title: str) -> Document:\n    \"\"\"Insert a document and commit it.\"\"\"\n    document = Document(title=title)\n    session.add(document)\n    session.commit()\n    return document",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "rename",
+        "source": "def rename(document: Document, session: Session, title: str) -> None:\n    \"\"\"Change the title, turning a lost-update race into ConflictError.\"\"\"\n    if not title.strip():\n        raise ValueError(\"title must not be blank\")\n    document_id = document.id\n    document.title = title\n    try:\n        session.commit()\n    except StaleDataError as exc:\n        session.rollback()\n        raise ConflictError(\n            f\"document {document_id} was changed by someone else\"\n        ) from exc",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 5
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The mapper sets eager_defaults instead of version_id_col, so the version never changes and the stale writer silently overwrites the other rename.",
+      "caught_by": [
+        "test_concurrent_rename_raises_conflict",
+        "test_versions_start_at_one_and_increment"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_cleanup",
+      "why_wrong": "The session is not rolled back after the conflict, so the retry fails with PendingRollbackError.",
+      "caught_by": [
+        "test_concurrent_rename_raises_conflict"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "It catches IntegrityError, so StaleDataError escapes instead of becoming ConflictError.",
+      "caught_by": [
+        "test_concurrent_rename_raises_conflict"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "Only the empty string is rejected, so a whitespace-only title is saved.",
+      "caught_by": [
+        "test_blank_title_is_rejected_without_touching_the_row"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The title is assigned before validation, so a rejected blank title still dirties the document.",
+      "caught_by": [
+        "test_blank_title_is_rejected_without_touching_the_row"
+      ]
+    }
+  ]
+}

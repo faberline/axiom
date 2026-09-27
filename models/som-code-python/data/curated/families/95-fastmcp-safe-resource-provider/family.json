@@ -1,0 +1,200 @@
+{
+  "family_id": "95-fastmcp-safe-resource-provider",
+  "domain": "python",
+  "area": "fastmcp",
+  "capability": "resource-path-traversal-prevention",
+  "requirement": "Implement a safe Model Context Protocol (MCP) file resource provider that enforces directory containment, canonical path resolution, regular file verification, and maximum file size limits.",
+  "skeleton": "SafeMCPResourceProvider with read_resource and is_path_safe methods returning MCPResourceContent.",
+  "caption": "A pydantic file resource provider for a Model Context Protocol server that only serves regular UTF-8 files lying inside one root directory and under a size limit. MCPResourceContent is a BaseModel with uri, content, mime_type, and size_bytes. SafeMCPResourceProvider resolves the root to a canonical absolute path and takes max_file_size defaulting to 1,000,000 bytes. is_path_safe returns False for a path that starts with a slash or backslash or is absolute, and otherwise resolves the root joined with the path and returns whether the result is_relative_to the root, which compares path components rather than string prefixes, so a sibling directory whose name merely starts with the root's name is outside. read_resource parses the URI with urllib.parse, joins its host and path parts, resolves the candidate under the root, and raises PermissionError reporting access denied for path traversal when the component is absolute or the resolved candidate escapes the root, including through dot-dot segments. A candidate that is a directory raises IsADirectoryError, and one that does not exist raises FileNotFoundError naming it. A file larger than the limit raises ValueError reporting both sizes, while a file exactly at the limit is read. Content is read as UTF-8 text and labeled application/json for a json suffix and text/plain otherwise. The fixture asserts that a sibling directory sharing the root's prefix is not safe, that a dot-dot URI raises PermissionError reporting Access denied, that a 100-byte file with a 100-byte limit is returned intact with size 100, that the default limit is 1000000, that Hello MCP comes back as a str labeled text/plain, and that a directory target raises IsADirectoryError.",
+  "plan": {
+    "intent": "Serve MCP file resources only from inside one root and under a size limit",
+    "target": "SafeMCPResourceProvider",
+    "constraints": [
+      "Absolute paths and paths resolving outside the root raise PermissionError",
+      "Containment compares path components, so a same-prefix sibling is outside",
+      "A directory raises IsADirectoryError and a missing file raises FileNotFoundError",
+      "A file above the limit raises ValueError, while one exactly at it is read",
+      "JSON files are labeled application/json and others text/plain"
+    ]
+  },
+  "rationale": {
+    "teaches": "A file resource provider that resolves the candidate path and checks containment with is_relative_to, rejects absolute components, enforces a size limit inclusively, and reads UTF-8 text.",
+    "why": "Path traversal only shows with a crafted relative path like ../secret or a sibling directory sharing the root's prefix. The fixture creates both and expects PermissionError."
+  },
+  "oracle": "fixtures/test_95_fastmcp_safe_resource_provider.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "MCPResourceContent",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "class",
+        "name": "SafeMCPResourceProvider",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "is_path_safe",
+          "read_resource"
+        ]
+      }
+    ],
+    "imports": [
+      "pydantic"
+    ],
+    "raises": [
+      "FileNotFoundError",
+      "IsADirectoryError",
+      "PermissionError",
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "MCPResourceContent",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "SafeMCPResourceProvider",
+              "kind": "class",
+              "depends_on": [
+                "MCPResourceContent"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Serve MCP file resources from one root without path traversal."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import urllib.parse",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pathlib import Path",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from pydantic import BaseModel",
+        "group": 1
+      },
+      {
+        "op": "INSERT_SNIPPET",
+        "path": "candidate.py",
+        "block": "MCPResourceContent",
+        "id": "pydantic_model",
+        "params": {
+          "name": "MCPResourceContent",
+          "doc": "One resource read: its URI, text, MIME type, and size.",
+          "fields": [
+            {
+              "field": "uri",
+              "declaration": "str"
+            },
+            {
+              "field": "content",
+              "declaration": "str"
+            },
+            {
+              "field": "mime_type",
+              "declaration": "str"
+            },
+            {
+              "field": "size_bytes",
+              "declaration": "int"
+            }
+          ]
+        },
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "SafeMCPResourceProvider",
+        "source": "class SafeMCPResourceProvider:\n    \"\"\"Read-only file resources confined to root_dir and a size limit.\"\"\"\n\n    def __init__(self, root_dir: str | Path, max_file_size: int = 1_000_000) -> None:\n        self.root_dir = Path(root_dir).resolve()\n        self.max_file_size = max_file_size\n\n    def is_path_safe(self, rel_path: str) -> bool:\n        \"\"\"Whether rel_path is relative and resolves inside the root.\"\"\"\n        if rel_path.startswith((\"/\", \"\\\\\")) or Path(rel_path).is_absolute():\n            return False\n        candidate = (self.root_dir / rel_path).resolve()\n        return candidate.is_relative_to(self.root_dir)\n\n    def read_resource(self, uri: str) -> MCPResourceContent:\n        \"\"\"Read the file at uri, refusing traversal, directories, and large files.\"\"\"\n        parsed = urllib.parse.urlparse(uri)\n        path_component = parsed.netloc + parsed.path if parsed.netloc else parsed.path\n        candidate = (self.root_dir / path_component).resolve()\n\n        if (\n            path_component.startswith((\"/\", \"\\\\\"))\n            or Path(path_component).is_absolute()\n            or not candidate.is_relative_to(self.root_dir)\n        ):\n            raise PermissionError(\"Access denied: path traversal detected\")\n\n        if not candidate.is_file():\n            if candidate.is_dir():\n                raise IsADirectoryError(\n                    \"Target path is a directory, not a readable file\"\n                )\n            raise FileNotFoundError(f\"Resource not found: {path_component}\")\n\n        size = candidate.stat().st_size\n        if size > self.max_file_size:\n            raise ValueError(\n                f\"Resource exceeds maximum allowed size ({size} > {self.max_file_size})\"\n            )\n\n        content = candidate.read_text(encoding=\"utf-8\")\n        mime_type = \"text/plain\"\n        if candidate.suffix == \".json\":\n            mime_type = \"application/json\"\n\n        return MCPResourceContent(\n            uri=uri,\n            content=content,\n            mime_type=mime_type,\n            size_bytes=size,\n        )",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 1,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Containment is checked by string prefix, so a sibling directory named root_dir2 passes as inside root_dir.",
+      "caught_by": [
+        "test_path_traversal_sibling_prefix_defense"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The traversal check is dropped, so ../ paths read files outside the root.",
+      "caught_by": [
+        "test_absolute_path_traversal_rejected"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A file exactly at the size limit is rejected, so the documented maximum is not readable.",
+      "caught_by": [
+        "test_exact_max_file_size_boundary_allowed"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "max_file_size defaults to 1000 bytes, so ordinary text files are rejected by default.",
+      "caught_by": [
+        "test_default_max_file_size_is_one_megabyte"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "Files are decoded as latin1 and labeled octet-stream, so UTF-8 content is corrupted.",
+      "caught_by": [
+        "test_read_resource_content_is_str"
+      ]
+    }
+  ]
+}

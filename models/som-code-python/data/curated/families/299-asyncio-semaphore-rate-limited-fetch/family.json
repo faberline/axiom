@@ -1,0 +1,222 @@
+{
+  "family_id": "299-asyncio-semaphore-rate-limited-fetch",
+  "domain": "python",
+  "area": "asyncio",
+  "capability": "asyncio-semaphore-rate-limited-fetch",
+  "requirement": "Fetch many URLs concurrently with at most a fixed number in flight, capturing per-URL timeouts and network errors instead of failing the batch.",
+  "skeleton": "An Outcome dataclass, a _one coroutine that holds the semaphore around wait_for, and fetch_all gathering results in input order.",
+  "caption": "A bounded concurrent fetcher using asyncio Semaphore, wait_for and gather, collections.abc and a frozen dataclasses Outcome. fetch_all raises ValueError for a limit below 1 or a non-positive timeout, drops duplicate URLs while keeping first-seen order, and runs each fetch inside the semaphore with a per-URL wait_for timeout. A TimeoutError becomes the error text timeout and an OSError becomes its class name and message, so one failure never cancels the others. The fixture asserts peak concurrency equals the limit, input order, captured timeouts and errors, deduplication and the ValueError cases.",
+  "plan": {
+    "intent": "Bound concurrent fetches",
+    "target": "asyncio Semaphore with timeouts",
+    "constraints": [
+      "At most limit fetches run at once",
+      "Results keep the first-seen input order",
+      "Duplicate URLs are fetched once",
+      "A timeout is reported as error timeout",
+      "An OSError is reported as its class name and message",
+      "A limit below 1 raises ValueError",
+      "A non-positive timeout raises ValueError"
+    ]
+  },
+  "rationale": {
+    "teaches": "Acquire a shared Semaphore around each wait_for call and convert expected failures into values so gather never short-circuits.",
+    "why": "Unbounded gather floods the remote host, and one raised exception cancels the whole batch."
+  },
+  "oracle": "fixtures/test_299_asyncio_semaphore_rate_limited_fetch.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "Fetch"
+      },
+      {
+        "kind": "class",
+        "name": "Outcome",
+        "bases": [],
+        "methods": []
+      },
+      {
+        "kind": "async_function",
+        "name": "_one",
+        "params": [
+          "fetch",
+          "url",
+          "gate",
+          "timeout"
+        ]
+      },
+      {
+        "kind": "async_function",
+        "name": "fetch_all",
+        "params": [
+          "fetch",
+          "urls",
+          "limit",
+          "timeout"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "ValueError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "Fetch",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "Outcome",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "_one",
+              "kind": "function",
+              "depends_on": [
+                "Fetch",
+                "Outcome"
+              ]
+            },
+            {
+              "name": "fetch_all",
+              "kind": "function",
+              "depends_on": [
+                "Fetch",
+                "Outcome",
+                "_one"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Fetch many URLs concurrently with a bounded number in flight."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import asyncio",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from collections.abc import Awaitable, Callable, Iterable",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from dataclasses import dataclass",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Fetch",
+        "source": "Fetch = Callable[[str], Awaitable[bytes]]",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "Outcome",
+        "source": "@dataclass(frozen=True)\nclass Outcome:\n    \"\"\"The body or the error for one URL.\"\"\"\n\n    url: str\n    body: bytes | None = None\n    error: str | None = None",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "_one",
+        "source": "async def _one(\n    fetch: Fetch, url: str, gate: asyncio.Semaphore, timeout: float\n) -> Outcome:\n    async with gate:\n        try:\n            body = await asyncio.wait_for(fetch(url), timeout)\n        except TimeoutError:\n            return Outcome(url, error=\"timeout\")\n        except OSError as exc:\n            return Outcome(url, error=f\"{type(exc).__name__}: {exc}\")\n    return Outcome(url, body=body)",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "fetch_all",
+        "source": "async def fetch_all(\n    fetch: Fetch, urls: Iterable[str], limit: int = 4, timeout: float = 5.0\n) -> list[Outcome]:\n    \"\"\"Fetch every url with at most limit requests in flight, in input order.\"\"\"\n    if limit < 1:\n        raise ValueError(\"limit must be at least 1\")\n    if timeout <= 0:\n        raise ValueError(\"timeout must be positive\")\n    gate = asyncio.Semaphore(limit)\n    unique = list(dict.fromkeys(urls))\n    return list(\n        await asyncio.gather(*(_one(fetch, url, gate, timeout) for url in unique))\n    )",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "One more request than the limit runs concurrently.",
+      "caught_by": [
+        "test_concurrency_never_exceeds_limit"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "TimeoutError is not caught, so a slow URL fails the batch.",
+      "caught_by": [
+        "test_errors_and_timeouts_are_captured_per_url"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Duplicate URLs are fetched and reported twice.",
+      "caught_by": [
+        "test_duplicate_urls_are_fetched_once"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A timeout of zero is accepted instead of raising ValueError.",
+      "caught_by": [
+        "test_invalid_arguments"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "Network errors propagate and abort the gather instead of being captured.",
+      "caught_by": [
+        "test_errors_and_timeouts_are_captured_per_url"
+      ]
+    }
+  ]
+}

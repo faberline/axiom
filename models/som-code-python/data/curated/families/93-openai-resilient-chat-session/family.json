@@ -1,0 +1,148 @@
+{
+  "family_id": "93-openai-resilient-chat-session",
+  "domain": "python",
+  "area": "openai",
+  "capability": "rate-limit-backoff-and-context-compaction",
+  "requirement": "Implement a resilient OpenAI chat session manager with exponential backoff on 429 rate limit errors, context window compaction preserving system prompt, and configurable max retries.",
+  "skeleton": "ResilientChatSession with add_message, prune_history_for_context, and send_message methods.",
+  "caption": "An OpenAI-style chat session written against an injected client, in the standard library with no third-party imports, that retries 429 rate limits with capped exponential backoff and compacts its history when the context window overflows. ResilientChatSession takes the client, a model defaulting to gpt-4o, max_retries defaulting to 3, a base backoff of 0.05 seconds, and a maximum backoff of 1.0 second, and keeps a list of role and content messages appended by add_message. prune_history_for_context returns False when there are two or fewer messages; when the first message is a system prompt it also returns False with three or fewer, and otherwise keeps that system prompt and drops the two oldest messages after it; without a system prompt it drops the first two messages; it returns True whenever it removed something. send_message appends the user prompt and loops calling client.chat.completions.create with the model and the full history. On success it appends the assistant's content and returns it. On an error whose message mentions context_length_exceeded, or whose class name mentions a context window, it prunes and retries, raising RuntimeError reporting that the context window cannot be pruned further when pruning refuses. On an error whose class name mentions a rate limit or whose message contains 429, it counts an attempt, raises RuntimeError naming the maximum once the count exceeds max_retries, and otherwise sleeps base backoff times two to the previous attempt count, capped at the maximum, then retries. Any other error propagates unchanged. The fixture asserts that after a context overflow the answer is compaction success and the system prompt survives first, that three rate-limit failures followed by success return recovered after 3 retries with four create calls, that the default max_retries is 3, that pruning a two-message history returns False and leaves both messages, and that a plain call returns standard output.",
+  "plan": {
+    "intent": "Keep a chat session alive through rate limits and context overflow",
+    "target": "ResilientChatSession",
+    "constraints": [
+      "A context overflow prunes the two oldest dialogue messages while keeping the system prompt, then retries",
+      "A history that cannot be pruned further raises RuntimeError",
+      "Rate limits retry with exponential backoff capped at the maximum",
+      "Exceeding the retry budget raises RuntimeError naming it",
+      "Other errors propagate unchanged"
+    ]
+  },
+  "rationale": {
+    "teaches": "A chat session that retries 429 errors with exponential backoff up to max_retries, defaults to 3 retries, prunes history while keeping the system prompt, and refuses to prune below a minimal history.",
+    "why": "A retry loop that stops one attempt early or a pruner that drops the system prompt still returns a response. The fixture uses a fake client that raises 429 a set number of times and inspects the pruned history."
+  },
+  "oracle": "fixtures/test_93_openai_resilient_chat_session.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "class",
+        "name": "ResilientChatSession",
+        "bases": [],
+        "methods": [
+          "__init__",
+          "add_message",
+          "prune_history_for_context",
+          "send_message"
+        ]
+      }
+    ],
+    "imports": [],
+    "raises": [
+      "RuntimeError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "ResilientChatSession",
+              "kind": "class",
+              "depends_on": []
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Keep a chat session alive through context overflows and rate limits."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "import time",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from typing import Any",
+        "group": 0
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "ResilientChatSession",
+        "source": "class ResilientChatSession:\n    \"\"\"Chat history that prunes on context overflow and backs off on rate limits.\"\"\"\n\n    def __init__(\n        self,\n        client: Any,\n        model: str = \"gpt-4o\",\n        max_retries: int = 3,\n        base_backoff: float = 0.05,\n        max_backoff: float = 1.0,\n    ) -> None:\n        self.client = client\n        self.model = model\n        self.max_retries = max_retries\n        self.base_backoff = base_backoff\n        self.max_backoff = max_backoff\n        self.messages: list[dict[str, str]] = []\n\n    def add_message(self, role: str, content: str) -> None:\n        \"\"\"Append a message with role and content to the history.\"\"\"\n        self.messages.append({\"role\": role, \"content\": content})\n\n    def prune_history_for_context(self) -> bool:\n        \"\"\"Drop the oldest exchange, keeping any system prompt; False when too short.\"\"\"\n        if len(self.messages) <= 2:\n            return False\n        has_system = bool(self.messages and self.messages[0].get(\"role\") == \"system\")\n        if has_system:\n            if len(self.messages) <= 3:\n                return False\n            self.messages = [self.messages[0], *self.messages[3:]]\n            return True\n        self.messages = self.messages[2:]\n        return True\n\n    def send_message(self, prompt: str) -> str:\n        \"\"\"Send prompt, retrying on overflow and rate limits, and return the reply.\"\"\"\n        self.add_message(\"user\", prompt)\n        attempt = 0\n        while True:\n            try:\n                response = self.client.chat.completions.create(\n                    model=self.model,\n                    messages=self.messages,\n                )\n                content = response.choices[0].message.content or \"\"\n                self.add_message(\"assistant\", content)\n                return content\n            except Exception as exc:\n                err_type = exc.__class__.__name__\n                err_msg = str(exc).lower()\n\n                if (\n                    \"context_length_exceeded\" in err_msg\n                    or \"contextwindow\" in err_type.lower()\n                ):\n                    if self.prune_history_for_context():\n                        continue\n                    raise RuntimeError(\n                        \"Context window exceeded and cannot prune further\"\n                    ) from exc\n\n                if \"ratelimit\" in err_type.lower() or \"429\" in err_msg:\n                    attempt += 1\n                    if attempt > self.max_retries:\n                        raise RuntimeError(\n                            f\"Max retries ({self.max_retries}) exceeded on rate limit\"\n                        ) from exc\n                    delay = min(\n                        self.max_backoff, self.base_backoff * (2 ** (attempt - 1))\n                    )\n                    time.sleep(delay)\n                    continue\n\n                raise",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 1
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The system-prompt check is inverted, so pruning drops the system prompt when one exists and keeps it when there is none.",
+      "caught_by": [
+        "test_prune_history_preserves_system_prompt"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "The retry loop gives up at max_retries instead of after it, so one fewer retry is attempted than configured.",
+      "caught_by": [
+        "test_retry_boundary_allows_configured_attempts"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "max_retries defaults to 0, so a single 429 fails the request.",
+      "caught_by": [
+        "test_default_max_retries_is_three"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "The minimal-history guards are dropped, so pruning an almost empty history removes the only user message.",
+      "caught_by": [
+        "test_prune_history_short_conversation_validation"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The legacy completions endpoint is called, so chat-format messages are rejected by the API.",
+      "caught_by": [
+        "test_prune_history_preserves_system_prompt",
+        "test_retry_boundary_allows_configured_attempts",
+        "test_send_message_calls_chat_completions"
+      ]
+    }
+  ]
+}

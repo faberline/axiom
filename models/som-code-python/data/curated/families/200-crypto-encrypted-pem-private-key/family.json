@@ -1,0 +1,217 @@
+{
+  "family_id": "200-crypto-encrypted-pem-private-key",
+  "domain": "python",
+  "area": "security",
+  "capability": "encrypted-pem-private-key",
+  "requirement": "Save an Ed25519 private key as passphrase-encrypted PKCS#8 PEM with a minimum passphrase length, and load it back while distinguishing a wrong passphrase, an unencrypted file and a key of another type.",
+  "skeleton": "A WrongPassphraseError subclass of ValueError, export_key validating the passphrase and serializing with BestAvailableEncryption, and import_key mapping load errors and checking the key type.",
+  "caption": "Passphrase-protected Ed25519 key files with cryptography's serialization module. WrongPassphraseError subclasses ValueError. export_key(key, passphrase) raises ValueError saying the passphrase must be at least 12 characters, MIN_PASSPHRASE_CHARS, and returns private_bytes as PEM in PKCS8 with BestAvailableEncryption over the UTF-8 passphrase, so the file starts with BEGIN ENCRYPTED PRIVATE KEY. import_key(pem, passphrase) calls load_pem_private_key with the UTF-8 passphrase; the TypeError it raises for an unencrypted PEM becomes ValueError saying the PEM private key is not encrypted, and the ValueError for a bad passphrase becomes WrongPassphraseError. A key that is not an Ed25519PrivateKey raises TypeError naming Ed25519 and the actual class. The fixture asserts that the export has the encrypted header and loads with the library under a non-ASCII passphrase, that import round-trips the raw key, that 12 characters work and 11 raise ValueError, that a wrong passphrase raises WrongPassphraseError, that an unencrypted PEM raises a plain ValueError naming not encrypted, and that an encrypted RSA key raises TypeError.",
+  "plan": {
+    "intent": "Keep signing keys encrypted at rest",
+    "target": "key file export and import",
+    "constraints": [
+      "Exports are PKCS8 PEM encrypted with BestAvailableEncryption over the UTF-8 passphrase",
+      "Passphrases shorter than 12 characters raise ValueError",
+      "A wrong passphrase raises WrongPassphraseError",
+      "An unencrypted PEM raises ValueError that is not WrongPassphraseError",
+      "Keys other than Ed25519 raise TypeError"
+    ]
+  },
+  "rationale": {
+    "teaches": "Encrypt private keys with BestAvailableEncryption, and translate load_pem_private_key's TypeError and ValueError into distinct, meaningful errors.",
+    "why": "Writing keys with NoEncryption or accepting unencrypted files defeats the passphrase, and mixing up the two load errors tells users the wrong thing to fix."
+  },
+  "oracle": "fixtures/test_200_crypto_encrypted_pem_private_key.py",
+  "decompiled": {
+    "surface": [
+      {
+        "kind": "assign",
+        "name": "MIN_PASSPHRASE_CHARS"
+      },
+      {
+        "kind": "class",
+        "name": "WrongPassphraseError",
+        "bases": [
+          "ValueError"
+        ],
+        "methods": []
+      },
+      {
+        "kind": "function",
+        "name": "export_key",
+        "params": [
+          "key",
+          "passphrase"
+        ]
+      },
+      {
+        "kind": "function",
+        "name": "import_key",
+        "params": [
+          "pem",
+          "passphrase"
+        ]
+      }
+    ],
+    "imports": [
+      "cryptography"
+    ],
+    "raises": [
+      "TypeError",
+      "ValueError",
+      "WrongPassphraseError"
+    ],
+    "status_codes": [],
+    "topology": {
+      "files": [
+        {
+          "path": "candidate.py",
+          "blocks": [
+            {
+              "name": "MIN_PASSPHRASE_CHARS",
+              "kind": "constant",
+              "depends_on": []
+            },
+            {
+              "name": "WrongPassphraseError",
+              "kind": "class",
+              "depends_on": []
+            },
+            {
+              "name": "export_key",
+              "kind": "function",
+              "depends_on": [
+                "MIN_PASSPHRASE_CHARS"
+              ]
+            },
+            {
+              "name": "import_key",
+              "kind": "function",
+              "depends_on": [
+                "WrongPassphraseError"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ops": [
+      {
+        "op": "CREATE_FILE",
+        "path": "candidate.py",
+        "docstring": "Store Ed25519 private keys as passphrase-encrypted PKCS#8 PEM."
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from __future__ import annotations",
+        "group": 0
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from cryptography.hazmat.primitives import serialization",
+        "group": 1
+      },
+      {
+        "op": "ADD_IMPORT",
+        "path": "candidate.py",
+        "stmt": "from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey",
+        "group": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "MIN_PASSPHRASE_CHARS",
+        "source": "MIN_PASSPHRASE_CHARS = 12",
+        "blank_before": 1
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "WrongPassphraseError",
+        "source": "class WrongPassphraseError(ValueError):\n    \"\"\"The passphrase does not decrypt this key.\"\"\"",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "export_key",
+        "source": "def export_key(key: Ed25519PrivateKey, passphrase: str) -> bytes:\n    \"\"\"Serialize ``key`` as encrypted PKCS#8 PEM under ``passphrase``.\"\"\"\n    if len(passphrase) < MIN_PASSPHRASE_CHARS:\n        raise ValueError(\n            f\"passphrase must be at least {MIN_PASSPHRASE_CHARS} characters\"\n        )\n    return key.private_bytes(\n        encoding=serialization.Encoding.PEM,\n        format=serialization.PrivateFormat.PKCS8,\n        encryption_algorithm=serialization.BestAvailableEncryption(\n            passphrase.encode(\"utf-8\")\n        ),\n    )",
+        "blank_before": 2
+      },
+      {
+        "op": "INSERT_BLOCK",
+        "path": "candidate.py",
+        "block": "import_key",
+        "source": "def import_key(pem: bytes, passphrase: str) -> Ed25519PrivateKey:\n    \"\"\"Decrypt an encrypted PEM private key and require it to be Ed25519.\"\"\"\n    try:\n        key = serialization.load_pem_private_key(\n            pem, password=passphrase.encode(\"utf-8\")\n        )\n    except TypeError as exc:\n        raise ValueError(\"PEM private key is not encrypted\") from exc\n    except ValueError as exc:\n        raise WrongPassphraseError(\"wrong passphrase or corrupt key\") from exc\n    if not isinstance(key, Ed25519PrivateKey):\n        raise TypeError(f\"expected an Ed25519 private key, got {type(key).__name__}\")\n    return key",
+        "blank_before": 2
+      }
+    ],
+    "coverage": {
+      "snippet_blocks": 0,
+      "literal_blocks": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "gold",
+      "module": "gold/candidate.py",
+      "kind": "gold"
+    },
+    {
+      "id": "miss_1",
+      "module": "miss_1/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_api_call",
+      "why_wrong": "The key is written with NoEncryption, so the file is plaintext.",
+      "caught_by": [
+        "test_export_is_encrypted_pkcs8_readable_by_the_library",
+        "test_round_trip_restores_the_same_key",
+        "test_wrong_passphrase_raises_wrong_passphrase_error"
+      ]
+    },
+    {
+      "id": "miss_2",
+      "module": "miss_2/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_boundary",
+      "why_wrong": "A passphrase of exactly 12 characters is refused.",
+      "caught_by": [
+        "test_passphrase_length_limit_is_12_characters"
+      ]
+    },
+    {
+      "id": "miss_3",
+      "module": "miss_3/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "missing_validation",
+      "why_wrong": "Any private key type is returned as if it were Ed25519.",
+      "caught_by": [
+        "test_other_key_types_raise_type_error"
+      ]
+    },
+    {
+      "id": "miss_4",
+      "module": "miss_4/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_branch",
+      "why_wrong": "The two load errors are swapped, so a wrong passphrase is reported as an unencrypted file.",
+      "caught_by": [
+        "test_unencrypted_pem_is_refused",
+        "test_wrong_passphrase_raises_wrong_passphrase_error"
+      ]
+    },
+    {
+      "id": "miss_5",
+      "module": "miss_5/candidate.py",
+      "kind": "near_miss",
+      "failure_mode": "wrong_default",
+      "why_wrong": "Import encodes the passphrase as Latin-1, so non-ASCII passphrases never match.",
+      "caught_by": [
+        "test_other_key_types_raise_type_error",
+        "test_round_trip_restores_the_same_key"
+      ]
+    }
+  ]
+}
