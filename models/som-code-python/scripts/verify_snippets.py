@@ -1,200 +1,154 @@
 #!/usr/bin/env python3
-"""SOM Code Snippet Library Verifier (scripts/verify_snippets.py).
+"""Verify the snippet ISA against the corpus that uses it.
 
-Validates:
-1. Presence and JSON schema integrity of all 8 required snippet definitions under data/snippets/.
-2. Mustache parameter consistency.
-3. Assembly of a mock `main.py` combining all 8 snippets in dependency order.
-4. Syntactic compilation via `ast.parse` and `python -m py_compile main.py` with exit code 0.
+The ISA is ``data/snippets/<library>/<id>.json``; each file is one snippet
+``{id, description, imports, template}``. A snippet earns its place by being
+used, so the check reads each family's stored ``decompiled.ops`` (which
+``scripts/verify_curation.py`` keeps equal to a fresh decompile) rather than
+trusting the template alone.
+
+Rules this script owns, one defect line per violation:
+
+- Schema: exactly the four keys; ``id`` equals the file name; a non-empty
+  ``description`` and ``template``; every ``imports`` entry parses as one
+  import statement.
+- Syntax: tags are ``{{name}}`` or a one-level ``{{#name}}...{{/name}}``
+  section (``models/som-core/docs/reference/layer-records.md``).
+- No holes: every template line that carries a placeholder still has a
+  non-whitespace literal once its tags are removed, so ``    {{body}}``
+  cannot smuggle arbitrary code into a snippet.
+- At least two families: a snippet ``INSERT_SNIPPET`` uses in fewer than
+  :data:`MIN_FAMILIES` distinct families is a one-off, and belongs in the
+  corpus as a literal block, not in the ISA. An operation naming an id the
+  ISA lacks is a defect too.
+- Renders to Python: the template, filled with its first use's params,
+  parses with ``ast.parse``.
+
+It then prints each snippet's family count and the corpus coverage,
+``snippet_blocks / all blocks``. Exit 0 with no defects, 1 otherwise.
 """
 
 from __future__ import annotations
 
+import argparse
 import ast
 import json
-import os
-import re
-import subprocess
 import sys
-import tempfile
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
-REQUIRED_SNIPPETS = {
-    "fastapi": ["fastapi_init", "fastapi_router", "fastapi_route_post", "fastapi_route_get"],
-    "pydantic": ["pydantic_base", "pydantic_field"],
-    "sqlalchemy": ["sqlalchemy_async_engine", "sqlalchemy_model"],
-}
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from decompile_gold import TAG, DecompileError, _parse, _render  # noqa: E402
 
-ORDERED_SNIPPET_IDS = [
-    "sqlalchemy_async_engine",
-    "sqlalchemy_model",
-    "pydantic_base",
-    "pydantic_field",
-    "fastapi_init",
-    "fastapi_router",
-    "fastapi_route_post",
-    "fastapi_route_get",
-]
-
-DUMMY_VALUES: Dict[str, str] = {
-    # fastapi_init
-    "app_name": "app",
-    "title": "SOM Generated Service",
-    "version": "0.1.0",
-    "description": "Auto-assembled mock service for verification",
-    # fastapi_router
-    "router_name": "router",
-    "prefix": "/api/v1",
-    "tag": "items",
-    # fastapi_route_post
-    "path": "/items",
-    "response_model": "ItemSchema",
-    "handler_name": "create_item",
-    "request_model": "ItemSchema",
-    "docstring": "Create a new item record.",
-    # fastapi_route_get
-    "param_name": "item_id",
-    "param_type": "int",
-    "return_expression": 'ItemSchema(tags=["default"])',
-    # pydantic_base
-    "model_name": "ItemSchema",
-    # pydantic_field
-    "field_name": "tags",
-    "field_type": "list[str]",
-    "default_factory": "list",
-    # sqlalchemy_async_engine
-    "engine_name": "engine",
-    "database_url": "sqlite+aiosqlite:///:memory:",
-    "echo": "False",
-    "session_factory_name": "async_session_factory",
-    # sqlalchemy_model
-    "table_class_name": "ItemRecord",
-    "table_name": "items",
-    "column_name": "title",
-    "column_type": "str",
-    "column_sql_type": "String(length=255)",
-}
+DATA = Path(__file__).resolve().parent.parent / "data"
+MIN_FAMILIES = 2
+KEYS = {"id", "description", "imports", "template"}
 
 
-def find_snippets_dir() -> Path:
-    current = Path(__file__).resolve().parent
-    candidates = [
-        current.parent / "data" / "snippets",
-        Path.cwd() / "data" / "snippets",
-        Path.cwd() / "models" / "som-code-python" / "data" / "snippets",
-    ]
-    for c in candidates:
-        if c.is_dir():
-            return c
-    raise FileNotFoundError("Could not locate data/snippets directory.")
+def schema_defects(path: Path, snippet: Any) -> list[str]:
+    if not isinstance(snippet, dict) or set(snippet) != KEYS:
+        got = sorted(snippet) if isinstance(snippet, dict) else type(snippet).__name__
+        return [f"{path}: fields must be {sorted(KEYS)}; got {got}"]
+    out = []
+    if snippet["id"] != path.stem:
+        out.append(f"{path}: id {snippet['id']!r} does not match the file name {path.stem!r}")
+    for key in ("description", "template"):
+        if not isinstance(snippet[key], str) or not snippet[key].strip():
+            out.append(f"{path}: {key} must be a non-empty string")
+    imports = snippet["imports"]
+    if not isinstance(imports, list):
+        out.append(f"{path}: imports must be a list")
+        return out
+    for stmt in imports:
+        try:
+            tree = ast.parse(stmt) if isinstance(stmt, str) else None
+        except SyntaxError:
+            tree = None
+        if tree is None or len(tree.body) != 1 or not isinstance(tree.body[0], (ast.Import, ast.ImportFrom)):
+            out.append(f"{path}: import {stmt!r} is not one import statement")
+    return out
 
 
-def validate_snippet_schema(data: Any, expected_id: str, path: Path) -> None:
-    if not isinstance(data, dict):
-        raise ValueError(f"{path}: Root must be a JSON object.")
-    for key in ("id", "description", "imports", "template"):
-        if key not in data:
-            raise ValueError(f"{path}: Missing required field '{key}'.")
-    if data["id"] != expected_id:
-        raise ValueError(f"{path}: ID '{data['id']}' does not match expected '{expected_id}'.")
-    if not isinstance(data["imports"], list) or not all(isinstance(i, str) for i in data["imports"]):
-        raise ValueError(f"{path}: 'imports' must be a list of strings.")
-    if not isinstance(data["template"], str) or not data["template"].strip():
-        raise ValueError(f"{path}: 'template' must be a non-empty string.")
+def hole_defects(path: Path, template: str) -> list[str]:
+    out = []
+    for number, line in enumerate(template.split("\n"), 1):
+        has_var = any(not hit.group(1) for hit in TAG.finditer(line))
+        if has_var and not TAG.sub("", line).strip():
+            out.append(f"{path}: template line {number} {line!r} is only a placeholder")
+    return out
 
 
-def substitute_template(template: str, dummy_values: Dict[str, str]) -> str:
-    def replacer(match: re.Match[str]) -> str:
-        var_name = match.group(1)
-        if var_name not in dummy_values:
-            raise KeyError(f"Missing dummy substitution for placeholder: '{{{{{var_name}}}}}'")
-        return dummy_values[var_name]
+def uses_by_id(corpus: Path) -> tuple[dict[str, list[tuple[str, dict]]], int, int]:
+    """Every ``INSERT_SNIPPET`` in the corpus as ``id -> [(family, params)]``, plus block counts."""
+    uses: dict[str, list[tuple[str, dict]]] = {}
+    snippet_blocks = total = 0
+    for path in sorted((corpus / "families").glob("*/family.json")):
+        ops = json.loads(path.read_text(encoding="utf-8")).get("decompiled", {}).get("ops", [])
+        for op in ops:
+            if op["op"] in ("INSERT_SNIPPET", "INSERT_BLOCK"):
+                total += 1
+            if op["op"] == "INSERT_SNIPPET":
+                snippet_blocks += 1
+                uses.setdefault(op["id"], []).append((path.parent.name, op["params"]))
+    return uses, snippet_blocks, total
 
-    return re.sub(r"\{\{([a-zA-Z0-9_]+)\}\}", replacer, template)
 
-
-def assemble_mock_main(snippets_by_id: Dict[str, Dict[str, Any]]) -> str:
-    # 1. Deduplicate imports
-    imports_set = set()
-    imports_list: List[str] = []
-    for snippet_id in ORDERED_SNIPPET_IDS:
-        snippet = snippets_by_id[snippet_id]
-        for imp in snippet.get("imports", []):
-            imp_clean = imp.strip()
-            if imp_clean and imp_clean not in imports_set:
-                imports_set.add(imp_clean)
-                imports_list.append(imp_clean)
-
-    imports_block = "\n".join(sorted(imports_list))
-
-    # 2. Substitute and order templates
-    body_blocks: List[str] = []
-    for snippet_id in ORDERED_SNIPPET_IDS:
-        template = snippets_by_id[snippet_id]["template"]
-        substituted = substitute_template(template, DUMMY_VALUES)
-        body_blocks.append(substituted)
-
-    # 3. Combine body and finalize router attachment
-    full_code = imports_block + "\n\n\n" + "\n\n\n".join(body_blocks) + "\n\n\napp.include_router(router)\n"
-    return full_code
+def verify(snippets_dir: Path, corpus: Path) -> tuple[list[str], list[str]]:
+    """Return ``(defects, report lines)``."""
+    uses, snippet_blocks, total = uses_by_id(corpus)
+    defects: list[str] = []
+    report: list[str] = []
+    seen: set[str] = set()
+    for source in sorted(snippets_dir.glob("*/*.json")):
+        path = source.relative_to(snippets_dir)
+        try:
+            snippet = json.loads(source.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            defects.append(f"{path}: not valid JSON ({exc})")
+            continue
+        found = schema_defects(path, snippet)
+        defects += found
+        if found:
+            continue
+        seen.add(snippet["id"])
+        try:
+            parts = _parse(snippet["template"])
+        except DecompileError as exc:
+            defects.append(f"{path}: {exc}")
+            continue
+        defects += hole_defects(path, snippet["template"])
+        families = sorted({family for family, _ in uses.get(snippet["id"], [])})
+        report.append(f"  {snippet['id']:32} {len(families):3} families  {len(uses.get(snippet['id'], [])):3} blocks")
+        if len(families) < MIN_FAMILIES:
+            defects.append(
+                f"{path}: used by {len(families)} families {families}; "
+                f"a snippet needs at least {MIN_FAMILIES}"
+            )
+            continue
+        try:
+            ast.parse(_render(parts, uses[snippet["id"]][0][1]))
+        except (SyntaxError, KeyError, TypeError) as exc:
+            defects.append(f"{path}: first use in {families[0]} does not render to Python ({exc})")
+    for snippet_id in sorted(uses.keys() - seen):
+        defects.append(f"{corpus}: ops use snippet {snippet_id!r}, which the ISA does not define")
+    report.append(f"  coverage: {snippet_blocks} / {total} blocks are INSERT_SNIPPET")
+    return defects, report
 
 
 def main() -> int:
-    try:
-        snippets_dir = find_snippets_dir()
-        print(f"[*] Found snippets directory at: {snippets_dir}")
-
-        snippets_by_id: Dict[str, Dict[str, Any]] = {}
-
-        # 1. Validate existence and schema
-        for category, snippet_ids in REQUIRED_SNIPPETS.items():
-            cat_dir = snippets_dir / category
-            if not cat_dir.is_dir():
-                raise FileNotFoundError(f"Missing category directory: {cat_dir}")
-
-            for s_id in snippet_ids:
-                s_file = cat_dir / f"{s_id}.json"
-                if not s_file.is_file():
-                    raise FileNotFoundError(f"Missing snippet file: {s_file}")
-
-                with open(s_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-
-                validate_snippet_schema(data, s_id, s_file)
-                snippets_by_id[s_id] = data
-                print(f"  [+] Validated schema: {category}/{s_id}.json")
-
-        # 2. Assemble mock main.py
-        mock_code = assemble_mock_main(snippets_by_id)
-
-        # 3. Tier 1: AST syntax validation
-        ast.parse(mock_code)
-        print("  [+] AST parsing check passed (syntactically valid Python).")
-
-        # 4. Tier 2: py_compile execution
-        with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as tf:
-            tf.write(mock_code)
-            tf_path = tf.name
-
-        try:
-            res = subprocess.run(
-                [sys.executable, "-m", "py_compile", tf_path],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            print("  [+] Bytecode py_compile check passed with exit code 0.")
-        finally:
-            if os.path.exists(tf_path):
-                os.remove(tf_path)
-
-        print("\n[SUCCESS] All 8 snippets validated, assembled, and successfully compiled!")
-        return 0
-
-    except Exception as e:
-        print(f"\n[ERROR] Verification failed: {e}", file=sys.stderr)
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--snippets", type=Path, default=DATA / "snippets", help="ISA directory (default data/snippets)")
+    ap.add_argument("--corpus", type=Path, default=DATA / "curated", help="corpus layer whose ops are counted (default data/curated)")
+    args = ap.parse_args()
+    defects, report = verify(args.snippets, args.corpus)
+    print("\n".join(report))
+    for defect in defects:
+        print(f"DEFECT {defect}")
+    if defects:
+        print(f"[RESULT: FAILURE] {len(defects)} snippet defects")
         return 1
+    print("[RESULT: SUCCESS] 0 snippet defects")
+    return 0
 
 
 if __name__ == "__main__":

@@ -1,0 +1,8 @@
+{
+  "id": "pydantic_orm_model",
+  "description": "A response model read from ORM attributes: fields first, then from_attributes.",
+  "imports": [
+    "from pydantic import BaseModel, ConfigDict"
+  ],
+  "template": "class {{name}}(BaseModel):\n    \"\"\"{{doc}}\"\"\"\n{{#fields}}\n    {{field}}: {{declaration}}{{/fields}}\n\n    model_config = ConfigDict(from_attributes=True)"
+}

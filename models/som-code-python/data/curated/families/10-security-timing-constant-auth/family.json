@@ -216,10 +216,28 @@
         "blank_before": 1
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "AuthenticatedUser",
-        "source": "class AuthenticatedUser(BaseModel):\n    \"\"\"The identity and scopes carried by a verified token.\"\"\"\n\n    user_id: str\n    scopes: list[str]\n    expires_at: int",
+        "id": "pydantic_model",
+        "params": {
+          "name": "AuthenticatedUser",
+          "doc": "The identity and scopes carried by a verified token.",
+          "fields": [
+            {
+              "field": "user_id",
+              "declaration": "str"
+            },
+            {
+              "field": "scopes",
+              "declaration": "list[str]"
+            },
+            {
+              "field": "expires_at",
+              "declaration": "int"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
@@ -237,10 +255,13 @@
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "app",
-        "source": "app = FastAPI(title=\"Security Constant-Time Service\")",
+        "id": "fastapi_app_titled",
+        "params": {
+          "title": "Security Constant-Time Service"
+        },
         "blank_before": 2
       },
       {
@@ -273,8 +294,8 @@
       }
     ],
     "coverage": {
-      "snippet_blocks": 0,
-      "literal_blocks": 9
+      "snippet_blocks": 2,
+      "literal_blocks": 7
     }
   },
   "candidates": [

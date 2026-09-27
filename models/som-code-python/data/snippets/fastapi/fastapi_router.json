@@ -1,8 +1,0 @@
-{
-  "id": "fastapi_router",
-  "description": "Instantiates a modular APIRouter with dedicated path prefix and OpenAPI grouping tags.",
-  "imports": [
-    "from fastapi import APIRouter"
-  ],
-  "template": "{{router_name}} = APIRouter(\n    prefix=\"{{prefix}}\",\n    tags=[\"{{tag}}\"],\n)"
-}

@@ -100,10 +100,36 @@
         "group": 1
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "ToolExecutionResult",
-        "source": "class ToolExecutionResult(BaseModel):\n    \"\"\"Outcome of one tool call, carrying its output or an error.\"\"\"\n\n    call_id: str\n    name: str\n    status: str\n    output: Any = None\n    error: str | None = None",
+        "id": "pydantic_model",
+        "params": {
+          "name": "ToolExecutionResult",
+          "doc": "Outcome of one tool call, carrying its output or an error.",
+          "fields": [
+            {
+              "field": "call_id",
+              "declaration": "str"
+            },
+            {
+              "field": "name",
+              "declaration": "str"
+            },
+            {
+              "field": "status",
+              "declaration": "str"
+            },
+            {
+              "field": "output",
+              "declaration": "Any = None"
+            },
+            {
+              "field": "error",
+              "declaration": "str | None = None"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
@@ -115,8 +141,8 @@
       }
     ],
     "coverage": {
-      "snippet_blocks": 0,
-      "literal_blocks": 2
+      "snippet_blocks": 1,
+      "literal_blocks": 1
     }
   },
   "candidates": [

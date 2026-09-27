@@ -308,38 +308,66 @@
         "group": 1
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "engine",
-        "source": "engine = create_engine(\n    \"sqlite:///:memory:\",\n    connect_args={\"check_same_thread\": False},\n    poolclass=StaticPool,\n)",
+        "id": "sqlalchemy_memory_engine",
+        "params": {},
         "blank_before": 1
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "Base",
-        "source": "class Base(DeclarativeBase):\n    \"\"\"Declarative base shared by every table in this module.\"\"\"",
+        "id": "sqlalchemy_declarative_base",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "Account",
-        "source": "class Account(Base):\n    \"\"\"A bank account with a balance.\"\"\"\n\n    __tablename__ = \"accounts\"\n\n    id: Mapped[int] = mapped_column(primary_key=True, index=True)\n    account_number: Mapped[str] = mapped_column(unique=True, nullable=False)\n    balance: Mapped[float] = mapped_column(nullable=False)",
+        "id": "sqlalchemy_table",
+        "params": {
+          "name": "Account",
+          "doc": "A bank account with a balance.",
+          "table": "accounts",
+          "columns": [
+            {
+              "column": "id",
+              "type": "int",
+              "value": "mapped_column(primary_key=True, index=True)"
+            },
+            {
+              "column": "account_number",
+              "type": "str",
+              "value": "mapped_column(unique=True, nullable=False)"
+            },
+            {
+              "column": "balance",
+              "type": "float",
+              "value": "mapped_column(nullable=False)"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "Base.metadata.create_all",
-        "source": "Base.metadata.create_all(bind=engine)",
+        "id": "sqlalchemy_create_all",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "sync_session_factory",
-        "source": "sync_session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)",
+        "id": "sqlalchemy_session_factory",
+        "params": {
+          "name": "sync_session_factory"
+        },
         "blank_before": 0
       },
       {
@@ -378,24 +406,65 @@
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "TransferRequest",
-        "source": "class TransferRequest(BaseModel):\n    \"\"\"Payload accepted when moving money between two accounts.\"\"\"\n\n    from_account_id: int\n    to_account_id: int\n    amount: float",
+        "id": "pydantic_model",
+        "params": {
+          "name": "TransferRequest",
+          "doc": "Payload accepted when moving money between two accounts.",
+          "fields": [
+            {
+              "field": "from_account_id",
+              "declaration": "int"
+            },
+            {
+              "field": "to_account_id",
+              "declaration": "int"
+            },
+            {
+              "field": "amount",
+              "declaration": "float"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "TransferResponse",
-        "source": "class TransferResponse(BaseModel):\n    \"\"\"The outcome of a transfer with both resulting balances.\"\"\"\n\n    status: str\n    transferred: float\n    from_balance: float\n    to_balance: float",
+        "id": "pydantic_model",
+        "params": {
+          "name": "TransferResponse",
+          "doc": "The outcome of a transfer with both resulting balances.",
+          "fields": [
+            {
+              "field": "status",
+              "declaration": "str"
+            },
+            {
+              "field": "transferred",
+              "declaration": "float"
+            },
+            {
+              "field": "from_balance",
+              "declaration": "float"
+            },
+            {
+              "field": "to_balance",
+              "declaration": "float"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "app",
-        "source": "app = FastAPI()",
+        "id": "fastapi_app",
+        "params": {},
         "blank_before": 2
       },
       {
@@ -421,8 +490,8 @@
       }
     ],
     "coverage": {
-      "snippet_blocks": 0,
-      "literal_blocks": 16
+      "snippet_blocks": 8,
+      "literal_blocks": 8
     }
   },
   "candidates": [

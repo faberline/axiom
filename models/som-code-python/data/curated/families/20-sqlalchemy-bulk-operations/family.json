@@ -313,10 +313,11 @@
         "group": 1
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "engine",
-        "source": "engine = create_engine(\n    \"sqlite:///:memory:\",\n    connect_args={\"check_same_thread\": False},\n    poolclass=StaticPool,\n)",
+        "id": "sqlalchemy_memory_engine",
+        "params": {},
         "blank_before": 1
       },
       {
@@ -334,38 +335,76 @@
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "Base",
-        "source": "class Base(DeclarativeBase):\n    \"\"\"Declarative base shared by every table in this module.\"\"\"",
+        "id": "sqlalchemy_declarative_base",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "TelemetryReading",
-        "source": "class TelemetryReading(Base):\n    \"\"\"One metric sample reported by a device.\"\"\"\n\n    __tablename__ = \"telemetry_readings\"\n\n    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)\n    device_id: Mapped[str] = mapped_column(nullable=False)\n    metric_name: Mapped[str] = mapped_column(nullable=False)\n    value: Mapped[float] = mapped_column(nullable=False)\n    timestamp: Mapped[str] = mapped_column(nullable=False)",
+        "id": "sqlalchemy_table",
+        "params": {
+          "name": "TelemetryReading",
+          "doc": "One metric sample reported by a device.",
+          "table": "telemetry_readings",
+          "columns": [
+            {
+              "column": "id",
+              "type": "int",
+              "value": "mapped_column(primary_key=True, autoincrement=True)"
+            },
+            {
+              "column": "device_id",
+              "type": "str",
+              "value": "mapped_column(nullable=False)"
+            },
+            {
+              "column": "metric_name",
+              "type": "str",
+              "value": "mapped_column(nullable=False)"
+            },
+            {
+              "column": "value",
+              "type": "float",
+              "value": "mapped_column(nullable=False)"
+            },
+            {
+              "column": "timestamp",
+              "type": "str",
+              "value": "mapped_column(nullable=False)"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "Base.metadata.create_all",
-        "source": "Base.metadata.create_all(bind=engine)",
+        "id": "sqlalchemy_create_all",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "session_factory",
-        "source": "session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)",
+        "id": "sqlalchemy_session_factory",
+        "params": {
+          "name": "session_factory"
+        },
         "blank_before": 0
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "get_db",
-        "source": "def get_db() -> Generator[Session, None, None]:\n    \"\"\"Yield one database session per request and close it afterwards.\"\"\"\n    db = session_factory()\n    try:\n        yield db\n    finally:\n        db.close()",
+        "id": "sqlalchemy_get_db",
+        "params": {},
         "blank_before": 2
       },
       {
@@ -383,38 +422,92 @@
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "TelemetryReadingCreate",
-        "source": "class TelemetryReadingCreate(BaseModel):\n    \"\"\"One reading in a bulk upload.\"\"\"\n\n    device_id: str\n    metric_name: str\n    value: float\n    timestamp: str",
+        "id": "pydantic_model",
+        "params": {
+          "name": "TelemetryReadingCreate",
+          "doc": "One reading in a bulk upload.",
+          "fields": [
+            {
+              "field": "device_id",
+              "declaration": "str"
+            },
+            {
+              "field": "metric_name",
+              "declaration": "str"
+            },
+            {
+              "field": "value",
+              "declaration": "float"
+            },
+            {
+              "field": "timestamp",
+              "declaration": "str"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "BulkTelemetryRequest",
-        "source": "class BulkTelemetryRequest(BaseModel):\n    \"\"\"Payload accepted when uploading readings in bulk.\"\"\"\n\n    readings: list[TelemetryReadingCreate]",
+        "id": "pydantic_model",
+        "params": {
+          "name": "BulkTelemetryRequest",
+          "doc": "Payload accepted when uploading readings in bulk.",
+          "fields": [
+            {
+              "field": "readings",
+              "declaration": "list[TelemetryReadingCreate]"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "BulkTelemetryResponse",
-        "source": "class BulkTelemetryResponse(BaseModel):\n    \"\"\"How many readings were stored and their ids.\"\"\"\n\n    inserted_count: int\n    ids: list[int]",
+        "id": "pydantic_model",
+        "params": {
+          "name": "BulkTelemetryResponse",
+          "doc": "How many readings were stored and their ids.",
+          "fields": [
+            {
+              "field": "inserted_count",
+              "declaration": "int"
+            },
+            {
+              "field": "ids",
+              "declaration": "list[int]"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "app",
-        "source": "app = FastAPI()",
+        "id": "fastapi_app",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "get_query_metrics",
-        "source": "@app.get(\"/query-metrics\")\ndef get_query_metrics() -> dict[str, int]:\n    \"\"\"Return how many INSERT statements have run since the last reset.\"\"\"\n    return {\"insert_count\": QueryCounter.insert_count}",
+        "id": "fastapi_counter_route",
+        "params": {
+          "path": "/query-metrics",
+          "name": "get_query_metrics",
+          "doc": "Return how many INSERT statements have run since the last reset.",
+          "key": "insert_count",
+          "value": "QueryCounter.insert_count"
+        },
         "blank_before": 2
       },
       {
@@ -433,8 +526,8 @@
       }
     ],
     "coverage": {
-      "snippet_blocks": 0,
-      "literal_blocks": 17
+      "snippet_blocks": 11,
+      "literal_blocks": 6
     }
   },
   "candidates": [

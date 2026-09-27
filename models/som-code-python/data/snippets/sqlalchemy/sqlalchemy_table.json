@@ -1,0 +1,8 @@
+{
+  "id": "sqlalchemy_table",
+  "description": "A mapped table: its docstring, table name, and one typed column per line.",
+  "imports": [
+    "from sqlalchemy.orm import Mapped, mapped_column"
+  ],
+  "template": "class {{name}}(Base):\n    \"\"\"{{doc}}\"\"\"\n\n    __tablename__ = \"{{table}}\"\n{{#columns}}\n    {{column}}: Mapped[{{type}}] = {{value}}{{/columns}}"
+}

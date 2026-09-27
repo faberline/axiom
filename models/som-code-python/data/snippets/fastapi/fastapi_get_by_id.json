@@ -1,0 +1,9 @@
+{
+  "id": "fastapi_get_by_id",
+  "description": "A GET route that loads one row by primary key and answers 404 when it is missing.",
+  "imports": [
+    "from fastapi import Depends, HTTPException",
+    "from sqlalchemy.orm import Session"
+  ],
+  "template": "@app.get(\"{{path}}\", response_model={{response_model}})\ndef {{name}}({{key}}: int, db: Session = Depends(get_db)) -> {{model}}:\n    \"\"\"{{doc}}\"\"\"\n    {{row}} = db.get({{model}}, {{key}})\n    if not {{row}}:\n        raise HTTPException(status_code=404, detail=\"{{detail}}\")\n    return {{row}}"
+}

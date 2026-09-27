@@ -1,8 +1,0 @@
-{
-  "id": "fastapi_route_get",
-  "description": "Declares an asynchronous HTTP GET handler with path parameter extraction and response serialization.",
-  "imports": [
-    "from fastapi import HTTPException"
-  ],
-  "template": "@{{router_name}}.get(\"{{path}}\", response_model={{response_model}})\nasync def {{handler_name}}({{param_name}}: {{param_type}}):\n    \"\"\"{{docstring}}\"\"\"\n    return {{return_expression}}"
-}

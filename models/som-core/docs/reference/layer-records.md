@@ -63,7 +63,7 @@ An ordered list; each operation is an object with `op` and its fields.
 |---|---|---|
 | `CREATE_FILE` | `path`, `docstring` (string or null) | Starts a file, with its module docstring. Must precede every other operation on that path. |
 | `ADD_IMPORT` | `path`, `stmt`, `group` | Adds one import statement, verbatim. `group` is the index of the blank-line-separated import paragraph it belongs to, starting at 0. |
-| `INSERT_SNIPPET` | `path`, `block`, `id`, `params`, `blank_before` | Renders snippet `id` from the ISA with `params` (every `{{name}}` in the template must be given, and no extra key) as block `block`. |
+| `INSERT_SNIPPET` | `path`, `block`, `id`, `params`, `blank_before` | Renders snippet `id` from the ISA with `params` as block `block`; `params` maps each key to a string or, for a section, a list of string maps (§ Snippet templates). |
 | `INSERT_BLOCK` | `path`, `block`, `source`, `blank_before` | Writes `source` verbatim as block `block`: the ISA has no snippet for it. |
 
 - Every `block` is declared in the topology under the same `path`, and every
@@ -73,7 +73,23 @@ An ordered list; each operation is an object with `op` and its fields.
   carry every import the file needs as `ADD_IMPORT`.
 - `decompiled.coverage` is `{"snippet_blocks": n, "literal_blocks": m}`.
   The share of `INSERT_SNIPPET` is how much of the corpus the ISA can
-  express; `INSERT_BLOCK` is the gap the corpus project's ISA v2 closes.
+  express; `INSERT_BLOCK` is the part it cannot.
+
+### Snippet templates
+
+A template is literal text with two kinds of tag:
+
+- `{{name}}` is replaced by `params[name]`, a string.
+- `{{#name}}…{{/name}}` is a section: its body is rendered once per item of
+  `params[name]`, a list of objects whose values are strings, and the
+  renderings are concatenated in order. An empty list renders nothing.
+
+Sections do not nest. A key used inside a section is an item key: the
+template never uses it outside that section. Each item, like `params`
+itself, must give every key its body uses and no other; an unknown snippet
+id is refused too. For example `class {{name}}(BaseModel):\n{{#fields}}    {{field}}: {{type}}\n{{/fields}}`
+with `{"name": "Item", "fields": [{"field": "id", "type": "int"}]}` renders
+`class Item(BaseModel):\n    id: int\n`.
 
 ## Assembly
 

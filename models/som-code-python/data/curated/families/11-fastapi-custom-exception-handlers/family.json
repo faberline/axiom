@@ -257,10 +257,28 @@
         "group": 1
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "TransferRequest",
-        "source": "class TransferRequest(BaseModel):\n    \"\"\"Payload accepted when moving money between two accounts.\"\"\"\n\n    from_account: str = Field(min_length=1)\n    to_account: str = Field(min_length=1)\n    amount: float = Field(gt=0.0)",
+        "id": "pydantic_model",
+        "params": {
+          "name": "TransferRequest",
+          "doc": "Payload accepted when moving money between two accounts.",
+          "fields": [
+            {
+              "field": "from_account",
+              "declaration": "str = Field(min_length=1)"
+            },
+            {
+              "field": "to_account",
+              "declaration": "str = Field(min_length=1)"
+            },
+            {
+              "field": "amount",
+              "declaration": "float = Field(gt=0.0)"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
@@ -306,10 +324,13 @@
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "app",
-        "source": "app = FastAPI(title=\"Transfer Service\")",
+        "id": "fastapi_app_titled",
+        "params": {
+          "title": "Transfer Service"
+        },
         "blank_before": 2
       },
       {
@@ -342,8 +363,8 @@
       }
     ],
     "coverage": {
-      "snippet_blocks": 0,
-      "literal_blocks": 12
+      "snippet_blocks": 2,
+      "literal_blocks": 10
     }
   },
   "candidates": [

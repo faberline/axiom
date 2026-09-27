@@ -128,10 +128,13 @@
         "blank_before": 1
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "main",
-        "source": "@app.callback()\ndef main() -> None:\n    \"\"\"Main callback for multi-command CLI support.\"\"\"",
+        "id": "typer_callback",
+        "params": {
+          "doc": "Main callback for multi-command CLI support."
+        },
         "blank_before": 2
       },
       {
@@ -150,8 +153,8 @@
       }
     ],
     "coverage": {
-      "snippet_blocks": 0,
-      "literal_blocks": 4
+      "snippet_blocks": 1,
+      "literal_blocks": 3
     }
   },
   "candidates": [

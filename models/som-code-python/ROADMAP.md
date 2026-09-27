@@ -5,7 +5,7 @@
 This roadmap orders the work that turns the Python corpus into the training
 material the four-layer generator in `models/som-core` needs. The order is
 data first: finish the oracle fixtures, then harden the near misses and
-widen the ISA so more of each gold is expressed as snippets. The subject stays the Python
+cover the ISA's long tail so more of each gold is expressed as snippets. The subject stays the Python
 ecosystem written as code its community accepts. The current
 support state is in [STATUS.md](STATUS.md).
 
@@ -44,17 +44,19 @@ support state is in [STATUS.md](STATUS.md).
   more than one hunk.
 - Tracking: Not assigned.
 
-### Snippet ISA v2
+### Snippet long tail
 
-- ID: `snippet-isa-v2`
-- Outcome: The ISA covers the libraries the oracle families use beyond
-  FastAPI, Pydantic, and SQLAlchemy, and every family's gold can be expressed
-  as an operation list over it.
-- Boundary: New snippet definitions under `data/snippets/v2/` and the
-  verifier's required set; not the assembler.
-- Completion evidence: The verifier run over `v2` compiles the assembled
-  module, and a coverage report names no family whose gold uses a library the
-  ISA lacks.
+- ID: `snippet-long-tail`
+- Outcome: Route handlers with branching bodies, exception handlers, CLI
+  commands, and async code become snippets where at least two families share
+  the idiom, so the verifier's coverage rises without a template line that is
+  only a placeholder.
+- Boundary: New snippet definitions under `data/snippets/<library>/` and new
+  families that give a one-family idiom its second use; not the template
+  syntax and not the assembler.
+- Completion evidence: `scripts/verify_snippets.py` exits 0 with a higher
+  `coverage:` line than STATUS `snippet-isa` records, and
+  `scripts/verify_roundtrip.py` still rebuilds every family it did before.
 - Tracking: Not assigned.
 
 ## Non-goals

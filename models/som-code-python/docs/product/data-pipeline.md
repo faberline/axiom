@@ -43,9 +43,9 @@ trip that proves them.
   curation check refuses drift, a plan whose constraints omit a raised
   exception or declared status code, and a topology over the engine's scope
   limit.
-- Limits today: the ISA expresses few blocks exactly, so most blocks are
-  `INSERT_BLOCK` literals; `decompiled.coverage` reports the share per
-  family, and ROADMAP `snippet-isa-v2` raises it.
+- Limits today: most blocks are still `INSERT_BLOCK` literals;
+  `decompiled.coverage` reports the share per family, STATUS `snippet-isa`
+  the corpus total, and ROADMAP `snippet-long-tail` raises it.
 - Non-goals: decompiling near misses, which belongs to the engine's
   preference-data outcome; a decompiler for another language.
 - Neighbours: [Project test suite](#project-test-suite) above, which holds

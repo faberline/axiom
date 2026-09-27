@@ -300,10 +300,11 @@
         "group": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "engine",
-        "source": "engine = create_engine(\n    \"sqlite:///:memory:\",\n    connect_args={\"check_same_thread\": False},\n    poolclass=StaticPool,\n)",
+        "id": "sqlalchemy_memory_engine",
+        "params": {},
         "blank_before": 1
       },
       {
@@ -321,17 +322,40 @@
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "Base",
-        "source": "class Base(DeclarativeBase):\n    \"\"\"Declarative base shared by every table in this module.\"\"\"",
+        "id": "sqlalchemy_declarative_base",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "Author",
-        "source": "class Author(Base):\n    \"\"\"An article author.\"\"\"\n\n    __tablename__ = \"authors\"\n\n    id: Mapped[int] = mapped_column(primary_key=True, index=True)\n    name: Mapped[str] = mapped_column(nullable=False)\n    email: Mapped[str] = mapped_column(nullable=False)",
+        "id": "sqlalchemy_table",
+        "params": {
+          "name": "Author",
+          "doc": "An article author.",
+          "table": "authors",
+          "columns": [
+            {
+              "column": "id",
+              "type": "int",
+              "value": "mapped_column(primary_key=True, index=True)"
+            },
+            {
+              "column": "name",
+              "type": "str",
+              "value": "mapped_column(nullable=False)"
+            },
+            {
+              "column": "email",
+              "type": "str",
+              "value": "mapped_column(nullable=False)"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
@@ -342,24 +366,29 @@
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "Base.metadata.create_all",
-        "source": "Base.metadata.create_all(bind=engine)",
+        "id": "sqlalchemy_create_all",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "session_factory",
-        "source": "session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)",
+        "id": "sqlalchemy_session_factory",
+        "params": {
+          "name": "session_factory"
+        },
         "blank_before": 0
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "get_db",
-        "source": "def get_db() -> Generator[Session, None, None]:\n    \"\"\"Yield one database session per request and close it afterwards.\"\"\"\n    db = session_factory()\n    try:\n        yield db\n    finally:\n        db.close()",
+        "id": "sqlalchemy_get_db",
+        "params": {},
         "blank_before": 2
       },
       {
@@ -377,31 +406,79 @@
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "AuthorResponse",
-        "source": "class AuthorResponse(BaseModel):\n    \"\"\"Author representation returned to clients.\"\"\"\n\n    id: int\n    name: str\n    email: str\n\n    model_config = ConfigDict(from_attributes=True)",
+        "id": "pydantic_orm_model",
+        "params": {
+          "name": "AuthorResponse",
+          "doc": "Author representation returned to clients.",
+          "fields": [
+            {
+              "field": "id",
+              "declaration": "int"
+            },
+            {
+              "field": "name",
+              "declaration": "str"
+            },
+            {
+              "field": "email",
+              "declaration": "str"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "ArticleResponse",
-        "source": "class ArticleResponse(BaseModel):\n    \"\"\"Article representation returned to clients.\"\"\"\n\n    id: int\n    title: str\n    content: str\n    author: AuthorResponse | None = None\n\n    model_config = ConfigDict(from_attributes=True)",
+        "id": "pydantic_orm_model",
+        "params": {
+          "name": "ArticleResponse",
+          "doc": "Article representation returned to clients.",
+          "fields": [
+            {
+              "field": "id",
+              "declaration": "int"
+            },
+            {
+              "field": "title",
+              "declaration": "str"
+            },
+            {
+              "field": "content",
+              "declaration": "str"
+            },
+            {
+              "field": "author",
+              "declaration": "AuthorResponse | None = None"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "app",
-        "source": "app = FastAPI()",
+        "id": "fastapi_app",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "get_query_metrics",
-        "source": "@app.get(\"/query-metrics\")\ndef get_query_metrics() -> dict[str, int]:\n    \"\"\"Return how many SELECT statements have run since the last reset.\"\"\"\n    return {\"count\": QueryCounter.count}",
+        "id": "fastapi_counter_route",
+        "params": {
+          "path": "/query-metrics",
+          "name": "get_query_metrics",
+          "doc": "Return how many SELECT statements have run since the last reset.",
+          "key": "count",
+          "value": "QueryCounter.count"
+        },
         "blank_before": 2
       },
       {
@@ -413,8 +490,8 @@
       }
     ],
     "coverage": {
-      "snippet_blocks": 0,
-      "literal_blocks": 16
+      "snippet_blocks": 10,
+      "literal_blocks": 6
     }
   },
   "candidates": [

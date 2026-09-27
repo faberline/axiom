@@ -99,10 +99,32 @@
         "group": 1
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "MCPResourceContent",
-        "source": "class MCPResourceContent(BaseModel):\n    \"\"\"One resource read: its URI, text, MIME type, and size.\"\"\"\n\n    uri: str\n    content: str\n    mime_type: str\n    size_bytes: int",
+        "id": "pydantic_model",
+        "params": {
+          "name": "MCPResourceContent",
+          "doc": "One resource read: its URI, text, MIME type, and size.",
+          "fields": [
+            {
+              "field": "uri",
+              "declaration": "str"
+            },
+            {
+              "field": "content",
+              "declaration": "str"
+            },
+            {
+              "field": "mime_type",
+              "declaration": "str"
+            },
+            {
+              "field": "size_bytes",
+              "declaration": "int"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
@@ -114,8 +136,8 @@
       }
     ],
     "coverage": {
-      "snippet_blocks": 0,
-      "literal_blocks": 2
+      "snippet_blocks": 1,
+      "literal_blocks": 1
     }
   },
   "candidates": [

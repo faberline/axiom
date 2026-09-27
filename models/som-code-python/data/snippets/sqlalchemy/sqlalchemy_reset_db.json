@@ -1,0 +1,6 @@
+{
+  "id": "sqlalchemy_reset_db",
+  "description": "Drop and recreate every table, for a clean state between tests.",
+  "imports": [],
+  "template": "def reset_db() -> None:\n    \"\"\"Drop and recreate every table.\"\"\"\n    Base.metadata.drop_all(bind=engine)\n    Base.metadata.create_all(bind=engine)"
+}

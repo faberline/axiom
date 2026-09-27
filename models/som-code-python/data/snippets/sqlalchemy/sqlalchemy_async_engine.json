@@ -1,9 +1,0 @@
-{
-  "id": "sqlalchemy_async_engine",
-  "description": "Establishes SQLAlchemy 2.0 async infrastructure: DeclarativeBase root, create_async_engine, and async_sessionmaker.",
-  "imports": [
-    "from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine",
-    "from sqlalchemy.orm import DeclarativeBase"
-  ],
-  "template": "class Base(DeclarativeBase):\n    pass\n\n\n{{engine_name}} = create_async_engine(\n    \"{{database_url}}\",\n    echo={{echo}},\n)\n\n{{session_factory_name}} = async_sessionmaker(\n    bind={{engine_name}},\n    class_=AsyncSession,\n    expire_on_commit=False,\n)"
-}

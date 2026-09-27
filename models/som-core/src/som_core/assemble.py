@@ -13,10 +13,14 @@ Rules this module owns:
   (:func:`som_core.records.validate_ops`), so an assembler run never writes
   a partial program.
 - A snippet renders by replacing each ``{{name}}`` in its template with
-  ``params[name]``; an unknown snippet id, a parameter the template needs
-  but ``params`` lacks, and a parameter the template never uses are all
-  refused. A snippet's ``imports`` are not added: the operation list carries
-  every import as ``ADD_IMPORT``.
+  ``params[name]``, and each ``{{#name}}...{{/name}}`` section with its body
+  rendered once per item of the list ``params[name]``, items concatenated
+  in order. Sections do not nest, and a key used inside a section is an
+  item key that the template never uses outside it. An unknown snippet id,
+  a parameter the template needs but ``params`` (or a section item) lacks,
+  and a parameter the template never uses are all refused. A snippet's
+  ``imports`` are not added: the operation list carries every import as
+  ``ADD_IMPORT``.
 """
 
 from __future__ import annotations
@@ -28,7 +32,7 @@ from typing import Any
 
 from .records import RecordError, validate_ops
 
-PLACEHOLDER = re.compile(r"\{\{([a-zA-Z0-9_]+)\}\}")
+TAG = re.compile(r"\{\{([#/]?)([a-zA-Z0-9_]+)\}\}")
 DEFAULT_ISA = Path(__file__).resolve().parents[3] / "som-code-python" / "data" / "snippets"
 
 
@@ -43,16 +47,79 @@ def load_isa(isa_dir: Path | str) -> dict[str, dict[str, Any]]:
     return isa
 
 
-def render_snippet(template: str, params: dict[str, str]) -> str:
-    """Substitute every placeholder; refuse a missing or unused parameter."""
-    needed = set(PLACEHOLDER.findall(template))
+Part = tuple[str, Any]
+
+
+def parse_template(template: str) -> list[Part]:
+    """Split a template into ``("text", s)``, ``("var", name)``, and ``("section", (name, parts))``.
+
+    Refuses a nested, unclosed, or mismatched section, and a key used both
+    inside a section and outside it.
+    """
+    parts: list[Part] = []
+    section: tuple[str, list[Part]] | None = None
+    pos = 0
+    for hit in TAG.finditer(template):
+        target = section[1] if section else parts
+        if hit.start() > pos:
+            target.append(("text", template[pos:hit.start()]))
+        sigil, name = hit.group(1), hit.group(2)
+        if sigil == "#":
+            if section:
+                raise RecordError(f"section {name!r} is nested inside {section[0]!r}")
+            section = (name, [])
+        elif sigil == "/":
+            if not section or section[0] != name:
+                raise RecordError(f"section close {name!r} has no matching open")
+            parts.append(("section", section))
+            section = None
+        else:
+            target.append(("var", name))
+        pos = hit.end()
+    if section:
+        raise RecordError(f"section {section[0]!r} is never closed")
+    if pos < len(template):
+        parts.append(("text", template[pos:]))
+    outer = {v for kind, v in parts if kind == "var"}
+    for kind, value in parts:
+        if kind == "section":
+            clash = sorted(outer & {v for k, v in value[1] if k == "var"})
+            if clash:
+                raise RecordError(f"section {value[0]!r} reuses outer keys {clash}")
+    return parts
+
+
+def _fill(parts: list[Part], params: dict[str, Any], where: str) -> str:
+    needed = {v if kind == "var" else v[0] for kind, v in parts if kind != "text"}
     missing = sorted(needed - params.keys())
     extra = sorted(params.keys() - needed)
     if missing:
-        raise RecordError(f"snippet parameters missing: {missing}")
+        raise RecordError(f"snippet parameters missing{where}: {missing}")
     if extra:
-        raise RecordError(f"snippet parameters not in the template: {extra}")
-    return PLACEHOLDER.sub(lambda m: params[m.group(1)], template)
+        raise RecordError(f"snippet parameters not in the template{where}: {extra}")
+    out = []
+    for kind, value in parts:
+        if kind == "text":
+            out.append(value)
+        elif kind == "var":
+            if not isinstance(params[value], str):
+                raise RecordError(f"snippet parameter {value!r}{where} must be a string")
+            out.append(params[value])
+        else:
+            name, body = value
+            items = params[name]
+            if not isinstance(items, list):
+                raise RecordError(f"snippet section {name!r}{where} must be a list")
+            for index, item in enumerate(items):
+                if not isinstance(item, dict):
+                    raise RecordError(f"snippet section {name!r}[{index}]{where} must be an object")
+                out.append(_fill(body, item, f" in {name}[{index}]"))
+    return "".join(out)
+
+
+def render_snippet(template: str, params: dict[str, Any]) -> str:
+    """Render placeholders and sections; refuse a missing or unused parameter."""
+    return _fill(parse_template(template), params, "")
 
 
 def assemble(

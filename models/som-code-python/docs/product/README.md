@@ -60,11 +60,11 @@ Boundaries that every section inherits:
 | Horizon | Outcome | Section |
 |---|---|---|
 | H1 | `oracle-fixtures-complete` | [corpus.md](corpus.md) § Oracle fixtures complete |
-| H2 | `snippet-isa-v2` | [snippet-isa.md](snippet-isa.md) § Snippet ISA v2 |
+| H2 | `snippet-long-tail` | [snippet-isa.md](snippet-isa.md) § Snippet long tail |
 | H2 | `non-minimal-near-misses` | [corpus.md](corpus.md) § Non-minimal near misses |
 
 H1 is the data the engine cannot train without: the three unproven
-families. H2 widens the ISA so more of each gold is a snippet rather than a
+families. H2 covers the ISA's long tail so more of each gold is a snippet rather than a
 literal block, and hardens the near misses before the engine builds
 preference data from them.
 
@@ -77,8 +77,8 @@ preference data from them.
 | Code quality | corpus.md | shipped | STATUS `code-quality` |
 | Oracle fixtures complete | corpus.md | outcome | ROADMAP `oracle-fixtures-complete` |
 | Non-minimal near misses | corpus.md | outcome | ROADMAP `non-minimal-near-misses` |
-| Snippet ISA v1 | snippet-isa.md | shipped | STATUS `snippet-isa` |
-| Snippet ISA v2 | snippet-isa.md | outcome | ROADMAP `snippet-isa-v2` |
+| Snippet ISA | snippet-isa.md | shipped, limited | STATUS `snippet-isa` |
+| Snippet long tail | snippet-isa.md | outcome | ROADMAP `snippet-long-tail` |
 | Project test suite | data-pipeline.md | shipped | STATUS `python-test-suite` |
 | Decompiled layer records | data-pipeline.md | shipped, limited | STATUS `decompiled-layer-records` |
 | uv-runnable packaging | data-pipeline.md | shipped | STATUS `uv-runnable-packaging` |

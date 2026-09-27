@@ -278,94 +278,218 @@
         "group": 1
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "engine",
-        "source": "engine = create_engine(\n    \"sqlite:///:memory:\",\n    connect_args={\"check_same_thread\": False},\n    poolclass=StaticPool,\n)",
+        "id": "sqlalchemy_memory_engine",
+        "params": {},
         "blank_before": 1
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "session_factory",
-        "source": "session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)",
+        "id": "sqlalchemy_session_factory",
+        "params": {
+          "name": "session_factory"
+        },
         "blank_before": 0
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "Base",
-        "source": "class Base(DeclarativeBase):\n    \"\"\"Declarative base shared by every table in this module.\"\"\"",
+        "id": "sqlalchemy_declarative_base",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "Item",
-        "source": "class Item(Base):\n    \"\"\"A persisted catalog item.\"\"\"\n\n    __tablename__ = \"items\"\n\n    id: Mapped[int] = mapped_column(primary_key=True, index=True)\n    name: Mapped[str] = mapped_column(nullable=False)\n    description: Mapped[str | None] = mapped_column(nullable=True)\n    price: Mapped[float] = mapped_column(nullable=False)",
+        "id": "sqlalchemy_table",
+        "params": {
+          "name": "Item",
+          "doc": "A persisted catalog item.",
+          "table": "items",
+          "columns": [
+            {
+              "column": "id",
+              "type": "int",
+              "value": "mapped_column(primary_key=True, index=True)"
+            },
+            {
+              "column": "name",
+              "type": "str",
+              "value": "mapped_column(nullable=False)"
+            },
+            {
+              "column": "description",
+              "type": "str | None",
+              "value": "mapped_column(nullable=True)"
+            },
+            {
+              "column": "price",
+              "type": "float",
+              "value": "mapped_column(nullable=False)"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "Base.metadata.create_all",
-        "source": "Base.metadata.create_all(bind=engine)",
+        "id": "sqlalchemy_create_all",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "reset_db",
-        "source": "def reset_db() -> None:\n    \"\"\"Drop and recreate every table.\"\"\"\n    Base.metadata.drop_all(bind=engine)\n    Base.metadata.create_all(bind=engine)",
+        "id": "sqlalchemy_reset_db",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "get_db",
-        "source": "def get_db() -> Generator[Session, None, None]:\n    \"\"\"Yield one database session per request and close it afterwards.\"\"\"\n    db = session_factory()\n    try:\n        yield db\n    finally:\n        db.close()",
+        "id": "sqlalchemy_get_db",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "ItemCreate",
-        "source": "class ItemCreate(BaseModel):\n    \"\"\"Payload accepted when creating an item.\"\"\"\n\n    name: str\n    description: str | None = None\n    price: float",
+        "id": "pydantic_model",
+        "params": {
+          "name": "ItemCreate",
+          "doc": "Payload accepted when creating an item.",
+          "fields": [
+            {
+              "field": "name",
+              "declaration": "str"
+            },
+            {
+              "field": "description",
+              "declaration": "str | None = None"
+            },
+            {
+              "field": "price",
+              "declaration": "float"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "ItemUpdate",
-        "source": "class ItemUpdate(BaseModel):\n    \"\"\"Partial payload: every field is optional and only sent fields apply.\"\"\"\n\n    name: str | None = None\n    description: str | None = None\n    price: float | None = None",
+        "id": "pydantic_model",
+        "params": {
+          "name": "ItemUpdate",
+          "doc": "Partial payload: every field is optional and only sent fields apply.",
+          "fields": [
+            {
+              "field": "name",
+              "declaration": "str | None = None"
+            },
+            {
+              "field": "description",
+              "declaration": "str | None = None"
+            },
+            {
+              "field": "price",
+              "declaration": "float | None = None"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "ItemResponse",
-        "source": "class ItemResponse(BaseModel):\n    \"\"\"Item representation returned to clients.\"\"\"\n\n    id: int\n    name: str\n    description: str | None\n    price: float\n\n    model_config = ConfigDict(from_attributes=True)",
+        "id": "pydantic_orm_model",
+        "params": {
+          "name": "ItemResponse",
+          "doc": "Item representation returned to clients.",
+          "fields": [
+            {
+              "field": "id",
+              "declaration": "int"
+            },
+            {
+              "field": "name",
+              "declaration": "str"
+            },
+            {
+              "field": "description",
+              "declaration": "str | None"
+            },
+            {
+              "field": "price",
+              "declaration": "float"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "app",
-        "source": "app = FastAPI()",
+        "id": "fastapi_app",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "create_item",
-        "source": "@app.post(\"/items\", status_code=201, response_model=ItemResponse)\ndef create_item(payload: ItemCreate, db: Session = Depends(get_db)) -> Item:\n    \"\"\"Persist a new item and return it.\"\"\"\n    item = Item(\n        name=payload.name,\n        description=payload.description,\n        price=payload.price,\n    )\n    db.add(item)\n    db.commit()\n    db.refresh(item)\n    return item",
+        "id": "fastapi_create_from_payload",
+        "params": {
+          "path": "/items",
+          "route_options": "status_code=201, response_model=ItemResponse",
+          "name": "create_item",
+          "payload_model": "ItemCreate",
+          "model": "Item",
+          "doc": "Persist a new item and return it.",
+          "row": "item",
+          "fields": [
+            {
+              "field": "name"
+            },
+            {
+              "field": "description"
+            },
+            {
+              "field": "price"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "get_item",
-        "source": "@app.get(\"/items/{item_id}\", response_model=ItemResponse)\ndef get_item(item_id: int, db: Session = Depends(get_db)) -> Item:\n    \"\"\"Return one item by id, or 404 when it does not exist.\"\"\"\n    item = db.get(Item, item_id)\n    if not item:\n        raise HTTPException(status_code=404, detail=\"Item not found\")\n    return item",
+        "id": "fastapi_get_by_id",
+        "params": {
+          "path": "/items/{item_id}",
+          "response_model": "ItemResponse",
+          "name": "get_item",
+          "key": "item_id",
+          "model": "Item",
+          "doc": "Return one item by id, or 404 when it does not exist.",
+          "row": "item",
+          "detail": "Item not found"
+        },
         "blank_before": 2
       },
       {
@@ -377,8 +501,8 @@
       }
     ],
     "coverage": {
-      "snippet_blocks": 0,
-      "literal_blocks": 14
+      "snippet_blocks": 13,
+      "literal_blocks": 1
     }
   },
   "candidates": [

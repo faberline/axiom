@@ -1,9 +1,0 @@
-{
-  "id": "sqlalchemy_model",
-  "description": "Declares a modern SQLAlchemy 2.0 ORM model class using Mapped type annotations and mapped_column.",
-  "imports": [
-    "from sqlalchemy import Integer, String",
-    "from sqlalchemy.orm import Mapped, mapped_column"
-  ],
-  "template": "class {{table_class_name}}(Base):\n    __tablename__ = \"{{table_name}}\"\n\n    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)\n    {{column_name}}: Mapped[{{column_type}}] = mapped_column({{column_sql_type}}, nullable=False)"
-}

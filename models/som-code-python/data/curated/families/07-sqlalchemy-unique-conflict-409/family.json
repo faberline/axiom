@@ -269,87 +269,167 @@
         "group": 1
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "engine",
-        "source": "engine = create_engine(\n    \"sqlite:///:memory:\",\n    connect_args={\"check_same_thread\": False},\n    poolclass=StaticPool,\n)",
+        "id": "sqlalchemy_memory_engine",
+        "params": {},
         "blank_before": 1
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "Base",
-        "source": "class Base(DeclarativeBase):\n    \"\"\"Declarative base shared by every table in this module.\"\"\"",
+        "id": "sqlalchemy_declarative_base",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "User",
-        "source": "class User(Base):\n    \"\"\"A registered user with a unique email.\"\"\"\n\n    __tablename__ = \"users\"\n\n    id: Mapped[int] = mapped_column(primary_key=True, index=True)\n    email: Mapped[str] = mapped_column(unique=True, nullable=False, index=True)\n    username: Mapped[str] = mapped_column(nullable=False)",
+        "id": "sqlalchemy_table",
+        "params": {
+          "name": "User",
+          "doc": "A registered user with a unique email.",
+          "table": "users",
+          "columns": [
+            {
+              "column": "id",
+              "type": "int",
+              "value": "mapped_column(primary_key=True, index=True)"
+            },
+            {
+              "column": "email",
+              "type": "str",
+              "value": "mapped_column(unique=True, nullable=False, index=True)"
+            },
+            {
+              "column": "username",
+              "type": "str",
+              "value": "mapped_column(nullable=False)"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "Base.metadata.create_all",
-        "source": "Base.metadata.create_all(bind=engine)",
+        "id": "sqlalchemy_create_all",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "reset_db",
-        "source": "def reset_db() -> None:\n    \"\"\"Drop and recreate every table.\"\"\"\n    Base.metadata.drop_all(bind=engine)\n    Base.metadata.create_all(bind=engine)",
+        "id": "sqlalchemy_reset_db",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "session_factory",
-        "source": "session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)",
+        "id": "sqlalchemy_session_factory",
+        "params": {
+          "name": "session_factory"
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "get_db",
-        "source": "def get_db() -> Generator[Session, None, None]:\n    \"\"\"Yield one database session per request and close it afterwards.\"\"\"\n    db = session_factory()\n    try:\n        yield db\n    finally:\n        db.close()",
+        "id": "sqlalchemy_get_db",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "UserCreate",
-        "source": "class UserCreate(BaseModel):\n    \"\"\"Payload accepted when registering a user.\"\"\"\n\n    email: str\n    username: str",
+        "id": "pydantic_model",
+        "params": {
+          "name": "UserCreate",
+          "doc": "Payload accepted when registering a user.",
+          "fields": [
+            {
+              "field": "email",
+              "declaration": "str"
+            },
+            {
+              "field": "username",
+              "declaration": "str"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "UserResponse",
-        "source": "class UserResponse(BaseModel):\n    \"\"\"User representation returned to clients.\"\"\"\n\n    id: int\n    email: str\n    username: str\n\n    model_config = ConfigDict(from_attributes=True)",
+        "id": "pydantic_orm_model",
+        "params": {
+          "name": "UserResponse",
+          "doc": "User representation returned to clients.",
+          "fields": [
+            {
+              "field": "id",
+              "declaration": "int"
+            },
+            {
+              "field": "email",
+              "declaration": "str"
+            },
+            {
+              "field": "username",
+              "declaration": "str"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "app",
-        "source": "app = FastAPI()",
+        "id": "fastapi_app",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "list_users",
-        "source": "@app.get(\"/users\", response_model=list[UserResponse])\ndef list_users(db: Session = Depends(get_db)) -> list[User]:\n    \"\"\"Return every user.\"\"\"\n    return list(db.scalars(select(User)))",
+        "id": "fastapi_list_all",
+        "params": {
+          "path": "/users",
+          "response_model": "UserResponse",
+          "name": "list_users",
+          "model": "User",
+          "doc": "Return every user."
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "get_user",
-        "source": "@app.get(\"/users/{user_id}\", response_model=UserResponse)\ndef get_user(user_id: int, db: Session = Depends(get_db)) -> User:\n    \"\"\"Return one user by id, or 404 when it does not exist.\"\"\"\n    user = db.get(User, user_id)\n    if not user:\n        raise HTTPException(status_code=404, detail=\"User not found\")\n    return user",
+        "id": "fastapi_get_by_id",
+        "params": {
+          "path": "/users/{user_id}",
+          "response_model": "UserResponse",
+          "name": "get_user",
+          "key": "user_id",
+          "model": "User",
+          "doc": "Return one user by id, or 404 when it does not exist.",
+          "row": "user",
+          "detail": "User not found"
+        },
         "blank_before": 2
       },
       {
@@ -361,8 +441,8 @@
       }
     ],
     "coverage": {
-      "snippet_blocks": 0,
-      "literal_blocks": 13
+      "snippet_blocks": 12,
+      "literal_blocks": 1
     }
   },
   "candidates": [

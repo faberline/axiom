@@ -88,19 +88,24 @@ behavioural rules are left out because a near miss's defect may be exactly
 what they flag. Every exception in the tool tables carries a comment naming
 why the community default does not fit a corpus candidate.
 
-## Snippet ISA v1
+## Snippet ISA
 
 `data/snippets/<library>/<id>.json` is one instruction of the ISA: an `id`,
-a `description`, the `imports` it needs, and a Mustache `template` with named
-parameters. The verifier checks every required snippet exists, that
-parameters are consistent, assembles all of them in dependency order into one
-module, and compiles it. Version 1 covers FastAPI, Pydantic, and SQLAlchemy.
+a `description`, the `imports` it needs, and a `template` of literal text
+with `{{name}}` placeholders and one-level `{{#name}}...{{/name}}` list
+sections (`models/som-core/docs/reference/layer-records.md` § Snippet
+templates). The decompiler turns a gold block into `INSERT_SNIPPET` only when
+the extracted parameters render back to the block byte for byte. A snippet
+earns its place by use: the verifier counts, from each family's
+`decompiled.ops`, how many families use it and refuses one used by fewer
+than two, a template line that is only a placeholder, and an operation that
+names an id the ISA lacks.
 
 ## Contract discovery
 
 - The family layout and the harness contract are the docstring of
   `scripts/verify_harness.py`; the snippet schema and the
-  required set are the constants at the top of `scripts/verify_snippets.py`.
+  ISA rules are the docstring of `scripts/verify_snippets.py`.
 - The engine reads the corpus through `models/som-core`'s dataset loader, so
   a layout change here is a change to that project as well.
 - The product promises per area live under
@@ -116,7 +121,7 @@ module, and compiles it. Version 1 covers FastAPI, Pydantic, and SQLAlchemy.
 | Curated rationale | `curated-rationale` | Every family states what it teaches and why its oracle is executable, every near miss states its observable consequence and the fixture tests that catch it, every gold program has a long caption grounded in its source, and the check exits non-zero on any missing, trivial, label-leaking, or ungrounded field. | `models/som-code-python` |
 | Code quality | `code-quality` | Every gold candidate passes ruff, ruff format, mypy in strict mode, and pylint with zero messages, every near miss passes ruff format and the style rules, and the gate exits non-zero naming each candidate that does not. | `models/som-code-python` |
 | Decompiled layer records | `decompiled-layer-records` | Every family carries an authored L1 plan and the L2 topology, L3 operation list, and snippet coverage measured from its gold, and `som assemble` rebuilds every gold within the scope limit, and the multi-file TODO fixture, from those records to the same AST, with the family's fixture passing on the rebuilt file. | `models/som-code-python`, `models/som-core` |
-| Snippet ISA v1 | `snippet-isa` | Every required snippet exists with consistent parameters, and the full set assembles in dependency order into a module that compiles. | `models/som-code-python` |
+| Snippet ISA | `snippet-isa` | Every snippet is used by at least two families' operation lists, has no line that is only a placeholder, and renders its first use to Python, and the verifier reports how many corpus blocks the ISA expresses. | `models/som-code-python`, `models/som-core` |
 
 ### Executable oracle corpus
 
@@ -165,13 +170,15 @@ module, and compiles it. Version 1 covers FastAPI, Pydantic, and SQLAlchemy.
   - `models/som-core` owns the record schema and the assembler.
 - Gate: `uv run --project models/som-code-python python models/som-code-python/scripts/verify_roundtrip.py`
 
-### Snippet ISA v1
+### Snippet ISA
 
 - ID: `snippet-isa`
-- Promise: Every required snippet exists with consistent parameters, and the
-  full set assembles in dependency order into a module that compiles.
+- Promise: Every snippet is used by at least two families' operation lists,
+  has no line that is only a placeholder, and renders its first use to
+  Python, and the verifier reports how many corpus blocks the ISA expresses.
 - Sources:
-  - `models/som-code-python` owns the snippet definitions and the verifier.
+  - `models/som-code-python` owns the snippet definitions, the decompiler that matches them, and the verifier.
+  - `models/som-core` owns the template syntax and its renderer.
 - Gate: `uv run --project models/som-code-python python models/som-code-python/scripts/verify_snippets.py`
 
 ## Supporting documents
@@ -182,7 +189,7 @@ module, and compiles it. Version 1 covers FastAPI, Pydantic, and SQLAlchemy.
 - [STATUS.md](STATUS.md) is the per-surface support matrix, including the
   families without fixtures.
 - [ROADMAP.md](ROADMAP.md) orders the outcomes: complete the fixtures, then
-  harden the near misses and widen the ISA.
+  harden the near misses and cover the ISA's long tail.
 - [CONTRIBUTING.md](CONTRIBUTING.md) is the local workflow and verification.
 - [docs/product/README.md](docs/product/README.md) indexes the product
   requirement sections.

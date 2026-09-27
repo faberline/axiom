@@ -1,0 +1,8 @@
+{
+  "id": "sqlalchemy_session_factory",
+  "description": "A session factory bound to the engine, with autocommit and autoflush off.",
+  "imports": [
+    "from sqlalchemy.orm import sessionmaker"
+  ],
+  "template": "{{name}} = sessionmaker(autocommit=False, autoflush=False, bind=engine)"
+}

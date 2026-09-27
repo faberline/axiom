@@ -1,8 +1,0 @@
-{
-  "id": "pydantic_field",
-  "description": "Declares a safe model field using Field(default_factory=...) to prevent mutable default traps.",
-  "imports": [
-    "from pydantic import Field"
-  ],
-  "template": "    {{field_name}}: {{field_type}} = Field(\n        default_factory={{default_factory}},\n        description=\"{{description}}\",\n    )"
-}

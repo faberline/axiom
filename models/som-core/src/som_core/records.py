@@ -55,6 +55,14 @@ def _text(value: Any, where: str) -> str:
     return value
 
 
+def _is_section(value: Any) -> bool:
+    return isinstance(value, list) and all(
+        isinstance(item, dict)
+        and all(isinstance(k, str) and isinstance(v, str) for k, v in item.items())
+        for item in value
+    )
+
+
 def _int(value: Any, where: str, low: int, high: int | None = None) -> int:
     if not isinstance(value, int) or isinstance(value, bool) or value < low or (
         high is not None and value > high
@@ -194,9 +202,12 @@ def validate_ops(ops: Any, topology: dict[str, Any]) -> None:
             _text(op["id"], f"{where}.id")
             params = op["params"]
             if not isinstance(params, dict) or not all(
-                isinstance(k, str) and isinstance(v, str) for k, v in params.items()
+                isinstance(k, str) and (isinstance(v, str) or _is_section(v))
+                for k, v in params.items()
             ):
-                raise RecordError(f"{where}.params: must map names to strings")
+                raise RecordError(
+                    f"{where}.params: must map names to strings or to lists of string maps"
+                )
         else:
             _text(op["source"], f"{where}.source")
 

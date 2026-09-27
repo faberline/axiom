@@ -342,31 +342,51 @@
         "group": 1
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "engine",
-        "source": "engine = create_engine(\n    \"sqlite:///:memory:\",\n    connect_args={\"check_same_thread\": False},\n    poolclass=StaticPool,\n)",
+        "id": "sqlalchemy_memory_engine",
+        "params": {},
         "blank_before": 1
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "Base",
-        "source": "class Base(DeclarativeBase):\n    \"\"\"Declarative base shared by every table in this module.\"\"\"",
+        "id": "sqlalchemy_declarative_base",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "Item",
-        "source": "class Item(Base):\n    \"\"\"A persisted catalog item.\"\"\"\n\n    __tablename__ = \"items\"\n\n    id: Mapped[int] = mapped_column(primary_key=True, index=True)\n    name: Mapped[str] = mapped_column(nullable=False)",
+        "id": "sqlalchemy_table",
+        "params": {
+          "name": "Item",
+          "doc": "A persisted catalog item.",
+          "table": "items",
+          "columns": [
+            {
+              "column": "id",
+              "type": "int",
+              "value": "mapped_column(primary_key=True, index=True)"
+            },
+            {
+              "column": "name",
+              "type": "str",
+              "value": "mapped_column(nullable=False)"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "Base.metadata.create_all",
-        "source": "Base.metadata.create_all(bind=engine)",
+        "id": "sqlalchemy_create_all",
+        "params": {},
         "blank_before": 2
       },
       {
@@ -405,24 +425,49 @@
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "ItemCreate",
-        "source": "class ItemCreate(BaseModel):\n    \"\"\"Payload accepted when creating an item.\"\"\"\n\n    name: str",
+        "id": "pydantic_model",
+        "params": {
+          "name": "ItemCreate",
+          "doc": "Payload accepted when creating an item.",
+          "fields": [
+            {
+              "field": "name",
+              "declaration": "str"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "ItemResponse",
-        "source": "class ItemResponse(BaseModel):\n    \"\"\"Item representation returned to clients.\"\"\"\n\n    id: int\n    name: str\n\n    model_config = ConfigDict(from_attributes=True)",
+        "id": "pydantic_orm_model",
+        "params": {
+          "name": "ItemResponse",
+          "doc": "Item representation returned to clients.",
+          "fields": [
+            {
+              "field": "id",
+              "declaration": "int"
+            },
+            {
+              "field": "name",
+              "declaration": "str"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "app",
-        "source": "app = FastAPI()",
+        "id": "fastapi_app",
+        "params": {},
         "blank_before": 2
       },
       {
@@ -440,10 +485,17 @@
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "list_items",
-        "source": "@app.get(\"/items\", response_model=list[ItemResponse])\ndef list_items(db: Session = Depends(get_db)) -> list[Item]:\n    \"\"\"Return every item.\"\"\"\n    return list(db.scalars(select(Item)))",
+        "id": "fastapi_list_all",
+        "params": {
+          "path": "/items",
+          "response_model": "ItemResponse",
+          "name": "list_items",
+          "model": "Item",
+          "doc": "Return every item."
+        },
         "blank_before": 2
       },
       {
@@ -469,8 +521,8 @@
       }
     ],
     "coverage": {
-      "snippet_blocks": 0,
-      "literal_blocks": 18
+      "snippet_blocks": 8,
+      "literal_blocks": 10
     }
   },
   "candidates": [

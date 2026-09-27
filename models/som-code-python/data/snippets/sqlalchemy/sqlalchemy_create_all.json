@@ -1,0 +1,6 @@
+{
+  "id": "sqlalchemy_create_all",
+  "description": "Create every mapped table at import time.",
+  "imports": [],
+  "template": "Base.metadata.create_all(bind=engine)"
+}

@@ -24,8 +24,11 @@ library it imports and ending with what the fixture asserts; run
 the caption from. Write `plan` beside the caption: an imperative `intent`,
 the domain `target`, and `constraints` that name every exception the gold
 raises and status code it declares, never the requirement text. A snippet is one JSON file
-under `data/snippets/<library>/` and is not in the ISA until the verifier's
-required set names it.
+under `data/snippets/<library>/`, its template cut from gold text rather than
+invented: add it, run `scripts/decompile_gold.py --write`, and keep it only
+if `scripts/verify_snippets.py` shows at least two families using it. A
+template line must keep literal code beside its placeholders; a line that is
+only `{{body}}` is a hole and the verifier refuses it.
 
 Every candidate is written as modern, PEP 8, typed Python: builtin generics
 and `X | None`, `collections.abc` imports, docstrings on modules, classes,
@@ -49,7 +52,7 @@ observe.
 | Curated rationale | `uv run --project models/som-code-python python models/som-code-python/scripts/verify_curation.py` |
 | Code quality | `uv run --project models/som-code-python python models/som-code-python/scripts/verify_quality.py` |
 | Round trip | `uv run --project models/som-code-python python models/som-code-python/scripts/verify_roundtrip.py` |
-| Snippet ISA v1 | `uv run --project models/som-code-python python models/som-code-python/scripts/verify_snippets.py` |
+| Snippet ISA | `uv run --project models/som-code-python python models/som-code-python/scripts/verify_snippets.py` |
 | Project test suite | `uv run --project models/som-code-python python -m pytest models/som-code-python/tests -q` |
 | Product document contract | `uv run --python 3.13 --no-project scripts/meta/project_docs_contract.py check models/som-code-python --format json` |
 | META-doc contract | `uv run --project apps/aw aw metadoc check models/som-code-python` |

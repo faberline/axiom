@@ -20,7 +20,8 @@ two cannot drift apart:
   runs from the first non-blank line after the previous statement to its
   own last line, so a comment above a block travels with it; a block is
   ``INSERT_SNIPPET`` only when a snippet template matches its source in
-  full, otherwise ``INSERT_BLOCK``. ``scripts/verify_roundtrip.py`` proves
+  full, sections included, and the extracted params render back to the same
+  bytes; otherwise ``INSERT_BLOCK``. ``scripts/verify_roundtrip.py`` proves
   the list rebuilds the gold.
 
 ``--write`` stores the block under ``decompiled`` in each ``family.json``.
@@ -184,28 +185,119 @@ def measure(source: str) -> dict:
 
 
 GOLD_PATH = "candidate.py"
-PLACEHOLDER = re.compile(r"\{\{([a-zA-Z0-9_]+)\}\}")
+TAG = re.compile(r"\{\{([#/]?)([a-zA-Z0-9_]+)\}\}")
 
 
 class DecompileError(ValueError):
     """A program the layer records cannot express."""
 
 
-def _snippet_patterns() -> list[tuple[str, re.Pattern[str]]]:
+def _parse(template: str) -> list[tuple[str, object]]:
+    """Split a template into text, ``var`` and one-level ``section`` parts."""
+    parts: list[tuple[str, object]] = []
+    section: tuple[str, list] | None = None
+    pos = 0
+    for hit in TAG.finditer(template):
+        target = section[1] if section else parts
+        if hit.start() > pos:
+            target.append(("text", template[pos:hit.start()]))
+        sigil, name = hit.group(1), hit.group(2)
+        if sigil == "#":
+            if section:
+                raise DecompileError(f"section {name!r} is nested")
+            section = (name, [])
+        elif sigil == "/":
+            if not section or section[0] != name:
+                raise DecompileError(f"section close {name!r} has no matching open")
+            parts.append(("section", section))
+            section = None
+        else:
+            target.append(("var", name))
+        pos = hit.end()
+    if section:
+        raise DecompileError(f"section {section[0]!r} is never closed")
+    if pos < len(template):
+        parts.append(("text", template[pos:]))
+    return parts
+
+
+def _regex(parts: list[tuple[str, object]], named: bool) -> str:
+    seen: set[str] = set()
+    out = ""
+    for kind, value in parts:
+        if kind == "text":
+            out += re.escape(value)
+        elif kind == "var":
+            if not named:
+                out += "[^\\n]*"
+            elif value in seen:
+                out += f"(?P={value})"
+            else:
+                out += f"(?P<{value}>[^\\n]*)"
+            seen.add(value)
+        else:
+            name, body = value
+            out += f"(?P<{name}>(?:{_regex(body, named=False)})*)"
+    return out
+
+
+def _render(parts: list[tuple[str, object]], params: dict) -> str:
+    out = ""
+    for kind, value in parts:
+        if kind == "text":
+            out += value
+        elif kind == "var":
+            out += params[value]
+        else:
+            name, body = value
+            out += "".join(_render(body, item) for item in params[name])
+    return out
+
+
+class Snippet:
+    """One ISA template compiled for whole-block matching.
+
+    A section becomes one outer group capturing every item; the items are
+    then split off one at a time with the body's own regex. A match counts
+    only when the extracted params render back to the block byte for byte,
+    so an ambiguous split is a miss, never a wrong op.
+    """
+
+    def __init__(self, snippet_id: str, template: str) -> None:
+        self.id = snippet_id
+        self.parts = _parse(template)
+        self.outer = re.compile(_regex(self.parts, named=True))
+        self.items = {
+            value[0]: re.compile(_regex(value[1], named=True))
+            for kind, value in self.parts if kind == "section"
+        }
+
+    def match(self, text: str) -> dict | None:
+        hit = self.outer.fullmatch(text)
+        if not hit:
+            return None
+        params: dict = {}
+        for kind, value in self.parts:
+            if kind == "var":
+                params[value] = hit.group(value)
+            elif kind == "section":
+                name = value[0]
+                captured, pos, items = hit.group(name), 0, []
+                while pos < len(captured):
+                    item = self.items[name].match(captured, pos)
+                    if not item or item.end() == pos:
+                        return None
+                    items.append(item.groupdict())
+                    pos = item.end()
+                params[name] = items
+        return params if _render(self.parts, params) == text else None
+
+
+def _snippet_patterns() -> list[Snippet]:
     patterns = []
     for path in sorted(SNIPPETS.glob("*/*.json")):
         snippet = json.loads(path.read_text(encoding="utf-8"))
-        seen: set[str] = set()
-        regex = ""
-        pos = 0
-        for hit in PLACEHOLDER.finditer(snippet["template"]):
-            regex += re.escape(snippet["template"][pos:hit.start()])
-            name = hit.group(1)
-            regex += f"(?P={name})" if name in seen else f"(?P<{name}>[^\\n]*)"
-            seen.add(name)
-            pos = hit.end()
-        regex += re.escape(snippet["template"][pos:])
-        patterns.append((snippet["id"], re.compile(regex)))
+        patterns.append(Snippet(snippet["id"], snippet["template"]))
     return patterns
 
 
@@ -259,7 +351,7 @@ def _local_imports(tree: ast.Module, files: set[str]) -> dict[str, str]:
 
 
 def _decompile_file(
-    path: str, source: str, files: set[str], patterns: list[tuple[str, re.Pattern[str]]]
+    path: str, source: str, files: set[str], patterns: list[Snippet]
 ) -> tuple[dict, list[dict]]:
     tree = ast.parse(source)
     lines = source.splitlines()
@@ -322,11 +414,11 @@ def _decompile_file(
 
         op: dict = {"op": "INSERT_BLOCK", "path": path, "block": name, "source": text,
                     "blank_before": blank_before}
-        for snippet_id, pattern in patterns:
-            hit = pattern.fullmatch(text)
-            if hit:
-                op = {"op": "INSERT_SNIPPET", "path": path, "block": name, "id": snippet_id,
-                      "params": hit.groupdict(), "blank_before": blank_before}
+        for snippet in patterns:
+            params = snippet.match(text)
+            if params is not None:
+                op = {"op": "INSERT_SNIPPET", "path": path, "block": name, "id": snippet.id,
+                      "params": params, "blank_before": blank_before}
                 break
         ops.append(op)
     return {"path": path, "blocks": blocks}, ops

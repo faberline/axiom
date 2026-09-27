@@ -302,10 +302,11 @@
         "group": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "engine",
-        "source": "engine = create_engine(\n    \"sqlite:///:memory:\",\n    connect_args={\"check_same_thread\": False},\n    poolclass=StaticPool,\n)",
+        "id": "sqlalchemy_memory_engine",
+        "params": {},
         "blank_before": 1
       },
       {
@@ -323,10 +324,11 @@
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "Base",
-        "source": "class Base(DeclarativeBase):\n    \"\"\"Declarative base shared by every table in this module.\"\"\"",
+        "id": "sqlalchemy_declarative_base",
+        "params": {},
         "blank_before": 2
       },
       {
@@ -344,24 +346,29 @@
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "Base.metadata.create_all",
-        "source": "Base.metadata.create_all(bind=engine)",
+        "id": "sqlalchemy_create_all",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "session_factory",
-        "source": "session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)",
+        "id": "sqlalchemy_session_factory",
+        "params": {
+          "name": "session_factory"
+        },
         "blank_before": 0
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "get_db",
-        "source": "def get_db() -> Generator[Session, None, None]:\n    \"\"\"Yield one database session per request and close it afterwards.\"\"\"\n    db = session_factory()\n    try:\n        yield db\n    finally:\n        db.close()",
+        "id": "sqlalchemy_get_db",
+        "params": {},
         "blank_before": 2
       },
       {
@@ -379,31 +386,83 @@
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "OrderItemResponse",
-        "source": "class OrderItemResponse(BaseModel):\n    \"\"\"Order line representation returned to clients.\"\"\"\n\n    id: int\n    product_name: str\n    quantity: int\n    price: float\n\n    model_config = ConfigDict(from_attributes=True)",
+        "id": "pydantic_orm_model",
+        "params": {
+          "name": "OrderItemResponse",
+          "doc": "Order line representation returned to clients.",
+          "fields": [
+            {
+              "field": "id",
+              "declaration": "int"
+            },
+            {
+              "field": "product_name",
+              "declaration": "str"
+            },
+            {
+              "field": "quantity",
+              "declaration": "int"
+            },
+            {
+              "field": "price",
+              "declaration": "float"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "OrderResponse",
-        "source": "class OrderResponse(BaseModel):\n    \"\"\"Order representation returned to clients.\"\"\"\n\n    id: int\n    order_number: str\n    status: str\n    items: list[OrderItemResponse]\n\n    model_config = ConfigDict(from_attributes=True)",
+        "id": "pydantic_orm_model",
+        "params": {
+          "name": "OrderResponse",
+          "doc": "Order representation returned to clients.",
+          "fields": [
+            {
+              "field": "id",
+              "declaration": "int"
+            },
+            {
+              "field": "order_number",
+              "declaration": "str"
+            },
+            {
+              "field": "status",
+              "declaration": "str"
+            },
+            {
+              "field": "items",
+              "declaration": "list[OrderItemResponse]"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "app",
-        "source": "app = FastAPI()",
+        "id": "fastapi_app",
+        "params": {},
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "get_query_metrics",
-        "source": "@app.get(\"/query-metrics\")\ndef get_query_metrics() -> dict[str, int]:\n    \"\"\"Return how many SELECT statements have run since the last reset.\"\"\"\n    return {\"count\": QueryCounter.count}",
+        "id": "fastapi_counter_route",
+        "params": {
+          "path": "/query-metrics",
+          "name": "get_query_metrics",
+          "doc": "Return how many SELECT statements have run since the last reset.",
+          "key": "count",
+          "value": "QueryCounter.count"
+        },
         "blank_before": 2
       },
       {
@@ -415,8 +474,8 @@
       }
     ],
     "coverage": {
-      "snippet_blocks": 0,
-      "literal_blocks": 16
+      "snippet_blocks": 9,
+      "literal_blocks": 7
     }
   },
   "candidates": [

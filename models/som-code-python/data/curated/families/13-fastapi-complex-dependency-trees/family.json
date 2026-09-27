@@ -272,17 +272,57 @@
         "group": 1
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "UserAuth",
-        "source": "class UserAuth(BaseModel):\n    \"\"\"The caller identified by an API key.\"\"\"\n\n    user_id: str\n    role: str\n    home_tenant: str",
+        "id": "pydantic_model",
+        "params": {
+          "name": "UserAuth",
+          "doc": "The caller identified by an API key.",
+          "fields": [
+            {
+              "field": "user_id",
+              "declaration": "str"
+            },
+            {
+              "field": "role",
+              "declaration": "str"
+            },
+            {
+              "field": "home_tenant",
+              "declaration": "str"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "TenantContext",
-        "source": "class TenantContext(BaseModel):\n    \"\"\"The tenant a request acts on, with the caller who chose it.\"\"\"\n\n    tenant_id: str\n    user_id: str\n    role: str\n    home_tenant: str",
+        "id": "pydantic_model",
+        "params": {
+          "name": "TenantContext",
+          "doc": "The tenant a request acts on, with the caller who chose it.",
+          "fields": [
+            {
+              "field": "tenant_id",
+              "declaration": "str"
+            },
+            {
+              "field": "user_id",
+              "declaration": "str"
+            },
+            {
+              "field": "role",
+              "declaration": "str"
+            },
+            {
+              "field": "home_tenant",
+              "declaration": "str"
+            }
+          ]
+        },
         "blank_before": 2
       },
       {
@@ -349,10 +389,13 @@
         "blank_before": 2
       },
       {
-        "op": "INSERT_BLOCK",
+        "op": "INSERT_SNIPPET",
         "path": "candidate.py",
         "block": "app",
-        "source": "app = FastAPI(title=\"SaaS Scoped Dependency Service\")",
+        "id": "fastapi_app_titled",
+        "params": {
+          "title": "SaaS Scoped Dependency Service"
+        },
         "blank_before": 2
       },
       {
@@ -371,8 +414,8 @@
       }
     ],
     "coverage": {
-      "snippet_blocks": 0,
-      "literal_blocks": 14
+      "snippet_blocks": 3,
+      "literal_blocks": 11
     }
   },
   "candidates": [

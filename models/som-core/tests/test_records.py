@@ -123,8 +123,15 @@ def _ops_with(mutate: Any) -> list[dict[str, Any]]:
         (lambda o: o[2].update(blank_before=3), "blank_before"),
         (lambda o: o[1].update(stmt="print('x')"), "not an import"),
         (lambda o: o[6].update(params={"app_name": 1}), "params"),
+        (lambda o: o[6].update(params={"fields": ["id"]}), "lists of string maps"),
+        (lambda o: o[6].update(params={"fields": [{"field": 1}]}), "lists of string maps"),
+        (lambda o: o[6].update(params={"fields": {"field": "id"}}), "lists of string maps"),
     ],
 )
 def test_a_malformed_operation_list_is_refused(mutate: Any, message: str) -> None:
     with pytest.raises(RecordError, match=message):
         validate_ops(_ops_with(mutate), TOPOLOGY)
+
+
+def test_section_params_are_accepted() -> None:
+    validate_ops(_ops_with(lambda o: o[6].update(params={"fields": [], "rows": [{"k": "v"}]})), TOPOLOGY)
