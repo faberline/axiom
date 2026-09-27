@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1469).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/contextvars_1469.toml)
-issue = 1469
-lib = "contextvars"
-fixture = "tests/cpython/_regression/std-libs/contextvars/bench/copy_context_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

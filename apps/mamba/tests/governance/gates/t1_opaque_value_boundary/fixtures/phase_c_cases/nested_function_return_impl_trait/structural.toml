@@ -1,8 +1,0 @@
-schema = "mamba.t1.opaque-value-boundary.v2.structural"
-version = 1
-source = "source.rs"
-target_kind = "fn"
-target_name = "nested_conversion"
-expected_classification = "nested-function"
-expected_ancestors = [["fn", "nested_outer"]]
-expected_cfg_test = false

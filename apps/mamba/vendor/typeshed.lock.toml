@@ -1,5 +1,0 @@
-schema = 1
-repository = "https://github.com/python/typeshed.git"
-revision = "a7bcce8b6df32dd85dc31691cef30af61e7b1371"
-stdlib_pyi_count = 752
-stdlib_pyi_sha256 = "b616692e13744897bea61d69ec9918104df2ad657ede10ced27182eefde34fd1"

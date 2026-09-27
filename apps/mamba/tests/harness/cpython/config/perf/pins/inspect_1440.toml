@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1440).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/inspect_1440.toml)
-issue = 1440
-lib = "inspect"
-fixture = "tests/cpython/_regression/std-libs/inspect/bench/inspect_type_read_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

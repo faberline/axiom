@@ -1,9 +1,0 @@
-# SPEC-MANAGED: apps/sift/external-contracts/long-running-stability/sift-resilience.md#sift-rig-resilience
-# CODEGEN-BEGIN
-# AW-EC-TOOL-BEGIN
-project = "sift"
-scenarios_dir = "apps/sift/e2e/rig/cases/resilience"
-source_contract = "sift-long-running-stability-resilience"
-version = 1
-# AW-EC-TOOL-END
-# CODEGEN-END

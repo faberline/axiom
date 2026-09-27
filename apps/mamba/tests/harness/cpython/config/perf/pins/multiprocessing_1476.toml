@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1476).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/multiprocessing_1476.toml)
-issue = 1476
-lib = "multiprocessing"
-fixture = "tests/cpython/_regression/std-libs/multiprocessing/bench/multiprocessing_type_read_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

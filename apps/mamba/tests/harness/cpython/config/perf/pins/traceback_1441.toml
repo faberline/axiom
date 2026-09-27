@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1441).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/traceback_1441.toml)
-issue = 1441
-lib = "traceback"
-fixture = "tests/cpython/_regression/std-libs/traceback/bench/format_exc_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

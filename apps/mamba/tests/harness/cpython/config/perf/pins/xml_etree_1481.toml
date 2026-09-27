@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1481).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/xml_etree_1481.toml)
-issue = 1481
-lib = "xml_etree"
-fixture = "tests/cpython/_regression/std-libs/xml_etree_elementtree/bench/xml_etree_type_read_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

@@ -1,4 +1,0 @@
-[wasm]
-entry = "src/LargeInt.tsx"
-root_component = "LargeInt"
-root_props = [4500000000000000]

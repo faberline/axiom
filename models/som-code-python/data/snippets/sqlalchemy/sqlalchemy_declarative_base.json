@@ -1,8 +1,0 @@
-{
-  "id": "sqlalchemy_declarative_base",
-  "description": "The declarative base class every mapped table in the module inherits.",
-  "imports": [
-    "from sqlalchemy.orm import DeclarativeBase"
-  ],
-  "template": "class Base(DeclarativeBase):\n    \"\"\"Declarative base shared by every table in this module.\"\"\""
-}

@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1183).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/asyncio_tcp_1183.toml)
-issue = 1183
-lib = "asyncio_tcp"
-fixture = "tests/cpython/perf/asyncio_tcp.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

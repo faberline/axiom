@@ -1,2 +1,0 @@
-test_sqlite3: testing with SQLite version 3.43.2
-ExtensionTests::test_cursor_executescript_with_null_characters: ok

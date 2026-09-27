@@ -1,5 +1,0 @@
-readline version: 0x803
-readline runtime version: 0x803
-readline library version: '8.3'
-use libedit emulation? False
-TestReadline::test_nonascii: ok

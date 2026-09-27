@@ -1,2 +1,0 @@
-test_sqlite3: testing with SQLite version 3.43.2
-ClosedConTests::test_closed_set_progress_callback: ok

@@ -1,1 +1,0 @@
-"if (process.env.NODE_ENV === 'production') {\n  exports.prod = () => 'fast';\n} else {\n  exports.dev = () => 'slow';\n}\n"

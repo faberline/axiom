@@ -1,8 +1,0 @@
-# HANDWRITE-BEGIN gap="missing-generator:deployment:direct-install-statefulset" tracker="#1809" reason="Tape's direct-install namespace is a static companion to the operator-owned StatefulSet render until the shared stateful-service template also emits layered Kustomize artifacts."
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: tape
-  labels:
-    app: tape
-# HANDWRITE-END

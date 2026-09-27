@@ -1,6 +1,0 @@
-# HANDWRITE-BEGIN gap="sift-kustomize-crd-base" tracker="1606" reason="Expose the Sift CRD as a directory resource so default Kustomize load restrictions remain enabled."
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-  - sift.yaml
-# HANDWRITE-END

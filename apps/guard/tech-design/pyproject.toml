@@ -1,7 +1,0 @@
-[project]
-name = "guard-tech-design"
-version = "0.1.0"
-requires-python = ">=3.11"
-dependencies = [
-    "typer>=0.16,<1",
-]

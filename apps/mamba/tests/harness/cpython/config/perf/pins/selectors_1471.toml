@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1471).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/selectors_1471.toml)
-issue = 1471
-lib = "selectors"
-fixture = "tests/cpython/_regression/std-libs/selectors/bench/default_selector_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

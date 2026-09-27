@@ -1,4 +1,0 @@
-]7;file://localhost/var/folders/r_/zwj_t8895ms334wn1pq5gf_w0000gn/T/.tmpVB784O/nestedREADY:/var/folders/r_/zwj_t8895ms334wn1pq5gf_w0000gn/T/.tmpVB784O/nested
-show production context
-ECHO:show production context
-42 132

@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1447).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/abc_1447.toml)
-issue = 1447
-lib = "abc"
-fixture = "tests/cpython/_regression/std-libs/abc/bench/get_cache_token_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

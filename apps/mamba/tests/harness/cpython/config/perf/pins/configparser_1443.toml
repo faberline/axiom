@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1443).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/configparser_1443.toml)
-issue = 1443
-lib = "configparser"
-fixture = "tests/cpython/_regression/std-libs/configparser/bench/section_key_read_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

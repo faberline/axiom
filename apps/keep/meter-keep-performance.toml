@@ -1,9 +1,0 @@
-# SPEC-MANAGED: apps/keep/external-contracts/competitor-performance/efficiency/perf-gate.md#keep-meter-performance
-# CODEGEN-BEGIN
-# AW-EC-TOOL-BEGIN
-delegate_command = "cd apps/keep && ../../target/debug/vat run meter-efficiency"
-project = "keep"
-source_contract = "keep-competitor-performance-meter-gate"
-version = 1
-# AW-EC-TOOL-END
-# CODEGEN-END

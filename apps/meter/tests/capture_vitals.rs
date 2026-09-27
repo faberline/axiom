@@ -1,3 +1,0 @@
-// CODEGEN-BEGIN
-
-// CODEGEN-END

@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1414).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/ssl_1414.toml)
-issue = 1414
-lib = "ssl"
-fixture = "tests/cpython/_regression/std-libs/ssl/bench/ssl_type_read_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = ["ssl"]

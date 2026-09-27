@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1430).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/io_1430.toml)
-issue = 1430
-lib = "io"
-fixture = "tests/cpython/_regression/std-libs/io/bench/io_type_read_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

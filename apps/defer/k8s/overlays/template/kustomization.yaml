@@ -1,9 +1,0 @@
-# HANDWRITE-BEGIN gap="missing-generator:deployment:defer-template-overlay" tracker="#766" reason="Defer registry and tag placeholders remain hand-authored until service-k8s emits the reusable template profile."
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources: [../../base]
-images:
-  - name: defer
-    newName: REPLACE_ME__REGISTRY/defer
-    newTag: REPLACE_ME__TAG
-# HANDWRITE-END

@@ -1,2 +1,0 @@
-test_sqlite3: testing with SQLite version 3.43.2
-SqliteTypeTests::test_too_large_blob: ok

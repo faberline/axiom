@@ -1,4 +1,0 @@
-[wasm]
-entry = "src/MuiVisualFixture.tsx"
-root_component = "MuiVisualFixture"
-renderer = "web-gpu"

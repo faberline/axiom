@@ -1,4 +1,0 @@
-# meter per-run report cache — every populator/run verb writes .meter/last-report.json
-# under the working directory so `meter report` can re-project it. It is process
-# output, never source; keep it out of version control.
-.meter/

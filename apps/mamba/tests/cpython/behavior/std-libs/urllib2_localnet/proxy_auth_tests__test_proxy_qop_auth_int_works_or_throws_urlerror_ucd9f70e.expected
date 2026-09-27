@@ -1,1 +1,0 @@
-ProxyAuthTests::test_proxy_qop_auth_int_works_or_throws_urlerror: ok

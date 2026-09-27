@@ -1,5 +1,0 @@
-# HANDWRITE-BEGIN gap="missing-generator:deployment:defer-network-policy-component" tracker="#766" reason="Defer's opt-in NetworkPolicy component aggregation remains hand-authored until service-k8s emits component kustomizations."
-apiVersion: kustomize.config.k8s.io/v1alpha1
-kind: Component
-resources: [networkpolicy.yaml]
-# HANDWRITE-END

@@ -1,8 +1,0 @@
-# CODEGEN-BEGIN
-# AW-EC-TOOL-BEGIN
-delegate_command = "cd apps/lumen && ../../target/debug/vat run ec-efficiency-meter"
-project = "lumen"
-source_contract = "lumen-competitor-performance-competitive"
-version = 1
-# AW-EC-TOOL-END
-# CODEGEN-END

@@ -1,7 +1,0 @@
-# HANDWRITE-BEGIN gap="sift-kustomize-template-overlay" tracker="1606" reason="Document the template declarative Sift topology."
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-  - ../../base
-  - sift.yaml
-# HANDWRITE-END

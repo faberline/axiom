@@ -1,4 +1,0 @@
-[wasm]
-entry = "src/Nested.tsx"
-root_component = "Nested"
-root_props = [0]

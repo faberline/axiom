@@ -1,7 +1,0 @@
-# HANDWRITE-BEGIN gap="sift-kustomize-prod-overlay" tracker="1606" reason="Document the production declarative Sift topology."
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-  - ../../base
-  - sift.yaml
-# HANDWRITE-END

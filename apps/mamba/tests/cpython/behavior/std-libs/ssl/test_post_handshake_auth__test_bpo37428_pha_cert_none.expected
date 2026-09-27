@@ -1,6 +1,0 @@
-test_ssl: testing with 'OpenSSL 3.6.1 27 Jan 2026' (3, 6, 0, 1, 0)
-          under Mac ('14.6.1', ('', '', ''), 'arm64')
-          HAS_SNI = True
-          OP_ALL = 0x80000050
-          OP_NO_TLSv1_1 = 0x10000000
-TestPostHandshakeAuth::test_bpo37428_pha_cert_none: ok

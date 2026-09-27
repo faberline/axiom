@@ -1,9 +1,0 @@
-- spec_id: exception-chaining-spec
-  action: modify
-  main_spec_ref: crates/cclab-mamba/runtime/exception.md
-  source: crates/cclab-mamba/runtime/exception.md
-  sections:
-  - overview
-  - requirements
-  - scenarios
-  - changes

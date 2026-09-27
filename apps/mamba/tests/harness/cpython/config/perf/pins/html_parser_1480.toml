@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1480).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/html_parser_1480.toml)
-issue = 1480
-lib = "html_parser"
-fixture = "tests/cpython/_regression/std-libs/html_parser/bench/html_parser_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

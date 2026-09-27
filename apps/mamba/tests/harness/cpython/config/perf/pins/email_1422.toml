@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1422).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/email_1422.toml)
-issue = 1422
-lib = "email"
-fixture = "tests/cpython/_regression/std-libs/email/bench/email_type_read_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

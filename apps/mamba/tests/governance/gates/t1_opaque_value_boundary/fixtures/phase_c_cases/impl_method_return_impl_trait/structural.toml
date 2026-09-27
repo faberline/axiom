@@ -1,8 +1,0 @@
-schema = "mamba.t1.opaque-value-boundary.v2.structural"
-version = 1
-source = "source.rs"
-target_kind = "fn"
-target_name = "impl_conversion"
-expected_classification = "impl-method"
-expected_ancestors = [["impl", "ImplHolder"]]
-expected_cfg_test = false

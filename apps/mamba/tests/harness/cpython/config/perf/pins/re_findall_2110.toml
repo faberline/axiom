@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#2110).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/re_findall_2110.toml)
-issue = 2110
-lib = "re_findall"
-fixture = "tests/cpython/_regression/std-libs/re/bench/findall_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

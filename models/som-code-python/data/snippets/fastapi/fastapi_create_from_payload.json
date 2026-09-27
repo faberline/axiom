@@ -1,9 +1,0 @@
-{
-  "id": "fastapi_create_from_payload",
-  "description": "A POST route that copies payload fields onto a new row, commits it, and returns the refreshed row.",
-  "imports": [
-    "from fastapi import Depends",
-    "from sqlalchemy.orm import Session"
-  ],
-  "template": "@app.post(\"{{path}}\", {{route_options}})\ndef {{name}}(payload: {{payload_model}}, db: Session = Depends(get_db)) -> {{model}}:\n    \"\"\"{{doc}}\"\"\"\n    {{row}} = {{model}}(\n{{#fields}}        {{field}}=payload.{{field}},\n{{/fields}}    )\n    db.add({{row}})\n    db.commit()\n    db.refresh({{row}})\n    return {{row}}"
-}

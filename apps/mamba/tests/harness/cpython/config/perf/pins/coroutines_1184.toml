@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1184).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/coroutines_1184.toml)
-issue = 1184
-lib = "coroutines"
-fixture = "tests/cpython/perf/coroutines.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

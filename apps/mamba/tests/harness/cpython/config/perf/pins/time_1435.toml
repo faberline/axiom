@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1435).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/time_1435.toml)
-issue = 1435
-lib = "time"
-fixture = "tests/cpython/_regression/std-libs/time/bench/clock_calls_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

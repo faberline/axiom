@@ -1,4 +1,0 @@
-[wasm]
-entry = "src/StringState.tsx"
-root_component = "StringState"
-root_props = ["hello"]

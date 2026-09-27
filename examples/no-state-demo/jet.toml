@@ -1,4 +1,0 @@
-[wasm]
-entry = "src/NoState.tsx"
-root_component = "NoState"
-root_props = [42]

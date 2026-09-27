@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1439).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/subprocess_1439.toml)
-issue = 1439
-lib = "subprocess"
-fixture = "tests/cpython/_regression/std-libs/subprocess/bench/pipe_const_read_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

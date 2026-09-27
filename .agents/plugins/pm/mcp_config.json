@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "pm": {
-      "disabled": false,
-      "serverUrl": "http://127.0.0.1:3200/mcp"
-    }
-  }
-}

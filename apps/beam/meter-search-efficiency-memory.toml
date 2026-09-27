@@ -1,9 +1,0 @@
-# SPEC-MANAGED: apps/beam/external-contracts/competitor-performance/efficiency/beam-high-throughput.md#beam-meter-search-efficiency-memory
-# CODEGEN-BEGIN
-# AW-EC-TOOL-BEGIN
-delegate_command = "cd apps/beam && ../../target/debug/vat run ec-efficiency-meter --scenario out-of-core"
-project = "beam"
-source_contract = "beam-competitor-performance-memory-footprint"
-version = 1
-# AW-EC-TOOL-END
-# CODEGEN-END

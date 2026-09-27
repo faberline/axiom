@@ -1,7 +1,0 @@
-# HANDWRITE-BEGIN gap="sift-kustomize-base" tracker="1606" reason="Compose the cluster CRD and operator control plane as a reproducible base."
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-  - ../crd
-  - ../operator
-# HANDWRITE-END

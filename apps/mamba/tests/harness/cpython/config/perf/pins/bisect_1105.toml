@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1105).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/bisect_1105.toml)
-issue = 1105
-lib = "bisect"
-fixture = "tests/cpython/_regression/std-libs/bisect/bench/search_insert.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

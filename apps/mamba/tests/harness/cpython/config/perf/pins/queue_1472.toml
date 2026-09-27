@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1472).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/queue_1472.toml)
-issue = 1472
-lib = "queue"
-fixture = "tests/cpython/_regression/std-libs/queue/bench/ctor_qsize_bulk.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

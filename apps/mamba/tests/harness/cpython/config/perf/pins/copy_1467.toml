@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1467).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/copy_1467.toml)
-issue = 1467
-lib = "copy"
-fixture = "tests/cpython/_regression/std-libs/copy/bench/deepcopy_nested_bulk.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

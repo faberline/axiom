@@ -1,9 +1,0 @@
-# SPEC-MANAGED: apps/sift/external-contracts/long-running-stability/sift-resilience.md#sift-meter-stability
-# CODEGEN-BEGIN
-# AW-EC-TOOL-BEGIN
-delegate_command = "cargo test -p sift --test stability_e2e -- --nocapture"
-project = "sift"
-source_contract = "sift-long-running-stability-resilience"
-version = 1
-# AW-EC-TOOL-END
-# CODEGEN-END

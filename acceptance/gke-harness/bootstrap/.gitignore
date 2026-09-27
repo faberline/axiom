@@ -1,6 +1,0 @@
-# This root deliberately uses LOCAL state (it creates the GCS bucket that
-# every other root's state lives in, so it cannot store its own state there
-# first). Local state carries project/SA identifiers — never commit it.
-.terraform/
-terraform.tfstate
-terraform.tfstate.backup

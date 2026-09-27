@@ -1,8 +1,0 @@
-{
-  "id": "fastapi_app",
-  "description": "The application object with FastAPI's defaults.",
-  "imports": [
-    "from fastapi import FastAPI"
-  ],
-  "template": "app = FastAPI()"
-}

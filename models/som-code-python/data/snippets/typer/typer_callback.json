@@ -1,6 +1,0 @@
-{
-  "id": "typer_callback",
-  "description": "The Typer callback that turns an app into a multi-command CLI.",
-  "imports": [],
-  "template": "@app.callback()\ndef main() -> None:\n    \"\"\"{{doc}}\"\"\""
-}

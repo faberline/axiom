@@ -1,9 +1,0 @@
-# SPEC-MANAGED: apps/keep/external-contracts/security-hardening/security/security-evidence.md#keep-guard-security
-# CODEGEN-BEGIN
-# AW-EC-TOOL-BEGIN
-delegate_command = "cd apps/keep && ../../target/debug/vat run guard-security"
-project = "keep"
-source_contract = "keep-security-hardening-guard-scan"
-version = 1
-# AW-EC-TOOL-END
-# CODEGEN-END

@@ -1,7 +1,0 @@
-# Pinned compatibility contracts for `keep spec gen` generated clients.
-# A target bump is a policy edit; the CLI records the selected version in the
-# generated `.openapi-codegen.json` manifest.
-[targets]
-typescript = "typescript-5.0"
-python = "python-3.14"
-rust = "rust-2024"

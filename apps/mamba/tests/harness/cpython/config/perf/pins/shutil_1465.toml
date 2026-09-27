@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1465).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/shutil_1465.toml)
-issue = 1465
-lib = "shutil"
-fixture = "tests/cpython/_regression/std-libs/shutil/bench/which_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

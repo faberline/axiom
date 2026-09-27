@@ -1,6 +1,0 @@
-cpython_ported::gen::behavior::builtin_libs::builtins::test_gen_behavior_builtin_libs_builtins_builtin_test__test_compile_top_level_await_no_coro
-cpython_ported::gen::behavior::core::compile::test_gen_behavior_core_compile_test_specifics__test_merge_code_attrs
-cpython_ported::gen::behavior::pep::positional_only::test_gen_behavior_pep_positional_only_posonly_names_in_co_varnames
-cpython_ported::gen::behavior::std_libs::code::test_gen_behavior_std_libs_code_code_argcount_attrs
-cpython_ported::gen::behavior::std_libs::code::test_gen_behavior_std_libs_code_code_name_and_varnames_attrs
-cpython_ported::gen::behavior::std_libs::types::test_gen_behavior_std_libs_types_coroutine_sets_iterable_flag

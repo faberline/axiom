@@ -1,2 +1,0 @@
-negative_year: (calendar.FRIDAY, 31)
-monthrange_negative_year_no_raise OK

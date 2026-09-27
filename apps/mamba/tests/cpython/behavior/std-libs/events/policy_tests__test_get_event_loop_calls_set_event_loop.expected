@@ -1,1 +1,0 @@
-PolicyTests::test_get_event_loop_calls_set_event_loop: ok

@@ -1,9 +1,0 @@
-- spec_id: runtime-ops-spec
-  action: modify
-  main_spec_ref: crates/cclab-mamba/runtime/tuple-ops.md
-  source: crates/cclab-mamba/runtime/tuple-ops.md
-  sections:
-  - overview
-  - requirements
-  - scenarios
-  - changes

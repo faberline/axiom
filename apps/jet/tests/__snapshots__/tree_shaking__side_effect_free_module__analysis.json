@@ -1,7 +1,0 @@
-{
-  "eliminated_bytes": 40,
-  "eliminated_modules": [
-    "/fixture/orphan.js"
-  ],
-  "used_exports": {}
-}

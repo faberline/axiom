@@ -1,7 +1,0 @@
-# Terraform working state, written by `terraform init` inside environment/.
-# The plugin cache is machine-local and large; the lock file pins provider
-# hashes for the platform that ran init, and this harness is run from whichever
-# workstation is driving the acceptance, so a committed lock would churn per
-# operator rather than pin anything shared.
-environment/.terraform/
-environment/.terraform.lock.hcl

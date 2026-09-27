@@ -1,7 +1,0 @@
------------------------------------- NOTICE ------------------------------------
-test_decimal may generate "malloc can't allocate region"
-warnings on macOS systems. This behavior is known. Do not
-report a bug unless tests are also failing.
-See https://github.com/python/cpython/issues/85100
---------------------------------------------------------------------------------
-CWhitebox::test_bignum: ok

@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#2515).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/factorial_recursive_2515.toml)
-issue = 2515
-lib = "factorial_recursive"
-fixture = "tests/cpython/_regression/3rd-libs/_baseline/bench/factorial_recursive_perf_pin.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

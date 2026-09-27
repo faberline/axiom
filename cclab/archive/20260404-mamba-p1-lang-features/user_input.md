@@ -1,1 +1,0 @@
-Py3.12 conformance: stdlib API signatures, dict unpacking, exception chaining, tuple comparison, class features (slots/properties/classmethods), chained comparisons, type() 3-arg dynamic class creation #760 #831 #834 #844 #849 #973 #974

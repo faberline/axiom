@@ -1,9 +1,0 @@
-This directory is `mambalibs`, and it is empty on purpose.
-
-`[tool.maturin] python-source = "python"` makes it the wheel's package root,
-so the extension installs as `mambalibs/array.abi3.so`. There is no
-`__init__.py`: `mambalibs` is a PEP 420 namespace package, so the later kit
-wheels can install into the same directory in one environment.
-
-Git tracks files, not directories, so this file is what keeps the directory
-in the tree.

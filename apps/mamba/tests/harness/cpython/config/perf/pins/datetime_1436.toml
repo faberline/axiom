@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1436).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/datetime_1436.toml)
-issue = 1436
-lib = "datetime"
-fixture = "tests/cpython/_regression/std-libs/datetime/bench/datetime_type_read_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

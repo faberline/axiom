@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1454).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/csv_1454.toml)
-issue = 1454
-lib = "csv"
-fixture = "tests/cpython/_regression/std-libs/csv/bench/quote_all_const_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

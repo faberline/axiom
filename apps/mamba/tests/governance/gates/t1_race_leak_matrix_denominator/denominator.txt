@@ -1,4 +1,0 @@
-cpython_ported::builtins::list::test_list_pop_default_last
-cpython_ported::builtins::list::test_list_pop_indexed
-cpython_ported::builtins::list::test_list_remove_and_pop
-cpython_ported::builtins::list::test_remove_and_pop_variants

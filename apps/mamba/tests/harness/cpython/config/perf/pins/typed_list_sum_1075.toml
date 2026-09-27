@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1075).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/typed_list_sum_1075.toml)
-issue = 1075
-lib = "typed_list_sum"
-fixture = "tests/cpython/_regression/builtin-libs/builtins/sum/bench/sum_int_list_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

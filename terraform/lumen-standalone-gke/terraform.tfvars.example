@@ -1,4 +1,0 @@
-project_id = "replace-with-real-project-id"
-region     = "us-central1"
-gke_zone   = "us-central1-a"
-run_id     = "local-20260828-01"

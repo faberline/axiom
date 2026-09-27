@@ -1,7 +1,0 @@
-# HANDWRITE-BEGIN gap="sift-kustomize-dev-overlay" tracker="1606" reason="Compose the development Sift instance with the shared control-plane base."
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-  - ../../base
-  - sift.yaml
-# HANDWRITE-END

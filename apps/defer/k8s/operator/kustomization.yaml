@@ -1,5 +1,0 @@
-# HANDWRITE-BEGIN gap="missing-generator:deployment:defer-operator-kustomization" tracker="#766" reason="Defer's CRD, RBAC, and controller aggregation remains hand-authored until service-k8s emits operator kustomizations."
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources: [crd.yaml, rbac.yaml, deployment.yaml]
-# HANDWRITE-END

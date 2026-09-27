@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1470).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/signal_1470.toml)
-issue = 1470
-lib = "signal"
-fixture = "tests/cpython/_regression/std-libs/signal/bench/getsignal_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

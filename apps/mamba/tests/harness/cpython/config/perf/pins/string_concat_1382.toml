@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1382).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/string_concat_1382.toml)
-issue = 1382
-lib = "string_concat"
-fixture = "tests/harness/cpython/config/perf/string_concat/string_concat_10k.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

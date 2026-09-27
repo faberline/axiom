@@ -1,6 +1,0 @@
-# Configuration for the pinned official Prometheus Remote Write receiver tests.
-remote_write:
-  - name: sift-rw1
-    url: http://host.docker.internal:17380/prometheus/api/v1/write
-    headers:
-      X-Sift-Project: prometheus-compliance

@@ -1,8 +1,0 @@
-{
-  "id": "pydantic_model",
-  "description": "A Pydantic model: its docstring and one field declaration per line.",
-  "imports": [
-    "from pydantic import BaseModel"
-  ],
-  "template": "class {{name}}(BaseModel):\n    \"\"\"{{doc}}\"\"\"\n{{#fields}}\n    {{field}}: {{declaration}}{{/fields}}"
-}

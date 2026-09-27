@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1477).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/http_cookies_1477.toml)
-issue = 1477
-lib = "http_cookies"
-fixture = "tests/cpython/_regression/std-libs/http_cookies/bench/base_cookie_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

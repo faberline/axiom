@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1475).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/uuid_1475.toml)
-issue = 1475
-lib = "uuid"
-fixture = "tests/cpython/_regression/std-libs/uuid/bench/uuid4_hex_bulk.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

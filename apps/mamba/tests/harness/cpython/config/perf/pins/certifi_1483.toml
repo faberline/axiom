@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1483).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/certifi_1483.toml)
-issue = 1483
-lib = "certifi"
-fixture = "tests/cpython/_regression/3rd-libs/certifi/bench/certifi_type_read_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = ["certifi"]

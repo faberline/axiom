@@ -1,5 +1,0 @@
-# HANDWRITE-BEGIN gap="missing-generator:deployment:defer-observability-component" tracker="#766" reason="Defer's opt-in monitoring component aggregation remains hand-authored until service-k8s emits component kustomizations."
-apiVersion: kustomize.config.k8s.io/v1alpha1
-kind: Component
-resources: [servicemonitor.yaml, prometheusrule.yaml]
-# HANDWRITE-END

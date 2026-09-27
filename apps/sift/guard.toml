@@ -1,9 +1,0 @@
-# SPEC-MANAGED: apps/sift/external-contracts/security-hardening/sift-auth.md#sift-guard-auth-surface
-# CODEGEN-BEGIN
-# AW-EC-TOOL-BEGIN
-project = "sift"
-source_contract = "sift-security-hardening-bearer-auth"
-target = "apps/sift"
-version = 1
-# AW-EC-TOOL-END
-# CODEGEN-END

@@ -1,5 +1,0 @@
-r = dir([1, 2, 3])
-print("append" in r)
-print("sort" in r)
-print("__iter__" in r)
-print(r == sorted(r))

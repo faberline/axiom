@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1420).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/urllib_request_1420.toml)
-issue = 1420
-lib = "urllib_request"
-fixture = "tests/cpython/_regression/std-libs/urllib_request/bench/urllib_request_type_read_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

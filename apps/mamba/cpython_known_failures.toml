@@ -1,9 +1,0 @@
-# Known test failures for Mamba CPython 3.12 compatibility.
-# Tests listed here are expected to fail (xfail) and will not block CI.
-# Each entry should have a 'reason' explaining why it fails.
-# Format: [failures.TEST_NAME] where TEST_NAME is the fixture key — the path
-#         after the `cpython` root, without the .py extension (e.g.
-#         "_regression/core/grammar/behavior").
-
-[failures."_regression/core/grammar/behavior"]
-reason = "parser gap: chained-`if` comprehension filter (`[v for v in xs if a if b]`) not yet parsed; pre-existing, unrelated to the dimension-first relocation"

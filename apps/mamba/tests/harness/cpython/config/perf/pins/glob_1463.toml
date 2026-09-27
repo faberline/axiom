@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1463).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/glob_1463.toml)
-issue = 1463
-lib = "glob"
-fixture = "tests/cpython/_regression/std-libs/glob/bench/glob_txt_bulk.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

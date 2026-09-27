@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1451).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/functools_1451.toml)
-issue = 1451
-lib = "functools"
-fixture = "tests/cpython/_regression/std-libs/functools/bench/wraps_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1462).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/tempfile_1462.toml)
-issue = 1462
-lib = "tempfile"
-fixture = "tests/cpython/_regression/std-libs/tempfile/bench/gettempdir_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

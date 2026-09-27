@@ -1,5 +1,0 @@
-# Tracker snapshots. These are live GitHub state, not repository content: they
-# change without anyone editing this repo, and a committed copy would let the
-# regression assertion in check_coverage_rule.py pass against a population that
-# no longer exists. Regenerate with measure_population.py.
-_snapshots/

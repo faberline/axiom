@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1466).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/weakref_1466.toml)
-issue = 1466
-lib = "weakref"
-fixture = "tests/cpython/_regression/std-libs/weakref/bench/proxy_type_name_read_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

@@ -1,9 +1,0 @@
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: relay
-spec:
-  selector:
-    matchLabels: {app: relay, role: server}
-  endpoints:
-    - {port: http, path: /metrics, interval: 30s}

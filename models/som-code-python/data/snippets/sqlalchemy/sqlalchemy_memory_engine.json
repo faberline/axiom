@@ -1,9 +1,0 @@
-{
-  "id": "sqlalchemy_memory_engine",
-  "description": "An in-memory SQLite engine that every thread and session shares through one connection.",
-  "imports": [
-    "from sqlalchemy import create_engine",
-    "from sqlalchemy.pool import StaticPool"
-  ],
-  "template": "engine = create_engine(\n    \"sqlite:///:memory:\",\n    connect_args={\"check_same_thread\": False},\n    poolclass=StaticPool,\n)"
-}

@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1478).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/http_cookiejar_1478.toml)
-issue = 1478
-lib = "http_cookiejar"
-fixture = "tests/cpython/_regression/std-libs/http_cookiejar/bench/cookiejar_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

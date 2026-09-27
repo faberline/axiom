@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1442).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/argparse_1442.toml)
-issue = 1442
-lib = "argparse"
-fixture = "tests/cpython/_regression/std-libs/argparse/bench/argparse_type_read_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

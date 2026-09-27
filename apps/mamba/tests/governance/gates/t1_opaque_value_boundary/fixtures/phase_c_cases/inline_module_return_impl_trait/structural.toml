@@ -1,8 +1,0 @@
-schema = "mamba.t1.opaque-value-boundary.v2.structural"
-version = 1
-source = "source.rs"
-target_kind = "fn"
-target_name = "inline_conversion"
-expected_classification = "inline-module"
-expected_ancestors = [["mod", "inline_scope"]]
-expected_cfg_test = false

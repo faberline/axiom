@@ -1,6 +1,0 @@
-# HANDWRITE-BEGIN gap="sift-kustomize-operator-base" tracker="1606" reason="Expose the Sift operator as a directory resource so default Kustomize load restrictions remain enabled."
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-  - operator.yaml
-# HANDWRITE-END

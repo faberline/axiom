@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1449).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/collections_1449.toml)
-issue = 1449
-lib = "collections"
-fixture = "tests/cpython/_regression/std-libs/collections/bench/counter_inc_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

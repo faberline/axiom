@@ -1,9 +1,0 @@
-- spec_id: stdlib-conformance-spec
-  action: modify
-  main_spec_ref: crates/cclab-mamba/testing/cpython-compliance.md
-  source: crates/cclab-mamba/testing/cpython-compliance.md
-  sections:
-  - overview
-  - requirements
-  - scenarios
-  - changes

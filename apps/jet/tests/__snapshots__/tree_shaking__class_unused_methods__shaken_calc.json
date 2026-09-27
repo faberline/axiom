@@ -1,1 +1,0 @@
-"export class Calc {\n  add(a, b) {\n    return a + b;\n  }\n  sub(a, b) {\n    return a - b;\n  }\n}\n"

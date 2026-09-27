@@ -1,6 +1,0 @@
-{
-  "id": "fastapi_counter_route",
-  "description": "A parameterless GET route that reports one counter as a JSON object.",
-  "imports": [],
-  "template": "@app.get(\"{{path}}\")\ndef {{name}}() -> dict[str, int]:\n    \"\"\"{{doc}}\"\"\"\n    return {\"{{key}}\": {{value}}}"
-}

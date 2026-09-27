@@ -1,5 +1,0 @@
-backend/data/*.sqlite3
-backend/data/*.sqlite3-*
-backend-rust/data/
-__pycache__/
-*.pyc

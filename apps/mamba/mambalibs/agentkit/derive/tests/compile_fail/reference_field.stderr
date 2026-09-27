@@ -1,5 +1,0 @@
-error: AgentSchema: unsupported field type. Supported: primitives (String, i*, u*, f32, f64, bool), `Vec<T>`, `Option<T>`, and named user-defined types that also derive `AgentSchema`. Unsupported: tuples, references, slices, function pointers, trait objects.
- --> tests/compile_fail/reference_field.rs:6:15
-  |
-6 |     borrowed: &'a str,
-  |               ^^^^^^^

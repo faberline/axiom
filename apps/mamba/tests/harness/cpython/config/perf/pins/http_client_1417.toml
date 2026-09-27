@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1417).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/http_client_1417.toml)
-issue = 1417
-lib = "http_client"
-fixture = "tests/cpython/_regression/std-libs/http_client/bench/status_const_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

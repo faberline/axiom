@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#1444).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/logging_1444.toml)
-issue = 1444
-lib = "logging"
-fixture = "tests/cpython/_regression/std-libs/logging/bench/getlogger_hot.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

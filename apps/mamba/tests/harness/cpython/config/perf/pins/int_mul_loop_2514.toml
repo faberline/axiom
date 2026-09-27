@@ -1,9 +1,0 @@
-# Perf-pin regression gate (#2514).
-# Source: tests/cpython/perf_pin.rs (per-pin: tests/cpython/perf/pins/int_mul_loop_2514.toml)
-issue = 2514
-lib = "int_mul_loop"
-fixture = "tests/cpython/_regression/3rd-libs/_baseline/bench/int_mul_loop_perf_pin.py"
-floor = 1.0
-mem_floor = 1.0
-samples = 9
-prereq_imports = []

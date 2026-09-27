@@ -1,4 +1,0 @@
-[wasm]
-entry = "src/UseMemo.tsx"
-root_component = "UseMemo"
-root_props = [0]
